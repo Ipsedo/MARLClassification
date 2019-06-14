@@ -11,14 +11,14 @@ class MessageSender(nn.Module):
         self.__n_m = n_m
         self.__n_e = 2 * self.__n
 
-        self.__seq_lin = nn.Sequential(
+        self.seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
             nn.ReLU(),
             nn.Linear(self.__n_e, self.__n_m)
         )
 
-    def forward(self, h_i_t):
-        return self.__seq_lin(h_i_t)
+    def forward(self, h_t):
+        return self.seq_lin(h_t)
 
 
 class MessageReceiver(nn.Module):
@@ -30,10 +30,10 @@ class MessageReceiver(nn.Module):
         self.__n = n
         self.__n_m = n_m
 
-        self.__seq_lin = nn.Sequential(
+        self.seq_lin = nn.Sequential(
             nn.Linear(self.__n_m, self.__n),
             nn.ReLU()
         )
 
-    def forward(self, m_i_t):
-        return self.__seq_lin(m_i_t)
+    def forward(self, m_t):
+        return self.seq_lin(m_t)

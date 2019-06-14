@@ -11,19 +11,19 @@ class CNN_MNIST(nn.Module):
         self.__f = f
         self.__n = n
 
-        self.__seq_conv = nn.Sequential(
+        self.seq_conv = nn.Sequential(
             nn.Conv2d(1, 8, kernel_size=3),
             nn.Conv2d(8, 16, kernel_size=3)
         )
 
-        self.__seq_lin = nn.Sequential(
+        self.seq_lin = nn.Sequential(
             nn.Linear(16 * (((f - 2) - 2) ** 2), self.__n)
         )
 
-    def forward(self, o_i_t):
-        out = self.__seq_conv(o_i_t.unsqueeze(1))
+    def forward(self, o_t):
+        out = self.seq_conv(o_t.unsqueeze(1))
         out = out.flatten(1, -1)
-        return self.__seq_lin(out)
+        return self.seq_lin(out)
 
 
 class StateToFeatures(nn.Module):
@@ -36,9 +36,9 @@ class StateToFeatures(nn.Module):
         self.__d = d
         self.__n = n
 
-        self.__seq_lin = nn.Sequential(
+        self.seq_lin = nn.Sequential(
             nn.Linear(self.__d, self.__n)
         )
 
-    def forward(self, p_i_t):
-        return self.__seq_lin(p_i_t)
+    def forward(self, p_t):
+        return self.seq_lin(p_t)
