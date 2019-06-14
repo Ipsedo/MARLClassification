@@ -3,7 +3,7 @@ import torch.nn as nn
 
 class BeliefUnit(nn.Module):
     """
-    R^2n * R^3n -> R^2n
+    f_θ1 : R^2n * R^3n -> R^2n
     """
     def __init__(self, n: int) -> None:
         super().__init__()
@@ -15,6 +15,9 @@ class BeliefUnit(nn.Module):
 
 
 class ActionUnit(nn.Module):
+    """
+    f_θ2 : ?
+    """
     def __init__(self) -> None:
         super().__init__()
 

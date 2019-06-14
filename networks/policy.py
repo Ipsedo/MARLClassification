@@ -2,6 +2,9 @@ import torch.nn as nn
 
 
 class Policy(nn.Module):
+    """
+    π_θ3 : ?
+    """
     def __init__(self):
         super().__init__()
 
