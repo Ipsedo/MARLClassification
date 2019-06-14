@@ -1,5 +1,6 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
+from environment.agent import Agent
 import torch as th
 
 
@@ -13,18 +14,18 @@ def test_MNIST_transition():
 
     print("First test :")
     pos_1 = th.tensor([0, 0])
-    print(trans_MNIST(pos_1, a_1, 5, 28))
-    print(trans_MNIST(pos_1, a_2, 5, 28))
-    print(trans_MNIST(pos_1, a_3, 5, 28))
-    print(trans_MNIST(pos_1, a_4, 5, 28))
+    print(trans_MNIST(pos_1, a_1, 5))
+    print(trans_MNIST(pos_1, a_2, 5))
+    print(trans_MNIST(pos_1, a_3, 5))
+    print(trans_MNIST(pos_1, a_4, 5))
     print()
 
     print("Snd test")
     pos_2 = th.tensor([27, 27])
-    print(trans_MNIST(pos_2, a_1, 5, 28))
-    print(trans_MNIST(pos_2, a_2, 5, 28))
-    print(trans_MNIST(pos_2, a_3, 5, 28))
-    print(trans_MNIST(pos_2, a_4, 5, 28))
+    print(trans_MNIST(pos_2, a_1, 5))
+    print(trans_MNIST(pos_2, a_2, 5))
+    print(trans_MNIST(pos_2, a_3, 5))
+    print(trans_MNIST(pos_2, a_4, 5))
 
 
 def test_MNIST_obs():
@@ -50,6 +51,29 @@ def test_MNIST_obs():
     except Exception as e:
         print(e)
 
+
+def test_agent_step():
+    ag = []
+
+    a1 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, obs_MNIST, trans_MNIST)
+
+    ag.append(a1)
+    ag.append(a2)
+    ag.append(a3)
+
+    img = th.rand(28, 28)
+
+    for a in ag:
+        a.step(img)
+    for a in ag:
+        a.step_finished()
+
+    print(a1.get_t_msg())
+
+
 if __name__ == "__main__":
     #test_MNIST_transition()
-    test_MNIST_obs()
+    #test_MNIST_obs()
+    test_agent_step()
