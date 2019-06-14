@@ -1,7 +1,7 @@
 import torch as th
 
 
-def trans_MNIST(pos: th.Tensor, a_t_p_one: th.Tensor, f: int, img_size: int) -> th.Tensor:
+def trans_MNIST(pos: th.Tensor, a_t_p_one: th.Tensor, img_size: int) -> th.Tensor:
     """
 
     :param pos:
