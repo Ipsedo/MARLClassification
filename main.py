@@ -1,7 +1,9 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
 from environment.agent import Agent
+from environment.core import step
 import torch as th
+from torch.nn import Softmax, MSELoss
 
 
 def test_MNIST_transition():
@@ -55,9 +57,9 @@ def test_MNIST_obs():
 def test_agent_step():
     ag = []
 
-    a1 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, obs_MNIST, trans_MNIST)
+    a1 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, 4, 10, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, 4, 10, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, 4, 10, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
@@ -73,7 +75,64 @@ def test_agent_step():
     print(a1.get_t_msg())
 
 
+def test_core_step():
+    ag = []
+
+    nb_class = 10
+    img_size = 28
+    n = 16
+    f = 5
+    n_m = 8
+    d = 2
+    action_size = 2
+
+    a1 = Agent(ag, th.tensor([1, 3]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, th.tensor([5, 3]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, th.tensor([10, 8]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
+
+    ag.append(a1)
+    ag.append(a2)
+    ag.append(a3)
+
+    img = th.rand(28, 28)
+    c = th.zeros(10)
+    c[5] = 1
+
+    sm = Softmax(dim=0)
+
+    mse = MSELoss()
+
+    params = []
+    for a in ag:
+        for n in a.get_networks():
+            params += n.parameters()
+    optim = th.optim.SGD(params, lr=1e-4)
+
+    """for a in ag[0].get_networks():
+        if hasattr(a, 'seq_lin'):
+            print("Grad : {}".format(a.seq_lin[0].weight.grad))"""
+
+    optim.zero_grad()
+    pred = step(ag, img, 10, sm)
+    loss = mse(pred, c)
+    loss.backward(retain_graph=True)
+    optim.step()
+
+    optim.zero_grad()
+    pred = step(ag, img, 10, sm)
+    loss = mse(pred, c)
+    loss.backward()
+    optim.step()
+
+    for a in ag[0].get_networks():
+        if hasattr(a, 'seq_lin'):
+            #print("Grad : {}".format(a.seq_lin[0].weight.grad))
+            if a.seq_lin[0].weight.grad is None:
+                print(a)
+
+
 if __name__ == "__main__":
     #test_MNIST_transition()
     #test_MNIST_obs()
-    test_agent_step()
+    #test_agent_step()
+    test_core_step()
