@@ -95,8 +95,9 @@ class Agent:
 
         actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]])
         action_scores = self.__pi_theta_3(actions, h_caret_t_p_one)
+        a_t_p_one = actions.index_select(0, action_scores.argmax()).squeeze(0)
 
-        self.__p = self.__trans(self.__p.to(th.float), actions[action_scores.argmax()], self.__f, self.__size).to(th.long)
+        self.__p = self.__trans(self.__p.to(th.float), a_t_p_one, self.__f, self.__size).to(th.long)
 
         self.__h_t = h_t_p_one.clone()
         self.__c_t = c_t_p_one.clone()
