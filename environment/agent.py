@@ -2,18 +2,21 @@ import torch as th
 from networks.ft_extractor import CNN_MNIST, StateToFeatures
 from networks.messages import MessageReceiver, MessageSender
 from networks.recurrents import BeliefUnit, ActionUnit
+from networks.policy import Policy
+from networks.prediction import Prediction
 
 
 class Agent:
-    def __init__(self, neighboors: list, init_pos: th.Tensor,
-                 n: int, f: int, n_m: int, d: int, size: int,
+    def __init__(self, neighbours: list, init_pos: th.Tensor,
+                 n: int, f: int, n_m: int, d: int, size: int, action_size: int, nb_class: int,
                  obs: callable, trans: callable) -> None:
-        self.__neighboors = neighboors
+        self.__neighbours = neighbours
         self.__p = init_pos
         self.__f = f
         self.__n = n
         self.__n_m = n_m
         self.__size = size
+        self.__action_size = action_size
 
         self.__obs = obs
         self.__trans = trans
@@ -24,6 +27,8 @@ class Agent:
         self.__belief_unit = BeliefUnit(self.__n)
         self.__m_theta_4 = MessageSender(self.__n, self.__n_m)
         self.__action_unit = ActionUnit(self.__n)
+        self.__pi_theta_3 = Policy(self.__action_size, self.__n)
+        self.__q_theta_8 = Prediction(self.__n, nb_class)
 
         self.__h_t = th.zeros(self.__n)
         self.__c_t = th.zeros(self.__n)
@@ -37,11 +42,12 @@ class Agent:
     def new_img(self):
         self.__h_t[:] = 0
         self.__c_t[:] = 0
+
+        self.__h_caret_t[:] = 0
+        self.__c_caret_t[:] = 0
+
         self.__m_t[:] = 0
         self.__m_t_p_one[:] = 0
-
-    def act(self, random=False) -> th.Tensor:
-        pass
 
     def get_t_msg(self) -> th.Tensor:
         return self.__m_t
@@ -52,10 +58,10 @@ class Agent:
         b_t = self.__b_theta_5(o_t.unsqueeze(0)).squeeze(0)
 
         d_bar_t = th.zeros(self.__n)
-        for ag in self.__neighboors:
+        for ag in self.__neighbours:
             d_bar_t += self.__d_theta_6(ag.get_t_msg())
 
-        d_bar_t /= th.tensor(len(self.__neighboors))
+        d_bar_t /= th.tensor(len(self.__neighbours))
 
         lambda_t = self.__lambda_theta_7(self.__p.to(th.float))
 
@@ -77,12 +83,20 @@ class Agent:
         h_caret_t_p_one = h_caret_t_p_one.squeeze(0).squeeze(0)
         c_caret_t_p_one = c_caret_t_p_one.squeeze(0).squeeze(0)
 
-        # TODO update policy distribution
-        # TODO sample action
+        """actions = th.zeros(self.__action_size)
 
-        a_t_p_one = th.tensor([1, 0, 0, 0])
+        for i in range(self.__action_size):
+            a = th.zeros(self.__action_size)
+            a[i] = 1
+            actions[i] = self.__pi_theta_3(a, h_caret_t_p_one)
 
-        self.__p = self.__trans(self.__p, a_t_p_one, self.__size)
+        a_t_p_one = th.zeros(self.__action_size)
+        a_t_p_one[actions.argmax(0)] = 1"""
+
+        actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]])
+        action_scores = self.__pi_theta_3(actions, h_caret_t_p_one)
+
+        self.__p = self.__trans(self.__p.to(th.float), actions[action_scores.argmax()], self.__f, self.__size).to(th.long)
 
         self.__h_t = h_t_p_one.clone()
         self.__c_t = c_t_p_one.clone()
@@ -108,4 +122,8 @@ class Agent:
         """
         :return: th.Tensor scalar class prediction
         """
-        pass
+        return self.__q_theta_8(self.__c_t)
+
+    def get_networks(self):
+        return [self.__b_theta_5, self.__d_theta_6, self.__lambda_theta_7, self.__belief_unit,
+                self.__m_theta_4, self.__action_unit, self.__pi_theta_3, self.__q_theta_8]
