@@ -19,10 +19,10 @@ class Policy(nn.Module):
             nn.Linear((action_size + n) * 2, 1)
         )
 
-    def forward(self, a, h_caret_t_p_one):
+    def forward(self, a, h_caret_t_next):
         assert len(a.size()) == 2, "Action must be a 1-D tensor"
-        assert len(h_caret_t_p_one.size()) == 1, "action unit lstm hidden state must be 1-D tensor"
+        assert len(h_caret_t_next.size()) == 1, "action unit lstm hidden state must be 1-D tensor"
 
-        x = cat((a, stack([h_caret_t_p_one] * a.size(0), dim=0)), dim=1)
+        x = cat((a, stack([h_caret_t_next] * a.size(0), dim=0)), dim=1)
 
         return self.seq_lin(x)
