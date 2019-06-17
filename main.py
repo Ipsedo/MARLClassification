@@ -121,13 +121,14 @@ def test_core_step():
         loss.backward()
         optim.step()
 
-    for a in ag[0].get_networks():
-        if hasattr(a, 'seq_lin'):
-            if a.seq_lin[0].weight.grad is None:
-                print(a)
-        elif hasattr(a, "lstm"):
-            if a.lstm.weight_hh_l0.grad is None:
-                print(a)
+    for a in ag:
+        for n in a.get_networks():
+            if hasattr(n, 'seq_lin'):
+                if n.seq_lin[0].weight.grad is None:
+                    print(n)
+            elif hasattr(n, "lstm"):
+                if n.lstm.weight_hh_l0.grad is None:
+                    print(n)
 
 
 if __name__ == "__main__":
