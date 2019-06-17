@@ -17,6 +17,7 @@ class Agent:
         self.__n_m = n_m
         self.__size = size
         self.__action_size = action_size
+        self.__t = 0
 
         self.__obs = obs
         self.__trans = trans
@@ -30,101 +31,93 @@ class Agent:
         self.__pi_theta_3 = Policy(self.__action_size, self.__n)
         self.__q_theta_8 = Prediction(self.__n, nb_class)
 
-        self.__h_t = th.zeros(self.__n)
-        self.__c_t = th.zeros(self.__n)
+        self.__h = [th.zeros(self.__n)]
+        self.__c = [th.zeros(self.__n)]
 
-        self.__h_caret_t = th.zeros(self.__n)
-        self.__c_caret_t = th.zeros(self.__n)
+        self.__h_caret = [th.zeros(self.__n)]
+        self.__c_caret = [th.zeros(self.__n)]
 
-        self.__m_t = th.zeros(self.__n_m)
-        self.__m_t_p_one = th.zeros(self.__n_m)
+        self.__m = [th.zeros(self.__n_m)]
+
+        self.__probas = th.tensor([1.0])
 
     def new_img(self):
-        self.__h_t[:] = 0
-        self.__c_t[:] = 0
+        self.__t = 0
 
-        self.__h_caret_t[:] = 0
-        self.__c_caret_t[:] = 0
+        self.__h = [th.zeros(self.__n)]
+        self.__c = [th.zeros(self.__n)]
 
-        self.__m_t[:] = 0
-        self.__m_t_p_one[:] = 0
+        self.__h_caret = [th.zeros(self.__n)]
+        self.__c_caret = [th.zeros(self.__n)]
+
+        self.__m = [th.zeros(self.__n_m)]
+
+        self.__probas = th.tensor([1.0])
 
     def get_t_msg(self) -> th.Tensor:
-        return self.__m_t
+        return self.__m[self.__t]
 
     def step(self, img: th.Tensor) -> None:
+        # Observation
         o_t = self.__obs(img, self.__p, self.__f)
 
+        # Feature space
         b_t = self.__b_theta_5(o_t.unsqueeze(0)).squeeze(0)
 
+        # Get messages
         d_bar_t = th.zeros(self.__n)
         for ag in self.__neighbours:
             d_bar_t += self.__d_theta_6(ag.get_t_msg())
 
         d_bar_t /= th.tensor(len(self.__neighbours))
 
+        # Map pos in feature space
         lambda_t = self.__lambda_theta_7(self.__p.to(th.float))
 
+        # LSTMs input
         u_t = th.cat((b_t, d_bar_t, lambda_t))
 
-        h_t_p_one, c_t_p_one = self.__belief_unit(self.__h_t.unsqueeze(0).unsqueeze(0),
-                                                  self.__c_t.unsqueeze(0).unsqueeze(0),
+        # Belief LSTM
+        h_t_p_one, c_t_p_one = self.__belief_unit(self.__h[self.__t].unsqueeze(0).unsqueeze(0),
+                                                  self.__c[self.__t].unsqueeze(0).unsqueeze(0),
                                                   u_t.unsqueeze(0).unsqueeze(0))
+        # Append new h et c (t + 1 step)
+        self.__h.append(h_t_p_one.squeeze(0).squeeze(0))
+        self.__c.append(c_t_p_one.squeeze(0).squeeze(0))
 
-        h_t_p_one = h_t_p_one.squeeze(0).squeeze(0)
-        c_t_p_one = c_t_p_one.squeeze(0).squeeze(0)
+        # Evaluate message
+        self.__m.append(self.__m_theta_4(self.__h[self.__t + 1]))
 
-        self.__m_t_p_one = self.__m_theta_4(h_t_p_one)
-
-        h_caret_t_p_one, c_caret_t_p_one = self.__action_unit(self.__h_caret_t.unsqueeze(0).unsqueeze(0),
-                                                              self.__c_caret_t.unsqueeze(0).unsqueeze(0),
+        # Action unit LSTM
+        h_caret_t_p_one, c_caret_t_p_one = self.__action_unit(self.__h_caret[self.__t].unsqueeze(0).unsqueeze(0),
+                                                              self.__c_caret[self.__t].unsqueeze(0).unsqueeze(0),
                                                               u_t.unsqueeze(0).unsqueeze(0))
 
-        h_caret_t_p_one = h_caret_t_p_one.squeeze(0).squeeze(0)
-        c_caret_t_p_one = c_caret_t_p_one.squeeze(0).squeeze(0)
-
-        """actions = th.zeros(self.__action_size)
-
-        for i in range(self.__action_size):
-            a = th.zeros(self.__action_size)
-            a[i] = 1
-            actions[i] = self.__pi_theta_3(a, h_caret_t_p_one)
-
-        a_t_p_one = th.zeros(self.__action_size)
-        a_t_p_one[actions.argmax(0)] = 1"""
+        # Append ĥ et ĉ (t + 1 step)
+        self.__h_caret.append(h_caret_t_p_one.squeeze(0).squeeze(0))
+        self.__c_caret.append(c_caret_t_p_one.squeeze(0).squeeze(0))
 
         actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]])
-        action_scores = self.__pi_theta_3(actions, h_caret_t_p_one)
-        a_t_p_one = actions.index_select(0, action_scores.argmax()).squeeze(0)
+        action_scores = self.__pi_theta_3(actions, self.__h_caret[self.__t + 1])
+        idx = action_scores.argmax()
+        a_t_p_one = actions[idx].squeeze(0)
+
+        self.__probas *= action_scores[idx]
 
         self.__p = self.__trans(self.__p.to(th.float), a_t_p_one, self.__f, self.__size).to(th.long)
 
-        self.__h_t = h_t_p_one.clone()
-        self.__c_t = c_t_p_one.clone()
-
-        self.__h_caret_t = h_caret_t_p_one.clone()
-        self.__c_caret_t = c_caret_t_p_one.clone()
-
-        """
-        print(self.__h_t.size())
-        print(self.__c_t.size())
-        print(self.__h_caret_t.size())
-        print(self.__c_caret_t.size())
-        print(self.__p.size())
-        print(self.__m_t.size())
-        print(self.__m_t_p_one.size())
-        """
-
     def step_finished(self):
-        self.__m_t = self.__m_t_p_one.clone()
-        self.__m_t_p_one[:] = 0
+        self.__t += 1
 
-    def predict(self) -> th.Tensor:
+    def predict(self) -> tuple:
         """
-        :return: th.Tensor scalar class prediction
+        :return: <prediction, proba>
         """
-        return self.__q_theta_8(self.__c_t)
+        return self.__q_theta_8(self.__c[self.__t]), self.__probas
 
     def get_networks(self):
         return [self.__b_theta_5, self.__d_theta_6, self.__lambda_theta_7, self.__belief_unit,
                 self.__m_theta_4, self.__action_unit, self.__pi_theta_3, self.__q_theta_8]
+
+    def get_probas(self):
+        return self.__probas
