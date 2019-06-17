@@ -13,10 +13,13 @@ def step(agents: list, img: th.Tensor, max_it: int, softmax: nn.Softmax):
             a.step_finished()
 
     q = th.zeros(10)
+    probas = th.tensor([0.])
     for a in agents:
-        pred = a.predict()
+        pred, proba = a.predict()
+        probas += proba
         q += pred
 
     q = q / len(agents)
+    probas = probas / len(agents)
 
-    return softmax(q)
+    return softmax(q), probas

@@ -4,6 +4,7 @@ from environment.agent import Agent
 from environment.core import step
 import torch as th
 from torch.nn import Softmax, MSELoss
+from torchviz import make_dot, make_dot_from_trace
 
 
 def test_MNIST_transition():
@@ -108,26 +109,24 @@ def test_core_step():
             params += n.parameters()
     optim = th.optim.SGD(params, lr=1e-4)
 
-    """for a in ag[0].get_networks():
-        if hasattr(a, 'seq_lin'):
-            print("Grad : {}".format(a.seq_lin[0].weight.grad))"""
+    nb_epoch = 10
 
-    optim.zero_grad()
-    pred = step(ag, img, 10, sm)
-    loss = mse(pred, c)
-    loss.backward(retain_graph=True)
-    optim.step()
+    for e in range(nb_epoch):
+        optim.zero_grad()
+        pred, proba = step(ag, img, 10, sm)
+        r = mse(pred, c)
+        Nr = 1
+        loss = (th.log(proba) * r.detach() + r) / Nr
 
-    optim.zero_grad()
-    pred = step(ag, img, 10, sm)
-    loss = mse(pred, c)
-    loss.backward()
-    optim.step()
+        loss.backward()
+        optim.step()
 
     for a in ag[0].get_networks():
         if hasattr(a, 'seq_lin'):
-            #print("Grad : {}".format(a.seq_lin[0].weight.grad))
             if a.seq_lin[0].weight.grad is None:
+                print(a)
+        elif hasattr(a, "lstm"):
+            if a.lstm.weight_hh_l0.grad is None:
                 print(a)
 
 
