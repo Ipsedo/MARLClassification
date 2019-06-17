@@ -58,9 +58,17 @@ def test_MNIST_obs():
 def test_agent_step():
     ag = []
 
-    a1 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, 4, 10, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, 4, 10, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, th.tensor([1, 3]), 16, 5, 8, 2, 28, 4, 10, obs_MNIST, trans_MNIST)
+    nb_class = 10
+    img_size = 28
+    n = 16
+    f = 5
+    n_m = 8
+    d = 2
+    action_size = 2
+
+    a1 = Agent(ag, th.tensor([1, 3]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, th.tensor([5, 3]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, th.tensor([10, 8]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
