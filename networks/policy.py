@@ -20,9 +20,12 @@ class Policy(nn.Module):
         )
 
     def forward(self, a, h_caret_t_next):
-        assert len(a.size()) == 2, "Action must be a 1-D tensor"
-        assert len(h_caret_t_next.size()) == 1, "action unit lstm hidden state must be 1-D tensor"
+        assert len(a.size()) == 2, "Action must be a 2-D tensor"
+        assert len(h_caret_t_next.size()) == 3, "action unit lstm hidden state must be 3-D tensor"
 
-        x = cat((a, stack([h_caret_t_next] * a.size(0), dim=0)), dim=1)
+        a = stack([a] * h_caret_t_next.size(1), dim=1)
+        b = cat([h_caret_t_next.squeeze(1)] * a.size(0), dim=0)
+
+        x = cat((a, b), dim=2).permute(1, 0, 2)
 
         return self.seq_lin(x)

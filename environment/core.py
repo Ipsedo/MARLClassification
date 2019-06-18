@@ -2,18 +2,23 @@ import torch as th
 import torch.nn as nn
 
 
-def step(agents: list, img: th.Tensor, max_it: int, softmax: nn.Softmax):
+def step(agents: list, img: th.Tensor, max_it: int, softmax: nn.Softmax, cuda: bool, random_walk: bool, nb_class: int):
     for a in agents:
-        a.new_img()
+        a.new_img(img.size(0))
 
     for t in range(max_it):
         for a in agents:
-            a.step(img)
+            a.step(img, random_walk)
         for a in agents:
             a.step_finished()
 
-    q = th.zeros(10)
-    probas = th.tensor([0.])
+    q = th.zeros(img.size(0), nb_class)
+    probas = th.zeros(img.size(0))
+
+    if cuda:
+        q = q.cuda()
+        probas = probas.cuda()
+
     for a in agents:
         pred, proba = a.predict()
         probas += proba
