@@ -4,7 +4,10 @@ from environment.agent import Agent
 from environment.core import step
 import torch as th
 from torch.nn import Softmax, MSELoss
-from torchviz import make_dot, make_dot_from_trace
+from data.mnist import load_mnist
+from tqdm import tqdm
+from math import ceil
+import matplotlib.pyplot as plt
 
 
 def test_MNIST_transition():
@@ -93,19 +96,21 @@ def test_core_step():
     f = 5
     n_m = 8
     d = 2
-    action_size = 2
+    action_size = 4
 
-    a1 = Agent(ag, th.tensor([1, 3]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, th.tensor([5, 3]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, th.tensor([10, 8]), n, f, n_m, d, img_size, action_size, nb_class, obs_MNIST, trans_MNIST)
+    batch_size = 2
+
+    a1 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
     ag.append(a3)
 
-    img = th.rand(28, 28)
-    c = th.zeros(10)
-    c[5] = 1
+    img = th.rand(batch_size, 28, 28)
+    c = th.zeros(batch_size, 10)
+    c[:, 5] = 1
 
     sm = Softmax(dim=0)
 
@@ -121,10 +126,12 @@ def test_core_step():
 
     for e in range(nb_epoch):
         optim.zero_grad()
-        pred, proba = step(ag, img, 10, sm)
+        pred, proba = step(ag, img, 5, sm, False, False, 10)
         r = mse(pred, c)
+
         Nr = 1
         loss = (th.log(proba) * r.detach() + r) / Nr
+        loss = loss.sum() / batch_size
 
         loss.backward()
         optim.step()
@@ -139,8 +146,105 @@ def test_core_step():
                     print(n)
 
 
+def train_mnist():
+    ag = []
+
+    nb_class = 10
+    img_size = 28
+    n = 32
+    f = 5
+    n_m = 12
+    d = 2
+    action_size = 4
+    batch_size = 64
+
+    a1 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+
+    ag.append(a1)
+    ag.append(a2)
+    ag.append(a3)
+
+    sm = Softmax(dim=0)
+
+    mse = MSELoss()
+    mse.cuda()
+
+    params = []
+    for a in ag:
+        a.cuda()
+        for net in a.get_networks():
+            params += net.parameters()
+    optim = th.optim.SGD(params, lr=1e-4)
+
+    nb_epoch = 30
+
+    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
+
+    nb_batch = ceil(x_train.size(0) / batch_size)
+
+    loss_v = []
+    acc = []
+
+    for e in range(nb_epoch):
+        sum_loss = 0
+
+        for i in tqdm(range(nb_batch)):
+            i_min = i * batch_size
+            i_max = (i + 1) * batch_size
+            i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
+
+            x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
+
+            optim.zero_grad()
+            pred, proba = step(ag, x, 5, sm, True, nb_epoch < 10, nb_class)
+
+            r = mse(pred, th.eye(10)[y].cuda())
+
+            loss = (proba * r.detach() + r).sum() / batch_size
+
+            loss.backward()
+            optim.step()
+
+            sum_loss += loss.item()
+
+        sum_loss /= nb_batch
+
+        print("Epoch %d, loss = %f" % (e, sum_loss))
+
+        nb_error = 0
+
+        nb_batch_valid = ceil(x_valid.size(0) / batch_size)
+
+        for i in tqdm(range(nb_batch_valid)):
+            i_min = i * batch_size
+            i_max = (i + 1) * batch_size
+            i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
+
+            x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
+
+            pred, proba = step(ag, x, 5, sm, True, False, nb_class)
+
+            nb_error += (pred.argmax(dim=1) != y).sum().item()
+
+        nb_error /= x_valid.size(0)
+
+        acc.append(nb_error)
+        loss_v.append(sum_loss)
+        print("Epoch %d, error = %f" % (e, nb_error))
+
+    plt.plot(acc, "b", label="accuracy")
+    plt.plot(loss_v, "r", label="criterion value")
+    plt.xlabel("Epoch")
+    plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d" % (f, n, n_m, d))
+    plt.legend()
+    plt.show()
+
+
 if __name__ == "__main__":
     #test_MNIST_transition()
     #test_MNIST_obs()
     #test_agent_step()
-    test_core_step()
+    #test_core_step()
+    train_mnist()
