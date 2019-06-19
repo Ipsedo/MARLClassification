@@ -2,8 +2,9 @@ from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
 from environment.agent import Agent
 from environment.core import step
+from networks.models import ModelsUnion
 import torch as th
-from torch.nn import Softmax, MSELoss
+from torch.nn import Softmax, MSELoss, NLLLoss
 from data.mnist import load_mnist
 from tqdm import tqdm
 from math import ceil
@@ -100,9 +101,11 @@ def test_core_step():
 
     batch_size = 2
 
-    a1 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
+
+    a1 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
@@ -112,14 +115,13 @@ def test_core_step():
     c = th.zeros(batch_size, 10)
     c[:, 5] = 1
 
-    sm = Softmax(dim=0)
+    sm = Softmax(dim=1)
 
     mse = MSELoss()
 
     params = []
-    for a in ag:
-        for n in a.get_networks():
-            params += n.parameters()
+    for n in m.get_networks():
+        params += n.parameters()
     optim = th.optim.SGD(params, lr=1e-4)
 
     nb_epoch = 10
@@ -136,15 +138,17 @@ def test_core_step():
         loss.backward()
         optim.step()
 
-    for a in ag:
-        for n in a.get_networks():
-            if hasattr(n, 'seq_lin'):
-                if n.seq_lin[0].weight.grad is None:
-                    print(n)
-            elif hasattr(n, "lstm"):
-                if n.lstm.weight_hh_l0.grad is None:
-                    print(n)
-
+    for n in m.get_networks():
+        if hasattr(n, 'seq_lin'):
+            if n.seq_lin[0].weight.grad is None:
+                print(n)
+            else:
+                print(n.seq_lin[0].weight.grad)
+        elif hasattr(n, "lstm"):
+            if n.lstm.weight_hh_l0.grad is None:
+                print(n)
+            else:
+                print(n.lstm.weight_hh_l0.grad)
 
 def train_mnist():
     ag = []
@@ -158,25 +162,29 @@ def train_mnist():
     action_size = 4
     batch_size = 64
 
-    a1 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
+
+    a1 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
     ag.append(a3)
 
-    sm = Softmax(dim=0)
-
-    mse = MSELoss()
-    mse.cuda()
-
-    params = []
     for a in ag:
         a.cuda()
-        for net in a.get_networks():
-            params += net.parameters()
-    optim = th.optim.SGD(params, lr=1e-4)
+
+    sm = Softmax(dim=1)
+
+    criterion = NLLLoss()
+    criterion.cuda()
+
+    params = []
+    for net in m.get_networks():
+        net.cuda()
+        params += net.parameters()
+    optim = th.optim.SGD(params, lr=1e-3)
 
     nb_epoch = 30
 
@@ -198,11 +206,14 @@ def train_mnist():
             x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
 
             optim.zero_grad()
-            pred, proba = step(ag, x, 5, sm, True, nb_epoch < 10, nb_class)
+            pred, proba = step(ag, x, 5, sm, True, False, nb_class)
 
-            r = mse(pred, th.eye(10)[y].cuda())
+            r = criterion(pred, y)
 
-            loss = (proba * r.detach() + r).sum() / batch_size
+            #loss = -(th.log(proba) * r.detach() + r).sum() / proba.size(0)
+            loss = (proba * r).sum() / pred.size(0)
+
+            #print(r.item(), loss.item(), proba.size(), proba.sum())
 
             loss.backward()
             optim.step()
