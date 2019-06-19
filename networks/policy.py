@@ -16,7 +16,8 @@ class Policy(nn.Module):
         self.seq_lin = nn.Sequential(
             nn.Linear(action_size + n, (action_size + n) * 2),
             nn.ReLU(),
-            nn.Linear((action_size + n) * 2, 1)
+            nn.Linear((action_size + n) * 2, 1),
+            nn.Sigmoid()
         )
 
     def forward(self, a, h_caret_t_next):

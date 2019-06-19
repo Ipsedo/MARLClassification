@@ -9,7 +9,7 @@ class MessageSender(nn.Module):
         super().__init__()
         self.__n = n
         self.__n_m = n_m
-        self.__n_e = 2 * self.__n
+        self.__n_e = self.__n * 2
 
         self.seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
