@@ -4,7 +4,8 @@ from networks.models import ModelsUnion
 
 class Agent:
     def __init__(self, neighbours: list, model_union: ModelsUnion,
-                 n: int, f: int, n_m: int, d: int, size: int, action_size: int, nb_class: int, batch_size: int,
+                 n: int, f: int, n_m: int, d: int,
+                 size: int, action_size: int, nb_class: int, batch_size: int,
                  obs: callable, trans: callable) -> None:
         self.__neighbours = neighbours
         self.__batch_size = batch_size
@@ -29,7 +30,7 @@ class Agent:
 
         self.__m = [th.zeros(self.__batch_size, self.__n_m)]
 
-        self.__probas = th.ones(self.__batch_size)
+        self.__probas = [th.ones(self.__batch_size)]
 
         self.is_cuda = False
 
@@ -44,7 +45,7 @@ class Agent:
 
         self.__m = [th.zeros(batch_size, self.__n_m)]
 
-        self.__probas = th.ones(batch_size)
+        self.__probas = [th.ones(batch_size)]
 
         self.__p = th.randint(self.__size - self.__f, (batch_size, 2))
 
@@ -79,25 +80,30 @@ class Agent:
         u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1).unsqueeze(1)
 
         # Belief LSTM
-        h_t_p_one, c_t_p_one = self.__networks.belief_unit(self.__h[self.__t], self.__c[self.__t], u_t)
-        # Append new h et c (t + 1 step)
-        self.__h.append(h_t_p_one)
-        self.__c.append(c_t_p_one)
+        h_t_next, c_t_next = \
+            self.__networks.belief_unit(self.__h[self.__t], self.__c[self.__t], u_t)
+
+        # Append new h and c (t + 1 step)
+        self.__h.append(h_t_next)
+        self.__c.append(c_t_next)
 
         # Evaluate message
         self.__m.append(self.__networks.evaluate_msg(self.__h[self.__t + 1]))
 
         # Action unit LSTM
-        h_caret_t_p_one, c_caret_t_p_one = \
+        h_caret_t_next, c_caret_t_next = \
             self.__networks.action_unit(self.__h_caret[self.__t],
                                         self.__c_caret[self.__t],
                                         u_t)
 
         # Append ĥ et ĉ (t + 1 step)
-        self.__h_caret.append(h_caret_t_p_one)
-        self.__c_caret.append(c_caret_t_p_one)
+        self.__h_caret.append(h_caret_t_next)
+        self.__c_caret.append(c_caret_t_next)
 
-        actions = th.tensor([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.], [0., 0., 0., 1.]])
+        actions = th.tensor([[1., 0., 0., 0.],
+                             [0., 1., 0., 0.],
+                             [0., 0., 1., 0.],
+                             [0., 0., 0., 1.]])
 
         if self.is_cuda:
             actions = actions.cuda()
@@ -117,9 +123,11 @@ class Agent:
         if self.is_cuda:
             prob = prob.cuda()
 
-        self.__probas *= prob
+        self.__probas.append(prob)
 
-        self.__p = self.__trans(self.__p.to(th.float), a_t_next, self.__f, self.__size).to(th.long)
+        self.__p = self.__trans(self.__p.to(th.float),
+                                a_t_next, self.__f,
+                                self.__size).to(th.long)
 
     def step_finished(self):
         self.__t += 1
@@ -128,7 +136,10 @@ class Agent:
         """
         :return: <prediction, proba>
         """
-        return self.__networks.predict(self.__c[self.__t]), self.__probas
+        proba = th.ones(self.__probas[0].size(0)).cuda()
+        for p in self.__probas:
+            proba *= p
+        return self.__networks.predict(self.__c[self.__t]), proba
 
     def cuda(self):
         self.is_cuda = True
@@ -143,6 +154,6 @@ class Agent:
 
         self.__m = [m.cuda() for m in self.__m]
 
-        self.__probas = self.__probas.cuda()
+        self.__probas = [p.cuda() for p in self.__probas]
 
         self.__p = self.__p.cuda()

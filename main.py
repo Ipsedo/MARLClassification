@@ -9,6 +9,7 @@ from data.mnist import load_mnist
 from tqdm import tqdm
 from math import ceil
 import matplotlib.pyplot as plt
+from torchviz import make_dot
 
 
 def test_MNIST_transition():
@@ -150,17 +151,19 @@ def test_core_step():
             else:
                 print(n.lstm.weight_hh_l0.grad)
 
+
 def train_mnist():
     ag = []
 
     nb_class = 10
     img_size = 28
-    n = 32
-    f = 5
+    n = 64
+    f = 6
     n_m = 12
     d = 2
     action_size = 4
     batch_size = 64
+    t = 5
 
     m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
 
@@ -177,13 +180,13 @@ def train_mnist():
 
     sm = Softmax(dim=1)
 
-    criterion = NLLLoss()
+    criterion = MSELoss()
     criterion.cuda()
 
     params = []
     for net in m.get_networks():
         net.cuda()
-        params += net.parameters()
+        params += list(net.parameters())
     optim = th.optim.SGD(params, lr=1e-3)
 
     nb_epoch = 30
@@ -206,12 +209,13 @@ def train_mnist():
             x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
 
             optim.zero_grad()
-            pred, proba = step(ag, x, 5, sm, True, False, nb_class)
+            pred, proba = step(ag, x, t, sm, True, False, nb_class)
 
-            r = criterion(pred, y)
+            #r = -criterion(pred, y)
+            r = -criterion(pred, th.eye(nb_class)[y].cuda())
 
-            #loss = -(th.log(proba) * r.detach() + r).sum() / proba.size(0)
-            loss = (proba * r).sum() / pred.size(0)
+            loss = -(th.log(proba) * r).mean()
+            #loss = (proba * r).mean()
 
             #print(r.item(), loss.item(), proba.size(), proba.sum())
 
@@ -235,7 +239,7 @@ def train_mnist():
 
             x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
 
-            pred, proba = step(ag, x, 5, sm, True, False, nb_class)
+            pred, proba = step(ag, x, t, sm, True, False, nb_class)
 
             nb_error += (pred.argmax(dim=1) != y).sum().item()
 
