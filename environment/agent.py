@@ -1,13 +1,9 @@
 import torch as th
-from networks.ft_extractor import CNN_MNIST, StateToFeatures
-from networks.messages import MessageReceiver, MessageSender
-from networks.recurrents import BeliefUnit, ActionUnit
-from networks.policy import Policy
-from networks.prediction import Prediction
+from networks.models import ModelsUnion
 
 
 class Agent:
-    def __init__(self, neighbours: list,
+    def __init__(self, neighbours: list, model_union: ModelsUnion,
                  n: int, f: int, n_m: int, d: int, size: int, action_size: int, nb_class: int, batch_size: int,
                  obs: callable, trans: callable) -> None:
         self.__neighbours = neighbours
@@ -23,14 +19,7 @@ class Agent:
         self.__obs = obs
         self.__trans = trans
 
-        self.__b_theta_5 = CNN_MNIST(self.__f, self.__n)
-        self.__d_theta_6 = MessageReceiver(self.__n_m, self.__n)
-        self.__lambda_theta_7 = StateToFeatures(d, self.__n)
-        self.__belief_unit = BeliefUnit(self.__n)
-        self.__m_theta_4 = MessageSender(self.__n, self.__n_m)
-        self.__action_unit = ActionUnit(self.__n)
-        self.__pi_theta_3 = Policy(self.__action_size, self.__n)
-        self.__q_theta_8 = Prediction(self.__n, nb_class)
+        self.__networks = model_union
 
         self.__h = [th.zeros(1, self.__batch_size, self.__n)]
         self.__c = [th.zeros(1, self.__batch_size, self.__n)]
@@ -70,7 +59,7 @@ class Agent:
         o_t = self.__obs(img, self.__p, self.__f)
 
         # Feature space
-        b_t = self.__b_theta_5(o_t)
+        b_t = self.__networks.map_obs(o_t)
 
         d_bar_t = th.zeros(img.size(0), self.__n)
         if self.is_cuda:
@@ -79,31 +68,30 @@ class Agent:
         # Get messages
         for ag in self.__neighbours:
             msg = ag.get_t_msg()
-            d_bar_t += self.__d_theta_6(msg)
+            d_bar_t += self.__networks.decode_msg(msg)
 
         d_bar_t /= th.tensor(len(self.__neighbours))
 
         # Map pos in feature space
-        lambda_t = self.__lambda_theta_7(self.__p.to(th.float))
+        lambda_t = self.__networks.map_pos(self.__p.to(th.float))
 
         # LSTMs input
-        u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1)
+        u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1).unsqueeze(1)
 
         # Belief LSTM
-        h_t_p_one, c_t_p_one = self.__belief_unit(self.__h[self.__t],
-                                                  self.__c[self.__t],
-                                                  u_t.unsqueeze(1))
+        h_t_p_one, c_t_p_one = self.__networks.belief_unit(self.__h[self.__t], self.__c[self.__t], u_t)
         # Append new h et c (t + 1 step)
         self.__h.append(h_t_p_one)
         self.__c.append(c_t_p_one)
 
         # Evaluate message
-        self.__m.append(self.__m_theta_4(self.__h[self.__t + 1]).squeeze(0))
+        self.__m.append(self.__networks.evaluate_msg(self.__h[self.__t + 1]))
 
         # Action unit LSTM
-        h_caret_t_p_one, c_caret_t_p_one = self.__action_unit(self.__h_caret[self.__t],
-                                                              self.__c_caret[self.__t],
-                                                              u_t.unsqueeze(1))
+        h_caret_t_p_one, c_caret_t_p_one = \
+            self.__networks.action_unit(self.__h_caret[self.__t],
+                                        self.__c_caret[self.__t],
+                                        u_t)
 
         # Append ĥ et ĉ (t + 1 step)
         self.__h_caret.append(h_caret_t_p_one)
@@ -114,27 +102,22 @@ class Agent:
         if self.is_cuda:
             actions = actions.cuda()
 
-        action_scores = self.__pi_theta_3(actions, self.__h_caret[self.__t + 1])
+        action_scores = self.__networks.policy(actions, self.__h_caret[self.__t + 1])
 
         if random_walk:
             idx = th.randint(4, (img.size(0),))
         else:
             idx = action_scores.argmax(dim=1)
 
-        a_t_next = th.zeros(img.size(0), self.__action_size)
+        a_t_next = actions[idx]
         if self.is_cuda:
             a_t_next = a_t_next.cuda()
 
-        for i in range(img.size(0)):
-            a_t_next[i, :] = actions[idx[i]]
-
-        tmp = th.zeros(img.size(0))
+        prob = action_scores.gather(1, idx.view(-1, 1)).squeeze(1)
         if self.is_cuda:
-            tmp = tmp.cuda()
+            prob = prob.cuda()
 
-        for i in range(img.size(0)):
-            tmp[i] = action_scores[i, idx[i]]
-        self.__probas *= tmp
+        self.__probas *= prob
 
         self.__p = self.__trans(self.__p.to(th.float), a_t_next, self.__f, self.__size).to(th.long)
 
@@ -145,20 +128,10 @@ class Agent:
         """
         :return: <prediction, proba>
         """
-        return self.__q_theta_8(self.__c[self.__t]).squeeze(0), self.__probas
-
-    def get_networks(self):
-        return [self.__b_theta_5, self.__d_theta_6, self.__lambda_theta_7, self.__belief_unit,
-                self.__m_theta_4, self.__action_unit, self.__pi_theta_3, self.__q_theta_8]
-
-    def get_probas(self):
-        return self.__probas
+        return self.__networks.predict(self.__c[self.__t]), self.__probas
 
     def cuda(self):
         self.is_cuda = True
-
-        for n in self.get_networks():
-            n.cuda()
 
         self.__h = [h.cuda() for h in self.__h]
 
