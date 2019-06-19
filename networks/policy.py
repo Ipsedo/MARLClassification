@@ -17,7 +17,7 @@ class Policy(nn.Module):
             nn.Linear(action_size + n, (action_size + n) * 2),
             nn.ReLU(),
             nn.Linear((action_size + n) * 2, 1),
-            nn.Sigmoid()
+            nn.Softmax(dim=1)
         )
 
     def forward(self, a, h_caret_t_next):
