@@ -72,9 +72,9 @@ def test_agent_step():
 
     m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
 
-    a1 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a1 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
@@ -105,9 +105,9 @@ def test_core_step():
 
     m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
 
-    a1 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a1 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
@@ -165,15 +165,15 @@ def train_mnist():
     nb_action = 4
     batch_size = 64
     t = 5
-    Nr = 1
+    nr = 1
 
     cuda = True
 
     m = ModelsUnion(n, f, n_m, d, nb_action, nb_class)
 
-    a1 = Agent(ag, m, n, f, n_m, d, img_size, nb_action, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, m, n, f, n_m, d, img_size, nb_action, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, m, n, f, n_m, d, img_size, nb_action, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a1 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
@@ -183,9 +183,9 @@ def train_mnist():
         for a in ag:
             a.cuda()
 
-    sm = Softmax(dim=1)
+    sm = Softmax(dim=-1)
 
-    criterion = MSELoss()
+    criterion = NLLLoss()
     if cuda:
         criterion.cuda()
 
@@ -195,7 +195,7 @@ def train_mnist():
             net.cuda()
         params += list(net.parameters())
 
-    optim = th.optim.SGD(params, lr=1e-3)
+    optim = th.optim.SGD(params, lr=1)
 
     nb_epoch = 30
 
@@ -210,6 +210,9 @@ def train_mnist():
     for e in range(nb_epoch):
         sum_loss = 0
 
+        for net in m.get_networks():
+            net.train()
+
         for i in tqdm(range(nb_batch)):
             i_min = i * batch_size
             i_max = (i + 1) * batch_size
@@ -217,31 +220,35 @@ def train_mnist():
 
             losses = []
 
-            optim.zero_grad()
-
-            for k in range(Nr):
+            for k in range(nr):
 
                 x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
 
-                pred, log_probas = step(ag, x, t, sm, cuda, e < 5, nb_class)
+                pred, log_probas = step(ag, x, t, sm, cuda, False, nb_class)
 
+                # Sum on agent dimension
                 proba_per_image = log_probas.sum(dim=0)
 
-                r = criterion(pred, th.eye(nb_class)[y].cuda())
+                #r = -criterion(pred, th.eye(nb_class)[y].cuda())
 
-                tmp = proba_per_image * r.detach() + r
+                # Mean on one hot encoding (mean on class dimension)
+                #r = -th.pow(pred - th.eye(nb_class)[y].cuda(), 2.).mean(dim=-1)
 
-                l = tmp.mean().view(-1)
+                r = criterion(pred, y)
+
+                # Mean on image batch
+                l = (proba_per_image * r.detach() + r).mean(dim=0).view(-1)
 
                 losses.append(l)
 
-                if th.isnan(l).sum() != 0:
-                    print("pb")
+            loss = -th.cat(losses).sum() / nr
 
-            loss = th.cat(losses).sum() / Nr
-
+            #print(m.get_networks()[0].seq_lin[0].weight)
+            optim.zero_grad()
             loss.backward()
             optim.step()
+
+            #print(" p  ", m.get_networks()[0].seq_lin[0].weight)
 
             sum_loss += loss.item()
 
@@ -249,9 +256,12 @@ def train_mnist():
 
         print("Epoch %d, loss = %f" % (e, sum_loss))
 
-        nb_error = 0
+        nb_correct = 0
 
         nb_batch_valid = ceil(x_valid.size(0) / batch_size)
+
+        for net in m.get_networks():
+            net.eval()
 
         with th.no_grad():
             for i in tqdm(range(nb_batch_valid)):
@@ -263,13 +273,13 @@ def train_mnist():
 
                 pred, proba = step(ag, x, t, sm, cuda, False, nb_class)
 
-                nb_error += (pred.argmax(dim=1) != y).sum().item()
+                nb_correct += (pred.argmax(dim=1) == y).sum().item()
 
-            nb_error /= x_valid.size(0)
+            nb_correct /= x_valid.size(0)
 
-            acc.append(nb_error)
+            acc.append(nb_correct)
             loss_v.append(sum_loss)
-            print("Epoch %d, error = %f" % (e, nb_error))
+            print("Epoch %d, accuracy = %f" % (e, nb_correct))
 
     plt.plot(acc, "b", label="accuracy")
     plt.plot(loss_v, "r", label="criterion value")
