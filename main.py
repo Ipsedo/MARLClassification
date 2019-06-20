@@ -185,7 +185,7 @@ def train_mnist():
 
     sm = Softmax(dim=-1)
 
-    criterion = NLLLoss()
+    criterion = MSELoss()
     if cuda:
         criterion.cuda()
 
@@ -195,7 +195,7 @@ def train_mnist():
             net.cuda()
         params += list(net.parameters())
 
-    optim = th.optim.SGD(params, lr=1)
+    optim = th.optim.SGD(params, lr=1e-2)
 
     nb_epoch = 30
 
@@ -224,17 +224,18 @@ def train_mnist():
 
                 x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
 
-                pred, log_probas = step(ag, x, t, sm, cuda, False, nb_class)
+                pred, log_probas = step(ag, x, t, sm, cuda, e < 5, nb_class)
 
                 # Sum on agent dimension
                 proba_per_image = log_probas.sum(dim=0)
 
-                #r = -criterion(pred, th.eye(nb_class)[y].cuda())
+                r = -criterion(pred, th.eye(nb_class)[y].cuda())
 
                 # Mean on one hot encoding (mean on class dimension)
                 #r = -th.pow(pred - th.eye(nb_class)[y].cuda(), 2.).mean(dim=-1)
 
-                r = criterion(pred, y)
+                # NLL Loss
+                #r = criterion(pred, y)
 
                 # Mean on image batch
                 l = (proba_per_image * r.detach() + r).mean(dim=0).view(-1)
@@ -243,12 +244,12 @@ def train_mnist():
 
             loss = -th.cat(losses).sum() / nr
 
-            #print(m.get_networks()[0].seq_lin[0].weight)
+            #clone = m.get_networks()[0].seq_lin[0].weight.clone()
             optim.zero_grad()
             loss.backward()
             optim.step()
 
-            #print(" p  ", m.get_networks()[0].seq_lin[0].weight)
+            #print(clone.nelement(), (m.get_networks()[0].seq_lin[0].weight == clone).sum().item())
 
             sum_loss += loss.item()
 

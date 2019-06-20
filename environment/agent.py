@@ -143,22 +143,16 @@ class Agent:
                                 a_t_next, self.__f,
                                 self.__size).to(th.long)
 
-    def step_finished(self):
+    def step_finished(self) -> None:
         self.__t += 1
 
     def predict(self) -> tuple:
         """
-        :return: <prediction, proba>
+        :return: tuple <prediction, proba>
         """
-        proba = th.zeros(self.__log_probas[0].size(0))
 
-        if self.is_cuda:
-            proba = proba.cuda()
-
-        for p in self.__log_probas:
-            proba += p
-
-        return self.__networks.predict(self.__c[self.__t]), proba
+        #return self.__networks.predict(self.__c[self.__t]), th.cat(self.__log_probas).sum(dim=0)
+        return self.__networks.predict(self.__c[self.__t]), self.__log_probas[self.__t]
 
     def cuda(self):
         self.is_cuda = True
