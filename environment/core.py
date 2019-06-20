@@ -13,18 +13,17 @@ def step(agents: list, img: th.Tensor, max_it: int, softmax: nn.Softmax, cuda: b
             a.step_finished()
 
     q = th.zeros(img.size(0), nb_class)
-    probas = th.zeros(img.size(0))
+    probas = th.zeros(len(agents), img.size(0))
 
     if cuda:
         q = q.cuda()
         probas = probas.cuda()
 
-    for a in agents:
+    for i, a in enumerate(agents):
         pred, proba = a.predict()
-        probas += proba
+        probas[i, :] = proba
         q += pred
 
     q = q / len(agents)
-    probas = probas / len(agents)
 
     return softmax(q), probas
