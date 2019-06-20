@@ -4,8 +4,8 @@ from networks.models import ModelsUnion
 
 class Agent:
     def __init__(self, neighbours: list, model_union: ModelsUnion,
-                 n: int, f: int, n_m: int, d: int,
-                 size: int, action_size: int, nb_class: int, batch_size: int,
+                 n: int, f: int, n_m: int,
+                 size: int, action_size: int, batch_size: int,
                  obs: callable, trans: callable) -> None:
         self.__neighbours = neighbours
         self.__batch_size = batch_size
@@ -39,13 +39,13 @@ class Agent:
     def new_img(self, batch_size):
         self.__t = 0
 
-        self.__h = [th.rand(1, batch_size, self.__n)]
-        self.__c = [th.rand(1, batch_size, self.__n)]
+        self.__h = [th.zeros(1, batch_size, self.__n)]
+        self.__c = [th.zeros(1, batch_size, self.__n)]
 
-        self.__h_caret = [th.rand(1, batch_size, self.__n)]
-        self.__c_caret = [th.rand(1, batch_size, self.__n)]
+        self.__h_caret = [th.zeros(1, batch_size, self.__n)]
+        self.__c_caret = [th.zeros(1, batch_size, self.__n)]
 
-        self.__m = [th.rand(batch_size, self.__n_m)]
+        self.__m = [th.zeros(batch_size, self.__n_m)]
 
         self.__log_probas = [th.zeros(batch_size)]
 
@@ -73,6 +73,7 @@ class Agent:
             msg = ag.get_t_msg()
             d_bar_t += self.__networks.decode_msg(msg)
 
+        # Compute average message
         d_bar_t /= len(self.__neighbours)
 
         # Map pos in feature space
@@ -102,6 +103,7 @@ class Agent:
         self.__h_caret.append(h_caret_t_next)
         self.__c_caret.append(c_caret_t_next)
 
+        # Define possible actions
         actions = th.tensor([[1., 0.],
                              [-1., 0.],
                              [0., 1.],
@@ -110,28 +112,33 @@ class Agent:
         if self.is_cuda:
             actions = actions.cuda()
 
+        # Get action probabilities
         action_scores = self.__networks.policy(self.__h_caret[self.__t + 1])
 
+        # If random walk : pick one action with uniform probability
+        # Else : greedy policy
         if random_walk:
             idx = th.randint(4, (img.size(0),))
         else:
             idx = action_scores.argmax(dim=1)
 
+        # Get a(t + 1) for each batch image
         a_t_next = actions[idx]
 
         if self.is_cuda:
             a_t_next = a_t_next.cuda()
             idx = idx.cuda()
 
+        # Get chosen action probabilities (one per bath image)
         prob = action_scores.gather(1, idx.view(-1, 1)).squeeze(1)
+
         if self.is_cuda:
             prob = prob.cuda()
 
+        # Append log probability
         self.__log_probas.append(th.log(prob))
 
-        if th.isnan(self.__h_caret[self.__t + 1]).sum().item() != 0:
-            print(self.__h_caret[self.__t + 1])
-
+        # Apply action / Upgrade agent state
         self.__p = self.__trans(self.__p.to(th.float),
                                 a_t_next, self.__f,
                                 self.__size).to(th.long)
