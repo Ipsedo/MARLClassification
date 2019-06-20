@@ -161,37 +161,45 @@ def train_mnist():
     f = 6
     n_m = 12
     d = 2
-    action_size = 4
+    nb_action = 4
     batch_size = 64
     t = 5
+    Nr = 10
 
-    m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
+    cuda = True
 
-    a1 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, m, n, f, n_m, d, img_size, action_size, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    m = ModelsUnion(n, f, n_m, d, nb_action, nb_class)
+
+    a1 = Agent(ag, m, n, f, n_m, d, img_size, nb_action, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a2 = Agent(ag, m, n, f, n_m, d, img_size, nb_action, nb_class, batch_size, obs_MNIST, trans_MNIST)
+    a3 = Agent(ag, m, n, f, n_m, d, img_size, nb_action, nb_class, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
     ag.append(a3)
 
-    for a in ag:
-        a.cuda()
+    if cuda:
+        for a in ag:
+            a.cuda()
 
     sm = Softmax(dim=1)
 
     criterion = MSELoss()
-    criterion.cuda()
+    if cuda:
+        criterion.cuda()
 
     params = []
     for net in m.get_networks():
-        net.cuda()
+        if cuda:
+            net.cuda()
         params += list(net.parameters())
+
     optim = th.optim.SGD(params, lr=1e-3)
 
     nb_epoch = 30
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
+    x_train, y_train = x_train[:10000], y_train[:10000]
 
     nb_batch = ceil(x_train.size(0) / batch_size)
 
@@ -206,18 +214,28 @@ def train_mnist():
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
-            x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
+            losses = []
+            for k in range(Nr):
 
-            optim.zero_grad()
-            pred, proba = step(ag, x, t, sm, True, False, nb_class)
+                x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
 
-            #r = -criterion(pred, y)
-            r = -criterion(pred, th.eye(nb_class)[y].cuda())
+                optim.zero_grad()
+                pred, log_probas = step(ag, x, t, sm, cuda, e < 5, nb_class)
 
-            loss = -(th.log(proba) * r).mean()
-            #loss = (proba * r).mean()
+                proba_per_image = log_probas.sum(dim=0)
 
-            #print(r.item(), loss.item(), proba.size(), proba.sum())
+                r = -criterion(pred, th.eye(nb_class)[y].cuda())
+
+                tmp = proba_per_image * r.detach() + r
+
+                l = tmp.mean().view(-1)
+
+                losses.append(l)
+
+                if th.isnan(l).sum() != 0:
+                    print("pb")
+
+            loss = -(th.cat(losses).sum() / Nr)
 
             loss.backward()
             optim.step()
@@ -232,22 +250,23 @@ def train_mnist():
 
         nb_batch_valid = ceil(x_valid.size(0) / batch_size)
 
-        for i in tqdm(range(nb_batch_valid)):
-            i_min = i * batch_size
-            i_max = (i + 1) * batch_size
-            i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
+        with th.no_grad():
+            for i in tqdm(range(nb_batch_valid)):
+                i_min = i * batch_size
+                i_max = (i + 1) * batch_size
+                i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
 
-            x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
+                x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
 
-            pred, proba = step(ag, x, t, sm, True, False, nb_class)
+                pred, proba = step(ag, x, t, sm, cuda, False, nb_class)
 
-            nb_error += (pred.argmax(dim=1) != y).sum().item()
+                nb_error += (pred.argmax(dim=1) != y).sum().item()
 
-        nb_error /= x_valid.size(0)
+            nb_error /= x_valid.size(0)
 
-        acc.append(nb_error)
-        loss_v.append(sum_loss)
-        print("Epoch %d, error = %f" % (e, nb_error))
+            acc.append(nb_error)
+            loss_v.append(sum_loss)
+            print("Epoch %d, error = %f" % (e, nb_error))
 
     plt.plot(acc, "b", label="accuracy")
     plt.plot(loss_v, "r", label="criterion value")
