@@ -22,28 +22,30 @@ class Agent:
 
         self.__networks = model_union
 
-        self.__h = [th.zeros(1, self.__batch_size, self.__n)]
-        self.__c = [th.zeros(1, self.__batch_size, self.__n)]
+        self.__h = None
+        self.__c = None
 
-        self.__h_caret = [th.zeros(1, self.__batch_size, self.__n)]
-        self.__c_caret = [th.zeros(1, self.__batch_size, self.__n)]
+        self.__h_caret = None
+        self.__c_caret = None
 
-        self.__m = [th.zeros(self.__batch_size, self.__n_m)]
+        self.__m = None
 
-        self.__log_probas = [th.zeros(self.__batch_size)]
+        self.__log_probas = None
 
         self.is_cuda = False
+
+        self.new_img(self.__batch_size)
 
     def new_img(self, batch_size):
         self.__t = 0
 
-        self.__h = [th.zeros(1, batch_size, self.__n)]
-        self.__c = [th.zeros(1, batch_size, self.__n)]
+        self.__h = [th.rand(1, batch_size, self.__n)]
+        self.__c = [th.rand(1, batch_size, self.__n)]
 
-        self.__h_caret = [th.zeros(1, batch_size, self.__n)]
-        self.__c_caret = [th.zeros(1, batch_size, self.__n)]
+        self.__h_caret = [th.rand(1, batch_size, self.__n)]
+        self.__c_caret = [th.rand(1, batch_size, self.__n)]
 
-        self.__m = [th.zeros(batch_size, self.__n_m)]
+        self.__m = [th.rand(batch_size, self.__n_m)]
 
         self.__log_probas = [th.zeros(batch_size)]
 
@@ -71,7 +73,7 @@ class Agent:
             msg = ag.get_t_msg()
             d_bar_t += self.__networks.decode_msg(msg)
 
-        d_bar_t /= th.tensor(len(self.__neighbours))
+        d_bar_t /= len(self.__neighbours)
 
         # Map pos in feature space
         lambda_t = self.__networks.map_pos(self.__p.to(th.float))
