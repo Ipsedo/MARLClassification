@@ -12,9 +12,9 @@ class Prediction(nn.Module):
         self.__nb_class = M
 
         self.seq_lin = nn.Sequential(
-            nn.Linear(self.__n, self.__n * 2),
+            nn.Linear(self.__n, 64),
             nn.ReLU(),
-            nn.Linear(self.__n * 2, self.__nb_class)
+            nn.Linear(64, self.__nb_class)
         )
 
     def forward(self, c_t):
