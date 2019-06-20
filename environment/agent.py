@@ -30,7 +30,7 @@ class Agent:
 
         self.__m = [th.zeros(self.__batch_size, self.__n_m)]
 
-        self.__probas = [th.ones(self.__batch_size)]
+        self.__log_probas = [th.zeros(self.__batch_size)]
 
         self.is_cuda = False
 
@@ -45,7 +45,7 @@ class Agent:
 
         self.__m = [th.zeros(batch_size, self.__n_m)]
 
-        self.__probas = [th.ones(batch_size)]
+        self.__log_probas = [th.zeros(batch_size)]
 
         self.__p = th.randint(self.__size - self.__f, (batch_size, 2))
 
@@ -100,15 +100,15 @@ class Agent:
         self.__h_caret.append(h_caret_t_next)
         self.__c_caret.append(c_caret_t_next)
 
-        actions = th.tensor([[1., 0., 0., 0.],
-                             [0., 1., 0., 0.],
-                             [0., 0., 1., 0.],
-                             [0., 0., 0., 1.]])
+        actions = th.tensor([[1., 0.],
+                             [-1., 0.],
+                             [0., 1.],
+                             [0., -1.]])
 
         if self.is_cuda:
             actions = actions.cuda()
 
-        action_scores = self.__networks.policy(actions, self.__h_caret[self.__t + 1])
+        action_scores = self.__networks.policy(self.__h_caret[self.__t + 1])
 
         if random_walk:
             idx = th.randint(4, (img.size(0),))
@@ -116,14 +116,19 @@ class Agent:
             idx = action_scores.argmax(dim=1)
 
         a_t_next = actions[idx]
+
         if self.is_cuda:
             a_t_next = a_t_next.cuda()
+            idx = idx.cuda()
 
         prob = action_scores.gather(1, idx.view(-1, 1)).squeeze(1)
         if self.is_cuda:
             prob = prob.cuda()
 
-        self.__probas.append(prob)
+        self.__log_probas.append(th.log(prob))
+
+        if th.isnan(self.__h_caret[self.__t + 1]).sum().item() != 0:
+            print(self.__h_caret[self.__t + 1])
 
         self.__p = self.__trans(self.__p.to(th.float),
                                 a_t_next, self.__f,
@@ -136,9 +141,14 @@ class Agent:
         """
         :return: <prediction, proba>
         """
-        proba = th.ones(self.__probas[0].size(0)).cuda()
-        for p in self.__probas:
-            proba *= p
+        proba = th.zeros(self.__log_probas[0].size(0))
+
+        if self.is_cuda:
+            proba = proba.cuda()
+
+        for p in self.__log_probas:
+            proba += p
+
         return self.__networks.predict(self.__c[self.__t]), proba
 
     def cuda(self):
@@ -154,6 +164,6 @@ class Agent:
 
         self.__m = [m.cuda() for m in self.__m]
 
-        self.__probas = [p.cuda() for p in self.__probas]
+        self.__log_probas = [p.cuda() for p in self.__log_probas]
 
         self.__p = self.__p.cuda()
