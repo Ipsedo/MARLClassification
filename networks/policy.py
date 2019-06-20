@@ -10,8 +10,6 @@ class Policy(nn.Module):
     def __init__(self, nb_action, n: int):
         super().__init__()
 
-        self.__n = n
-
         self.seq_lin = nn.Sequential(
             nn.Linear(n, 64),
             nn.ReLU(),
