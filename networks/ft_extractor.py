@@ -12,13 +12,14 @@ class CNN_MNIST(nn.Module):
         self.__n = n
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=3),
+            nn.Conv2d(1, 32, kernel_size=3),
             nn.ReLU(),
-            nn.Conv2d(8, 16, kernel_size=3)
+            nn.Conv2d(32, 64, kernel_size=3),
+            nn.ReLU()
         )
 
         self.seq_lin = nn.Sequential(
-            nn.Linear(16 * (((f - 2) - 2) ** 2), self.__n)
+            nn.Linear(64 * (((f - 2) - 2) ** 2), self.__n)
         )
 
     def forward(self, o_t):
