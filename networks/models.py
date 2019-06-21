@@ -3,11 +3,16 @@ from networks.messages import MessageReceiver, MessageSender
 from networks.recurrents import BeliefUnit, ActionUnit
 from networks.policy import Policy
 from networks.prediction import Prediction
+import torch.nn as nn
 
 
 class ModelsUnion:
-    def __init__(self, n: int, f: int, n_m: int, d: int, nb_action: int, nb_class: int):
+    def __init__(self, n: int, f: int, n_m: int, d: int, nb_action: int, nb_class: int, pretrained_seq_conv_cnn: nn.Sequential=None):
         self.__b_theta_5 = CNN_MNIST(f, n)
+
+        if pretrained_seq_conv_cnn is not None:
+            self.__b_theta_5.seq_conv = pretrained_seq_conv_cnn
+
         #self.__b_theta_5 = CNN_MNIST_2(f, n)
         self.__d_theta_6 = MessageReceiver(n_m, n)
         self.__lambda_theta_7 = StateToFeatures(d, n)

@@ -9,7 +9,7 @@ from data.mnist import load_mnist
 from tqdm import tqdm
 from math import ceil
 import matplotlib.pyplot as plt
-from torchviz import make_dot
+from tests import test_mnist
 
 
 def test_MNIST_transition():
@@ -169,7 +169,7 @@ def train_mnist():
 
     cuda = True
 
-    m = ModelsUnion(n, f, n_m, d, nb_action, nb_class)
+    m = ModelsUnion(n, f, n_m, d, nb_action, nb_class, test_mnist())
 
     a1 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
     a2 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
@@ -195,7 +195,7 @@ def train_mnist():
             net.cuda()
         params += list(net.parameters())
 
-    optim = th.optim.SGD(params, lr=1e-3)
+    optim = th.optim.SGD(params, lr=1e-2)
 
     nb_epoch = 30
 
@@ -230,7 +230,7 @@ def train_mnist():
                 pred, log_probas = step(ag, x, t, sm, cuda, e < 5, nb_class)
 
                 # Sum on agent dimension
-                proba_per_image = log_probas.sum(dim=0)
+                proba_per_image = log_probas.prod(dim=0)
 
                 #r = criterion(pred, th.eye(nb_class)[y].cuda())
 
@@ -277,7 +277,9 @@ def train_mnist():
 
         sum_loss /= nb_batch
 
-        print("Epoch %d, loss = %f, grad_cnn_norm_mean = %f, grad_pred_norm_mean = %f" % (e, sum_loss, sum(grad_norm_cnn) / len(grad_norm_cnn), sum(grad_norm_pred) / len(grad_norm_pred)))
+        print("Epoch %d, loss = %f" % (e, sum_loss))
+        print("grad_cnn_norm_mean = %f, grad_pred_norm_mean = %f" % (sum(grad_norm_cnn) / len(grad_norm_cnn), sum(grad_norm_pred) / len(grad_norm_pred)))
+        print("CNN_el = %d, Pred_el = %d" % (m.get_networks()[0].seq_lin[0].weight.grad.nelement(), m.get_networks()[-1].seq_lin[0].weight.grad.nelement()))
 
         nb_correct = 0
 
