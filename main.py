@@ -42,18 +42,18 @@ def test_MNIST_obs():
 
     pos = th.tensor([[2, 2]])
 
-    print(obs_MNIST(img, pos, 3))
+    print(obs_MNIST(img, pos, 4))
     print()
 
     try:
         pos_fail = th.tensor([[-1., -1.]])
-        print(obs_MNIST(img, pos_fail, 3))
+        print(obs_MNIST(img, pos_fail, 4))
     except Exception as e:
         print(e)
 
     try:
         pos_fail = th.tensor([[24., 26.]])
-        print(obs_MNIST(img, pos_fail, 3))
+        print(obs_MNIST(img, pos_fail, 4))
     except Exception as e:
         print(e)
 
@@ -195,7 +195,7 @@ def train_mnist():
             net.cuda()
         params += list(net.parameters())
 
-    optim = th.optim.SGD(params, lr=1e-2)
+    optim = th.optim.SGD(params, lr=1e-4)
 
     nb_epoch = 30
 
@@ -244,14 +244,30 @@ def train_mnist():
 
             loss = -th.cat(losses).sum() / nr
 
-            #clone = m.get_networks()[0].seq_lin[0].weight.clone()
+            #clone2 = m.get_networks()[-1].seq_lin[0].weight.clone()
+            #clone1 = m.get_networks()[0].seq_lin[0].weight.clone()
             optim.zero_grad()
             loss.backward()
+            #th.nn.utils.clip_grad_norm_(params, 1)
             optim.step()
 
-            #print(clone.nelement(), (m.get_networks()[0].seq_lin[0].weight == clone).sum().item())
+            #print(clone1.nelement(), (m.get_networks()[0].seq_lin[0].weight == clone1).sum().item(), m.get_networks()[0].seq_lin[0].weight.sum())
 
             sum_loss += loss.item()
+
+            """print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+            print(m.get_networks()[0].seq_lin[0].weight.grad)
+            print("========================================")
+            print(m.get_networks()[0].seq_lin[0].weight)
+            print("========================================")
+            print(m.get_networks()[-1].seq_lin[0].weight.grad)
+            print("========================================")
+            print(m.get_networks()[-1].seq_lin[0].weight)
+            print("========================================")"""
+            #print(clone2.nelement(), (m.get_networks()[-1].seq_lin[0].weight == clone2).sum().item(), m.get_networks()[-1].seq_lin[0].weight.sum())
+
+            #if i > 1:
+            #    exit()
 
         sum_loss /= nb_batch
 
