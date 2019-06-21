@@ -159,7 +159,7 @@ def train_mnist():
     nb_class = 10
     img_size = 28
     n = 64
-    f = 6
+    f = 7
     n_m = 12
     d = 2
     nb_action = 4
@@ -195,7 +195,7 @@ def train_mnist():
             net.cuda()
         params += list(net.parameters())
 
-    optim = th.optim.SGD(params, lr=1e-4)
+    optim = th.optim.SGD(params, lr=1e-3)
 
     nb_epoch = 30
 
@@ -213,6 +213,9 @@ def train_mnist():
         for net in m.get_networks():
             net.train()
 
+        grad_norm_cnn = []
+        grad_norm_pred = []
+
         for i in tqdm(range(nb_batch)):
             i_min = i * batch_size
             i_max = (i + 1) * batch_size
@@ -229,10 +232,10 @@ def train_mnist():
                 # Sum on agent dimension
                 proba_per_image = log_probas.sum(dim=0)
 
-                r = -criterion(pred, th.eye(nb_class)[y].cuda())
+                #r = criterion(pred, th.eye(nb_class)[y].cuda())
 
                 # Mean on one hot encoding (mean on class dimension)
-                #r = -th.pow(pred - th.eye(nb_class)[y].cuda(), 2.).mean(dim=-1)
+                r = -th.pow(pred - th.eye(nb_class)[y].cuda(), 2.).mean(dim=-1)
 
                 # NLL Loss
                 #r = criterion(pred, y)
@@ -242,13 +245,13 @@ def train_mnist():
 
                 losses.append(l)
 
-            loss = -th.cat(losses).sum() / nr
+            loss = th.cat(losses).sum() / nr
 
             #clone2 = m.get_networks()[-1].seq_lin[0].weight.clone()
             #clone1 = m.get_networks()[0].seq_lin[0].weight.clone()
             optim.zero_grad()
             loss.backward()
-            #th.nn.utils.clip_grad_norm_(params, 1)
+            #th.nn.utils.clip_grad_norm_(params, 1e-2)
             optim.step()
 
             #print(clone1.nelement(), (m.get_networks()[0].seq_lin[0].weight == clone1).sum().item(), m.get_networks()[0].seq_lin[0].weight.sum())
@@ -269,9 +272,12 @@ def train_mnist():
             #if i > 1:
             #    exit()
 
+            grad_norm_cnn.append(m.get_networks()[0].seq_lin[0].weight.grad.norm())
+            grad_norm_pred.append(m.get_networks()[-1].seq_lin[0].weight.grad.norm())
+
         sum_loss /= nb_batch
 
-        print("Epoch %d, loss = %f" % (e, sum_loss))
+        print("Epoch %d, loss = %f, grad_cnn_norm_mean = %f, grad_pred_norm_mean = %f" % (e, sum_loss, sum(grad_norm_cnn) / len(grad_norm_cnn), sum(grad_norm_pred) / len(grad_norm_pred)))
 
         nb_correct = 0
 
@@ -304,7 +310,6 @@ def train_mnist():
     plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d" % (f, n, n_m, d))
     plt.legend()
     plt.show()
-
 
 if __name__ == "__main__":
     #test_MNIST_transition()
