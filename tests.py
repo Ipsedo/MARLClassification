@@ -39,7 +39,7 @@ def test_mnist():
     m.cuda()
     mse.cuda()
 
-    optim = th.optim.SGD(m.parameters(), lr=1e-3)
+    optim = th.optim.SGD(m.parameters(), lr=1e-2)
 
     batch_size = 64
     nb_epoch = 10
@@ -84,7 +84,7 @@ def test_mnist():
 
             nb_correct /= x_valid.size(0)
             print("Epoch %d, accuracy = %f" % (e, nb_correct))
-
+    return m.seq_conv
 
 if __name__ == "__main__":
-    test_mnist()
+    print(test_mnist())
