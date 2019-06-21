@@ -129,7 +129,7 @@ class Agent:
             a_t_next = a_t_next.cuda()
             idx = idx.cuda()
 
-        # Get chosen action probabilities (one per bath image)
+        # Get chosen action probabilities (one per batch image)
         prob = action_scores.gather(1, idx.view(-1, 1)).squeeze(1)
 
         if self.is_cuda:
