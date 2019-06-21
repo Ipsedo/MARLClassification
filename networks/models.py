@@ -30,16 +30,16 @@ class ModelsUnion:
         return self.__belief_unit(h_t, c_t, u_t)
 
     def evaluate_msg(self, h_t_next):
-        return self.__m_theta_4(h_t_next).squeeze(0)
+        return self.__m_theta_4(h_t_next.squeeze(0))
 
     def action_unit(self, h_caret_t, c_caret_t, u_t):
         return self.__action_unit(h_caret_t, c_caret_t, u_t)
 
     def policy(self, h_caret_t_next):
-        return self.__pi_theta_3(h_caret_t_next)
+        return self.__pi_theta_3(h_caret_t_next.squeeze(0))
 
     def predict(self, c_t):
-        return self.__q_theta_8(c_t).squeeze(0)
+        return self.__q_theta_8(c_t.squeeze(0))
 
     def get_networks(self):
         return [self.__b_theta_5, self.__d_theta_6, self.__lambda_theta_7, self.__belief_unit,
