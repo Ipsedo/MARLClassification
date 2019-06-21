@@ -39,11 +39,11 @@ class Agent:
     def new_img(self, batch_size):
         self.__t = 0
 
-        self.__h = [th.zeros(1, batch_size, self.__n)]
-        self.__c = [th.zeros(1, batch_size, self.__n)]
+        self.__h = [th.zeros(batch_size, self.__n)]
+        self.__c = [th.zeros(batch_size, self.__n)]
 
-        self.__h_caret = [th.zeros(1, batch_size, self.__n)]
-        self.__c_caret = [th.zeros(1, batch_size, self.__n)]
+        self.__h_caret = [th.zeros(batch_size, self.__n)]
+        self.__c_caret = [th.zeros(batch_size, self.__n)]
 
         self.__m = [th.zeros(batch_size, self.__n_m)]
 
@@ -80,7 +80,7 @@ class Agent:
         lambda_t = self.__networks.map_pos(self.__p.to(th.float))
 
         # LSTMs input
-        u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1).unsqueeze(1)
+        u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1)#.unsqueeze(1)
 
         # Belief LSTM
         h_t_next, c_t_next = \
@@ -136,7 +136,7 @@ class Agent:
             prob = prob.cuda()
 
         # Append log probability
-        self.__log_probas.append(th.log(prob))
+        self.__log_probas.append(prob)
 
         # Apply action / Upgrade agent state
         self.__p = self.__trans(self.__p.to(th.float),
