@@ -63,6 +63,9 @@ def test_mnist():
 
             optim.zero_grad()
             loss.backward()
+
+            #print("CNN_el = %d, grad_norm = %f" % (m.seq_lin[0].weight.grad.nelement(), m.seq_lin[0].weight.grad.norm()))
+
             optim.step()
 
             sum_loss += loss.item()
