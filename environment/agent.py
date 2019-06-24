@@ -47,7 +47,7 @@ class Agent:
 
         self.__m = [th.zeros(batch_size, self.__n_m)]
 
-        self.__log_probas = [th.zeros(batch_size)]
+        self.__log_probas = [th.log(th.tensor([1. / 4.] * batch_size))]
 
         self.__p = th.randint(self.__size - self.__f, (batch_size, 2))
 
@@ -80,7 +80,7 @@ class Agent:
         lambda_t = self.__networks.map_pos(self.__p.to(th.float))
 
         # LSTMs input
-        u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1)#.unsqueeze(1)
+        u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1)
 
         # Belief LSTM
         h_t_next, c_t_next = \
@@ -95,9 +95,7 @@ class Agent:
 
         # Action unit LSTM
         h_caret_t_next, c_caret_t_next = \
-            self.__networks.action_unit(self.__h_caret[self.__t],
-                                        self.__c_caret[self.__t],
-                                        u_t)
+            self.__networks.action_unit(self.__h_caret[self.__t], self.__c_caret[self.__t], u_t)
 
         # Append ĥ et ĉ (t + 1 step)
         self.__h_caret.append(h_caret_t_next)
@@ -136,7 +134,7 @@ class Agent:
             prob = prob.cuda()
 
         # Append log probability
-        self.__log_probas.append(prob)
+        self.__log_probas.append(th.log(prob))
 
         # Apply action / Upgrade agent state
         self.__p = self.__trans(self.__p.to(th.float),

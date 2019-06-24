@@ -159,7 +159,7 @@ def train_mnist():
     nb_class = 10
     img_size = 28
     n = 64
-    f = 7
+    f = 10
     n_m = 12
     d = 2
     nb_action = 4
@@ -169,7 +169,8 @@ def train_mnist():
 
     cuda = True
 
-    m = ModelsUnion(n, f, n_m, d, nb_action, nb_class, test_mnist())
+    #m = ModelsUnion(n, f, n_m, d, nb_action, nb_class, test_mnist())
+    m = ModelsUnion(n, f, n_m, d, nb_action, nb_class)
 
     a1 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
     a2 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
@@ -195,7 +196,7 @@ def train_mnist():
             net.cuda()
         params += list(net.parameters())
 
-    optim = th.optim.SGD(params, lr=1e-2)
+    optim = th.optim.Adam(params, lr=1e-3)
 
     nb_epoch = 30
 
@@ -225,24 +226,31 @@ def train_mnist():
 
             for k in range(nr):
 
-                x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
+                x, y = x_train[i_min:i_max, :, :], y_train[i_min:i_max]
+
+                if cuda:
+                    x, y = x.cuda(), y.cuda()
 
                 pred, log_probas = step(ag, x, t, sm, cuda, e < 5, nb_class)
 
                 # Sum on agent dimension
-                proba_per_image = log_probas.prod(dim=0)
+                proba_per_image = log_probas.mean(dim=0)
 
-                #r = criterion(pred, th.eye(nb_class)[y].cuda())
+                y_eye = th.eye(nb_class)[y]
+                if cuda:
+                    y_eye = y_eye.cuda()
+
+                r = criterion(pred, y_eye)
 
                 # Mean on one hot encoding (mean on class dimension)
-                r = -th.pow(pred - th.eye(nb_class)[y].cuda(), 2.).mean(dim=-1)
+                #r = -th.pow(pred - th.eye(nb_class)[y].cuda(), 2.).mean(dim=-1)
 
                 # NLL Loss
                 #r = criterion(pred, y)
 
                 # Mean on image batch
-                l = (proba_per_image * r.detach() + r).mean(dim=0).view(-1)
-
+                l = -(proba_per_image * r.detach() + r).mean(dim=0).view(-1)
+                #l = -proba_per_image * r
                 losses.append(l)
 
             loss = th.cat(losses).sum() / nr
