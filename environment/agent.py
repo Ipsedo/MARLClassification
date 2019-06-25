@@ -11,7 +11,7 @@ class Agent:
         self.__batch_size = batch_size
         self.__size = size
         self.__f = f
-        self.__p = th.randint(self.__size - self.__f, (self.__batch_size, 2))
+        self.p = th.randint(self.__size - self.__f, (self.__batch_size, 2))
         self.__n = n
         self.__n_m = n_m
         self.__action_size = action_size
@@ -49,7 +49,7 @@ class Agent:
 
         self.__log_probas = [th.log(th.tensor([1. / 4.] * batch_size))]
 
-        self.__p = th.randint(self.__size - self.__f, (batch_size, 2))
+        self.p = th.randint(self.__size - self.__f, (batch_size, 2))
 
         if self.is_cuda:
             self.cuda()
@@ -59,7 +59,7 @@ class Agent:
 
     def step(self, img: th.Tensor, random_walk: bool) -> None:
         # Observation
-        o_t = self.__obs(img, self.__p, self.__f)
+        o_t = self.__obs(img, self.p, self.__f)
 
         # Feature space
         b_t = self.__networks.map_obs(o_t)
@@ -77,7 +77,7 @@ class Agent:
         d_bar_t /= len(self.__neighbours)
 
         # Map pos in feature space
-        lambda_t = self.__networks.map_pos(self.__p.to(th.float))
+        lambda_t = self.__networks.map_pos(self.p.to(th.float))
 
         # LSTMs input
         u_t = th.cat((b_t, d_bar_t, lambda_t), dim=1)
@@ -140,9 +140,9 @@ class Agent:
         self.__log_probas.append(th.log(prob))
 
         # Apply action / Upgrade agent state
-        self.__p = self.__trans(self.__p.to(th.float),
-                                a_t_next, self.__f,
-                                self.__size).to(th.long)
+        self.p = self.__trans(self.p.to(th.float),
+                              a_t_next, self.__f,
+                              self.__size).to(th.long)
 
     def step_finished(self) -> None:
         self.__t += 1
@@ -152,7 +152,7 @@ class Agent:
         :return: tuple <prediction, proba>
         """
 
-        #return self.__networks.predict(self.__c[self.__t]), th.cat(self.__log_probas).prod(dim=0)
+        #return self.__networks.predict(self.__c[self.__t]), th.cat(self.__log_probas).sum(dim=0)
         return self.__networks.predict(self.__c[self.__t]), self.__log_probas[self.__t]
 
     def cuda(self):
@@ -170,4 +170,4 @@ class Agent:
 
         self.__log_probas = [p.cuda() for p in self.__log_probas]
 
-        self.__p = self.__p.cuda()
+        self.p = self.p.cuda()
