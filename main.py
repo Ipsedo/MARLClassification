@@ -1,7 +1,7 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
 from environment.agent import Agent
-from environment.core import step
+from environment.core import step, detailled_step
 from networks.models import ModelsUnion
 import torch as th
 from torch.nn import Softmax, MSELoss, NLLLoss
@@ -9,7 +9,7 @@ from data.mnist import load_mnist
 from tqdm import tqdm
 from math import ceil
 import matplotlib.pyplot as plt
-from tests import test_mnist
+from random import randint
 
 
 def test_MNIST_transition():
@@ -159,12 +159,12 @@ def train_mnist():
     nb_class = 10
     img_size = 28
     n = 64
-    f = 5
+    f = 7
     n_m = 12
     d = 2
     nb_action = 4
     batch_size = 64
-    t = 5
+    t = 7
     nr = 1
 
     cuda = True
@@ -242,14 +242,14 @@ def train_mnist():
                 if cuda:
                     y_eye = y_eye.cuda()
 
-                r = criterion(pred, y_eye)
+                r = -criterion(pred, y_eye)
 
                 # Mean on image batch
                 l = (proba_per_image * r.detach() + r).mean(dim=0).view(-1)
 
                 losses.append(l)
 
-            loss = th.cat(losses).sum() / nr
+            loss = -th.cat(losses).sum() / nr
 
             optim.zero_grad()
             loss.backward()
@@ -294,9 +294,31 @@ def train_mnist():
     plt.plot(acc, "b", label="accuracy")
     plt.plot(loss_v, "r", label="criterion value")
     plt.xlabel("Epoch")
-    plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d" % (f, n, n_m, d))
+    plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d, T=%d" % (f, n, n_m, d, t))
     plt.legend()
     plt.show()
+
+    viz(ag, x_test[randint(0, x_test.size(0)-1)], t, sm, f)
+
+
+def viz(agents: list, one_img: th.Tensor, max_it: int, softmax: Softmax, f: int):
+    pred, pos = detailled_step(agents, one_img.unsqueeze(0).cuda(), max_it, softmax, True, 10)
+
+    plt.imshow(one_img)
+    plt.show()
+
+    print(pos)
+
+    tmp = th.zeros(28, 28) - 1
+    for t in range(max_it):
+
+        for i in range(len(agents)):
+            tmp[pos[i][t][0]:pos[i][t][0]+f, pos[i][t][1]:pos[i][t][1]+f] = \
+                one_img[pos[i][t][0]:pos[i][t][0]+f, pos[i][t][1]:pos[i][t][1]+f]
+
+        plt.imshow(tmp, cmap='gray_r')
+        plt.title("Step = %d" % t)
+        plt.show()
 
 
 if __name__ == "__main__":
