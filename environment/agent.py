@@ -1,6 +1,6 @@
 import torch as th
 from networks.models import ModelsUnion
-
+from numpy.random import choice
 
 class Agent:
     def __init__(self, neighbours: list, model_union: ModelsUnion,
@@ -116,9 +116,12 @@ class Agent:
         # If random walk : pick one action with uniform probability
         # Else : greedy policy
         if random_walk:
-            idx = th.randint(4, (img.size(0),))
+            idx = th.zeros(img.size(0))
+            for i in range(action_scores.size(0)):
+                idx[i] = th.tensor(choice(range(4), p=action_scores[i].cpu().detach().numpy()))
+            idx = idx.to(th.long)
         else:
-            idx = action_scores.argmax(dim=1)
+            idx = action_scores.argmax(dim=-1)
 
         # Get a(t + 1) for each batch image
         a_t_next = actions[idx]
@@ -149,7 +152,7 @@ class Agent:
         :return: tuple <prediction, proba>
         """
 
-        #return self.__networks.predict(self.__c[self.__t]), th.cat(self.__log_probas).sum(dim=0)
+        #return self.__networks.predict(self.__c[self.__t]), th.cat(self.__log_probas).prod(dim=0)
         return self.__networks.predict(self.__c[self.__t]), self.__log_probas[self.__t]
 
     def cuda(self):
