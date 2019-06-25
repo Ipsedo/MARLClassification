@@ -159,7 +159,7 @@ def train_mnist():
     nb_class = 10
     img_size = 28
     n = 64
-    f = 10
+    f = 5
     n_m = 12
     d = 2
     nb_action = 4
@@ -198,7 +198,7 @@ def train_mnist():
 
     optim = th.optim.Adam(params, lr=1e-3)
 
-    nb_epoch = 30
+    nb_epoch = 10
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
     x_train, y_train = x_train[:10000], y_train[:10000]
@@ -217,6 +217,8 @@ def train_mnist():
         grad_norm_cnn = []
         grad_norm_pred = []
 
+        random_walk = e < 5
+
         for i in tqdm(range(nb_batch)):
             i_min = i * batch_size
             i_max = (i + 1) * batch_size
@@ -231,10 +233,10 @@ def train_mnist():
                 if cuda:
                     x, y = x.cuda(), y.cuda()
 
-                pred, log_probas = step(ag, x, t, sm, cuda, e < 5, nb_class)
+                pred, log_probas = step(ag, x, t, sm, cuda, random_walk, nb_class)
 
                 # Sum on agent dimension
-                proba_per_image = log_probas.mean(dim=0)
+                proba_per_image = log_probas.sum(dim=0)
 
                 y_eye = th.eye(nb_class)[y]
                 if cuda:
@@ -242,43 +244,18 @@ def train_mnist():
 
                 r = criterion(pred, y_eye)
 
-                # Mean on one hot encoding (mean on class dimension)
-                #r = -th.pow(pred - th.eye(nb_class)[y].cuda(), 2.).mean(dim=-1)
-
-                # NLL Loss
-                #r = criterion(pred, y)
-
                 # Mean on image batch
-                l = -(proba_per_image * r.detach() + r).mean(dim=0).view(-1)
-                #l = -proba_per_image * r
+                l = (proba_per_image * r.detach() + r).mean(dim=0).view(-1)
+
                 losses.append(l)
 
             loss = th.cat(losses).sum() / nr
 
-            #clone2 = m.get_networks()[-1].seq_lin[0].weight.clone()
-            #clone1 = m.get_networks()[0].seq_lin[0].weight.clone()
             optim.zero_grad()
             loss.backward()
-            #th.nn.utils.clip_grad_norm_(params, 1e-2)
             optim.step()
 
-            #print(clone1.nelement(), (m.get_networks()[0].seq_lin[0].weight == clone1).sum().item(), m.get_networks()[0].seq_lin[0].weight.sum())
-
             sum_loss += loss.item()
-
-            """print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-            print(m.get_networks()[0].seq_lin[0].weight.grad)
-            print("========================================")
-            print(m.get_networks()[0].seq_lin[0].weight)
-            print("========================================")
-            print(m.get_networks()[-1].seq_lin[0].weight.grad)
-            print("========================================")
-            print(m.get_networks()[-1].seq_lin[0].weight)
-            print("========================================")"""
-            #print(clone2.nelement(), (m.get_networks()[-1].seq_lin[0].weight == clone2).sum().item(), m.get_networks()[-1].seq_lin[0].weight.sum())
-
-            #if i > 1:
-            #    exit()
 
             grad_norm_cnn.append(m.get_networks()[0].seq_lin[0].weight.grad.norm())
             grad_norm_pred.append(m.get_networks()[-1].seq_lin[0].weight.grad.norm())
@@ -304,7 +281,7 @@ def train_mnist():
 
                 x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
 
-                pred, proba = step(ag, x, t, sm, cuda, False, nb_class)
+                pred, proba = step(ag, x, t, sm, cuda, random_walk, nb_class)
 
                 nb_correct += (pred.argmax(dim=1) == y).sum().item()
 
@@ -320,6 +297,7 @@ def train_mnist():
     plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d" % (f, n, n_m, d))
     plt.legend()
     plt.show()
+
 
 if __name__ == "__main__":
     #test_MNIST_transition()
