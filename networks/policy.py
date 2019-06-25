@@ -18,12 +18,10 @@ class Policy(nn.Module):
         )
 
     def forward(self, h_caret_t_next):
-        # assert len(a.size()) == 2, "Action must be a 2-D tensor"
-        assert len(h_caret_t_next.size()) == 2, "action unit lstm hidden state must be 2-D tensor"
+        if len(h_caret_t_next.size()) == 1:
+            h_caret_t_next = h_caret_t_next.unsqueeze(0)
 
-        #a = stack([a] * h_caret_t_next.size(1), dim=1)
-        #b = cat([h_caret_t_next.squeeze(1)] * a.size(0), dim=0)
-
-        #x = cat((a, b), dim=2).permute(1, 0, 2)
+        assert len(h_caret_t_next.size()) == 2,\
+            "action unit lstm hidden state must be 2-D tensor (curr = {})".format(len(h_caret_t_next.size()))
 
         return self.seq_lin(h_caret_t_next)
