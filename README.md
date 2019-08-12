@@ -3,7 +3,7 @@
 from this [article](https://arxiv.org/abs/1905.04835)
 
 ## Description
-Essai de reproduction des résultats de l'article cité ci-dessus sur de la classification d'image utilisant de l'apprentissage par renforcement.
+Essai de reproduction des résultats de l'article cité ci-dessus. Cet article porte sur de la classification d'image utilisant de l'apprentissage par renforcement.
 
 ## Fichiers
 Voici une description de l'organisation de ce projet :
