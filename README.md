@@ -35,3 +35,6 @@ MARLClassification
 |-- main.py : Divers tests et fonction d'apprentissage sur MNIST
 |-- tests.py : Test d'un CNN sur les données MNIST
 ```
+
+## Requirements
+torch, numpy, tqdm, matplotlib
