@@ -1,6 +1,31 @@
 import torch.nn as nn
 
 
+class TestCNN(nn.Module):
+    def __init__(self, n: int) -> None:
+        super().__init__()
+
+        f = 28
+        self.__n = n
+
+        self.seq_conv = nn.Sequential(
+            nn.Conv2d(1, 8, kernel_size=3),
+            nn.ReLU(),
+            nn.Conv2d(8, 16, kernel_size=3),
+            nn.ReLU()
+        )
+
+        self.seq_lin = nn.Sequential(
+            nn.Linear(16 * (((f - 2) - 2) ** 2), self.__n),
+            nn.Softmax(dim=-1)
+        )
+
+    def forward(self, o_t):
+        out = self.seq_conv(o_t.unsqueeze(1))
+        out = out.flatten(1, -1)
+        return self.seq_lin(out)
+
+
 class CNN_MNIST(nn.Module):
     """
     b_θ5 : R^f*f -> R^n
