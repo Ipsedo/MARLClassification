@@ -17,7 +17,7 @@ MARLClassification
 |     |-- agent.py : Classe représentant un agent dans ce MARL
 |     |-- core.py : Fonction de transition de l'environnement
 |     |-- observation.py : Fonction donnant une obesrvation d'image MNIST selon une position
-|     |-- transition.py : Fonction effectuant une transition selonune action
+|     |-- transition.py : Fonction effectuant une transition selon une action
 |
 |-- nerworks/
 |     |-- ft_extractor.py : NN pour l'extraction de features
