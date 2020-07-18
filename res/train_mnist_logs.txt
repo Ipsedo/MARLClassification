@@ -1,0 +1,64 @@
+/home/samuel/py_venvs/py38/bin/python /home/samuel/Documents/MARLClassification/main.py train --cuda
+100%|██████████| 1250/1250 [14:18<00:00,  1.46it/s]
+Epoch 0, loss = -0.183680
+  0%|          | 0/1250 [00:00<?, ?it/s]grad_cnn_norm_mean = 0.003362, grad_pred_norm_mean = 0.025051
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:22<00:00, 15.09it/s]
+  0%|          | 0/1250 [00:00<?, ?it/s]Epoch 0, accuracy = 0.460600
+100%|██████████| 1250/1250 [14:26<00:00,  1.44it/s]
+Epoch 1, loss = -0.081721
+grad_cnn_norm_mean = 0.013071, grad_pred_norm_mean = 0.057905
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:29<00:00, 13.93it/s]
+  0%|          | 0/1250 [00:00<?, ?it/s]Epoch 1, accuracy = 0.662200
+100%|██████████| 1250/1250 [14:35<00:00,  1.43it/s]
+Epoch 2, loss = -0.022534
+grad_cnn_norm_mean = 0.017018, grad_pred_norm_mean = 0.065182
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:23<00:00, 14.98it/s]
+  0%|          | 0/1250 [00:00<?, ?it/s]Epoch 2, accuracy = 0.676400
+100%|██████████| 1250/1250 [14:35<00:00,  1.43it/s]
+Epoch 3, loss = 0.025410
+grad_cnn_norm_mean = 0.017540, grad_pred_norm_mean = 0.066473
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:18<00:00, 15.93it/s]
+Epoch 3, accuracy = 0.725600
+100%|██████████| 1250/1250 [13:46<00:00,  1.51it/s]
+Epoch 4, loss = 0.020741
+grad_cnn_norm_mean = 0.018648, grad_pred_norm_mean = 0.066580
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:26<00:00, 14.49it/s]
+  0%|          | 0/1250 [00:00<?, ?it/s]Epoch 4, accuracy = 0.752000
+100%|██████████| 1250/1250 [12:08<00:00,  1.72it/s]
+Epoch 5, loss = -0.107926
+grad_cnn_norm_mean = 0.019628, grad_pred_norm_mean = 0.064929
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:02<00:00, 19.94it/s]
+Epoch 5, accuracy = 0.758700
+100%|██████████| 1250/1250 [12:08<00:00,  1.72it/s]
+Epoch 6, loss = -0.105515
+  0%|          | 0/1250 [00:00<?, ?it/s]grad_cnn_norm_mean = 0.018875, grad_pred_norm_mean = 0.062334
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:02<00:00, 20.07it/s]
+Epoch 6, accuracy = 0.788300
+100%|██████████| 1250/1250 [12:26<00:00,  1.67it/s]
+Epoch 7, loss = -0.101027
+grad_cnn_norm_mean = 0.018600, grad_pred_norm_mean = 0.061357
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:05<00:00, 18.98it/s]
+  0%|          | 0/1250 [00:00<?, ?it/s]Epoch 7, accuracy = 0.789900
+100%|██████████| 1250/1250 [12:20<00:00,  1.69it/s]
+Epoch 8, loss = -0.097930
+grad_cnn_norm_mean = 0.018108, grad_pred_norm_mean = 0.059609
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:04<00:00, 19.27it/s]
+  0%|          | 0/1250 [00:00<?, ?it/s]Epoch 8, accuracy = 0.787800
+100%|██████████| 1250/1250 [12:41<00:00,  1.64it/s]
+Epoch 9, loss = -0.093801
+grad_cnn_norm_mean = 0.018111, grad_pred_norm_mean = 0.058203
+CNN_el = 50176, Pred_el = 4096
+100%|██████████| 1250/1250 [01:06<00:00, 18.80it/s]
+Epoch 9, accuracy = 0.793300
+[[tensor([18,  0], device='cuda:0'), tensor([18,  0], device='cuda:0'), tensor([18,  1], device='cuda:0'), tensor([18,  2], device='cuda:0'), tensor([18,  3], device='cuda:0'), tensor([19,  3], device='cuda:0'), tensor([19,  4], device='cuda:0')], [tensor([12, 16], device='cuda:0'), tensor([12, 15], device='cuda:0'), tensor([12, 16], device='cuda:0'), tensor([13, 16], device='cuda:0'), tensor([13, 17], device='cuda:0'), tensor([14, 17], device='cuda:0'), tensor([14, 16], device='cuda:0')], [tensor([20, 13], device='cuda:0'), tensor([20, 12], device='cuda:0'), tensor([20, 11], device='cuda:0'), tensor([20, 12], device='cuda:0'), tensor([20, 13], device='cuda:0'), tensor([20, 14], device='cuda:0'), tensor([20, 15], device='cuda:0')]]
+
+Process finished with exit code 0

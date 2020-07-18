@@ -499,7 +499,7 @@ def main() -> None:
     train_parser.add_argument("--img-size", type=int, default=28, dest="img_size")
 
     # Algorithm arguments
-    train_parser.add_argument("--n", type=int, default=64)
+    train_parser.add_argument("--n", type=int, default=8)
     train_parser.add_argument("--f", type=int, default=7)
     train_parser.add_argument("--nm", type=int, default=2, dest="n_m")
 
