@@ -1,11 +1,11 @@
 import torch as th
 import torch.nn as nn
 
-from .agent import Agent
+from .agent import Agent, MultiAgent
 from typing import List, Tuple
 
 
-def episode(agents: List[Agent], img_batch: th.Tensor, max_it: int,
+def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
             cuda: bool, eps: float, nb_class: int) -> Tuple[th.Tensor, th.Tensor]:
     """
     TODO
@@ -26,7 +26,7 @@ def episode(agents: List[Agent], img_batch: th.Tensor, max_it: int,
     :rtype:
     """
 
-    for a in agents:
+    """for a in agents:
         a.new_img(img_batch.size(0))
 
     for t in range(max_it):
@@ -44,12 +44,20 @@ def episode(agents: List[Agent], img_batch: th.Tensor, max_it: int,
     for i, a in enumerate(agents):
         pred, proba = a.predict()
         probas[i, :] = proba
-        q[i, :, :] = pred
+        q[i, :, :] = pred"""
+
+    agents.new_img(img_batch.size(0))
+
+    for t in range(max_it):
+        agents.step(img_batch, eps)
+        agents.step_finished()
+
+    q, probas = agents.predict()
 
     return nn.functional.softmax(q, dim=-1), probas
 
 
-def detailled_step(agents: List[Agent], img_batch: th.Tensor, max_it: int,
+def detailled_step(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
                    cuda: bool, nb_class: int) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """
     TODO
@@ -67,10 +75,10 @@ def detailled_step(agents: List[Agent], img_batch: th.Tensor, max_it: int,
     :return:
     :rtype:
     """
-    for a in agents:
-        a.new_img(img_batch.size(0))
 
-    pos = th.zeros(max_it, len(agents), *agents[0].p.size(), dtype=th.long)
+    agents.new_img(img_batch.size(0))
+
+    pos = th.zeros(max_it, *agents.pos.size(), dtype=th.long)
 
     q = th.zeros(max_it, len(agents), img_batch.size(0), nb_class,
                  device=th.device("cuda") if cuda else th.device("cpu"))
@@ -79,15 +87,14 @@ def detailled_step(agents: List[Agent], img_batch: th.Tensor, max_it: int,
                       device=th.device("cuda") if cuda else th.device("cpu"))
 
     for t in range(max_it):
-        for i, a in enumerate(agents):
-            a.step(img_batch, 0.)
-            pos[t, i, :, :] = a.p
+        agents.step(img_batch, 0.)
 
-            pred, proba = a.predict()
-            probas[i, :] = proba
-            q[i, :, :] = pred
+        pos[t, :, :, :] = agents.pos
 
-        for a in agents:
-            a.step_finished()
+        preds, probas = agents.predict()
+        q[t, :, :] = preds
+        probas[t, :] = probas
+
+        agents.step_finished()
 
     return nn.functional.softmax(q, dim=-1), probas, pos

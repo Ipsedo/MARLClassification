@@ -1,6 +1,6 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
-from environment.agent import Agent
+from environment.agent import Agent, MultiAgent
 from environment.core import episode, detailled_step
 
 from networks.models import ModelsUnion
@@ -27,13 +27,13 @@ def test_mnist_transition():
     :return:
     :rtype:
     """
-    a_1 = th.tensor([1., 0.])
-    a_2 = th.tensor([0., 1.])
-    a_3 = th.tensor([-1., 0.])
-    a_4 = th.tensor([0., -1.])
+    a_1 = th.tensor([[[1., 0.]]])
+    a_2 = th.tensor([[[0., 1.]]])
+    a_3 = th.tensor([[[-1., 0.]]])
+    a_4 = th.tensor([[[0., -1.]]])
 
     print("First test :")
-    pos_1 = th.tensor([[0., 0.]])
+    pos_1 = th.tensor([[[0., 0.]]])
     print(trans_MNIST(pos_1, a_1, 5, 28))
     print(trans_MNIST(pos_1, a_2, 5, 28))
     print(trans_MNIST(pos_1, a_3, 5, 28))
@@ -41,7 +41,7 @@ def test_mnist_transition():
     print()
 
     print("Snd test")
-    pos_2 = th.tensor([[22., 22.]])
+    pos_2 = th.tensor([[[22., 22.]]])
     print(trans_MNIST(pos_2, a_1, 5, 28))
     print(trans_MNIST(pos_2, a_2, 5, 28))
     print(trans_MNIST(pos_2, a_3, 5, 28))
@@ -55,27 +55,22 @@ def test_mnist_obs():
     :return:
     :rtype:
     """
-    img = th.arange(0, 28 * 28).view(1, 28, 28)
+    img = th.arange(0, 28 * 28).view(1, 28, 28).cuda()
 
     print(img)
     print()
 
-    pos = th.tensor([[2, 2]])
+    pos = th.tensor([[[0, 0]], [[0, 4]], [[4, 0]], [[4, 4]]]).cuda()
 
     print(obs_MNIST(img, pos, 4))
     print()
 
-    try:
-        pos_fail = th.tensor([[-1., -1.]])
-        print(obs_MNIST(img, pos_fail, 4))
-    except Exception as e:
-        print(e)
-
-    try:
-        pos_fail = th.tensor([[24., 26.]])
-        print(obs_MNIST(img, pos_fail, 4))
-    except Exception as e:
-        print(e)
+    for p in [[[0, 0]], [[0, 27]], [[27, 0]], [[27, 27]]]:
+        try:
+            print(obs_MNIST(img, th.tensor([p]).cuda(), 4))
+            print(f"Test failed with pos = {p}")
+        except Exception as e:
+            print(e)
 
 
 def test_agent_step():
@@ -85,7 +80,6 @@ def test_agent_step():
     :return:
     :rtype:
     """
-    ag = []
 
     nb_class = 10
     img_size = 28
@@ -98,22 +92,32 @@ def test_agent_step():
 
     m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
 
-    a1 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
+    marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
 
-    ag.append(a1)
-    ag.append(a2)
-    ag.append(a3)
+    m.cuda()
+    marl_m.cuda()
 
-    img = th.rand(batch_size, 28, 28)
+    img = th.rand(batch_size, 28, 28, device=th.device("cuda"))
 
-    for a in ag:
-        a.step(img, True)
-    for a in ag:
-        a.step_finished()
+    marl_m.new_img(batch_size)
 
-    print(a1.get_t_msg())
+    print("First step")
+    print(marl_m.pos)
+    print(marl_m.msg[0])
+
+    marl_m.step(img, 0.5)
+    marl_m.step_finished()
+
+    print("Second step")
+    print(marl_m.pos)
+    print(marl_m.msg[1])
+
+    marl_m.step(img, 0.5)
+    marl_m.step_finished()
+
+    print("Third step")
+    print(marl_m.pos)
+    print(marl_m.msg[2])
 
 
 def test_core_step():
@@ -299,25 +303,27 @@ def train_mnist(nb_class: int, img_size: int,
     :rtype:
     """
 
-    ag = []
+    #ag = []
 
     #m = ModelsUnion(n, f, n_m, d, nb_action, nb_class, test_mnist())
     m = ModelsUnion(n, f, n_m, d, nb_action, nb_class)
 
-    a1 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
+    """a1 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
     a2 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
     a3 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
 
     ag.append(a1)
     ag.append(a2)
-    ag.append(a3)
+    ag.append(a3)"""
+    marl_m = MultiAgent(3, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
 
     # Pass pytorch stuff to GPU
     # for agents hidden tensors (belief etc.)
     if cuda:
         m.cuda()
-        for a in ag:
-            a.cuda()
+        """for a in ag:
+            a.cuda()"""
+        marl_m.cuda()
 
     # for RL agent models parameters
     optim = th.optim.Adam(m.parameters(), lr=1e-3)
@@ -345,7 +351,7 @@ def train_mnist(nb_class: int, img_size: int,
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
-            losses = th.zeros(nr, len(ag), batch_size,
+            losses = th.zeros(nr, len(marl_m), batch_size,
                               device=th.device("cuda") if cuda else th.device("cpu"))
 
             for k in range(nr):
@@ -353,7 +359,8 @@ def train_mnist(nb_class: int, img_size: int,
                        y_train[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
                 # get predictions and probabilities
-                preds, log_probas = episode(ag, x, t, cuda, eps, nb_class)
+                #preds, log_probas = episode(ag, x, t, cuda, eps, nb_class)
+                preds, log_probas = episode(marl_m, x, t, cuda, eps, nb_class)
 
                 # Class one hot encoding
                 y_eye = th.eye(nb_class, device=th.device("cuda") if cuda else th.device("cpu"))[y]\
@@ -373,7 +380,7 @@ def train_mnist(nb_class: int, img_size: int,
             # sum / nr -> mean all experiments
             # sum / len(ag) -> mean all agent
             # mean -> mean on batch
-            loss = -((losses.sum(dim=0) / nr).sum(dim=0) / len(ag)).mean()
+            loss = -((losses.sum(dim=0) / nr).sum(dim=0) / len(marl_m)).mean()
 
             optim.zero_grad()
             loss.backward()
@@ -409,12 +416,12 @@ def train_mnist(nb_class: int, img_size: int,
                 x, y = x_valid[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
                        y_valid[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
-                preds, proba = episode(ag, x, t, cuda, eps, nb_class)
+                preds, proba = episode(marl_m, x, t, cuda, eps, nb_class)
 
                 nb_correct += (preds.mean(dim=0).argmax(dim=1) == y).sum().item()
 
                 # TODO real metrics -> F1
-                tqdm_bar.set_description(f"Epoch {e}, accuracy = {nb_correct / i_max}")
+                tqdm_bar.set_description(f"Epoch {e}, accuracy = {nb_correct / i_max:.4f}")
 
         acc.append(nb_correct)
         loss_v.append(sum_loss)
@@ -426,10 +433,10 @@ def train_mnist(nb_class: int, img_size: int,
     plt.legend()
     plt.show()
 
-    viz(ag, x_test[randint(0, x_test.size(0)-1)], t, f)
+    viz(marl_m, x_test[randint(0, x_test.size(0) - 1)], t, f)
 
 
-def viz(agents: list, one_img: th.Tensor, max_it: int, f: int) -> None:
+def viz(agents: MultiAgent, one_img: th.Tensor, max_it: int, f: int) -> None:
     """
     TODO
 
