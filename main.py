@@ -348,7 +348,6 @@ def train_mnist(nb_class: int, img_size: int,
         grad_norm_cnn = []
         grad_norm_pred = []
 
-
         tqdm_bar = tqdm(range(nb_batch))
         for i in tqdm_bar:
             i_min = i * batch_size
@@ -421,9 +420,9 @@ def train_mnist(nb_class: int, img_size: int,
 
                 x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
 
-                pred, proba = step(ag, x, t, sm, cuda, random_walk, nb_class)
+                preds, proba = step(ag, x, t, sm, cuda, random() < eps, nb_class)
 
-                nb_correct += (pred.argmax(dim=1) == y).sum().item()
+                nb_correct += (preds.mean(dim=0).argmax(dim=1) == y).sum().item()
 
                 tqdm_bar.set_description(f"Epoch {e}, accuracy = {nb_correct / i_max}")
 
