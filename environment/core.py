@@ -37,7 +37,7 @@ def step(agents: List[Agent], img: th.Tensor, max_it: int, softmax: nn.Softmax,
         for a in agents:
             a.step_finished()
 
-    q = th.zeros(img.size(0), nb_class)
+    q = th.zeros(len(agents), img.size(0), nb_class)
     probas = th.zeros(len(agents), img.size(0))
 
     if cuda:
@@ -47,9 +47,7 @@ def step(agents: List[Agent], img: th.Tensor, max_it: int, softmax: nn.Softmax,
     for i, a in enumerate(agents):
         pred, proba = a.predict()
         probas[i, :] = proba
-        q += pred
-
-    q = q / len(agents)
+        q[i, :, :] = pred
 
     return softmax(q), probas
 
@@ -74,7 +72,6 @@ def detailled_step(agents: List[Agent], img: th.Tensor, max_it: int, softmax: nn
     :return:
     :rtype:
     """
-
     for a in agents:
         a.new_img(img.size(0))
 

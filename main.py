@@ -12,7 +12,7 @@ import torch as th
 from torch.nn import Softmax, MSELoss, NLLLoss
 
 from math import ceil
-from random import randint
+from random import randint, random
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -336,6 +336,9 @@ def train_mnist(nb_class: int, img_size: int,
     loss_v = []
     acc = []
 
+    eps = 1.0
+    eps_decay = 1.0 - 1e-4
+
     for e in range(nb_epoch):
         sum_loss = 0
 
@@ -345,7 +348,6 @@ def train_mnist(nb_class: int, img_size: int,
         grad_norm_cnn = []
         grad_norm_pred = []
 
-        random_walk = False
 
         tqdm_bar = tqdm(range(nb_batch))
         for i in tqdm_bar:
@@ -353,7 +355,7 @@ def train_mnist(nb_class: int, img_size: int,
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
-            losses = []
+            losses = th.zeros(nr, len(ag), batch_size)
 
             for k in range(nr):
 
@@ -362,23 +364,29 @@ def train_mnist(nb_class: int, img_size: int,
                 if cuda:
                     x, y = x.cuda(), y.cuda()
 
-                pred, log_probas = step(ag, x, t, sm, cuda, random_walk, nb_class)
+                # get predictions and probabilities
+                preds, log_probas = step(ag, x, t, sm, cuda, random() < eps, nb_class)
 
-                # Sum on agent dimension
-                proba_per_image = log_probas.sum(dim=0)
-
-                y_eye = th.eye(nb_class)[y]
+                # Class one hot encoding
+                y_eye = th.eye(nb_class)[y].repeat(preds.size(0), 1, 1)
                 if cuda:
                     y_eye = y_eye.cuda()
 
-                r = -criterion(pred, y_eye)
+                # SE Loss
+                r = -(preds - y_eye) ** 2
 
-                # Mean on image batch
-                l = (proba_per_image * r.detach() + r).mean(dim=0).view(-1)
+                # Sum on one hot encoding
+                r = r.sum(dim=-1)
 
-                losses.append(l)
+                # Keep loss for future update
+                losses[k, :, :] = log_probas * r.detach() + r
 
-            loss = -th.cat(losses).sum() / nr
+                eps *= eps_decay
+
+            # sum / nr -> mean all experiments
+            # sum / len(ag) -> mean all agent
+            # mean -> mean on batch
+            loss = -((losses.sum(dim=0) / nr).sum(dim=0) / len(ag)).mean()
 
             optim.zero_grad()
             loss.backward()
@@ -389,7 +397,7 @@ def train_mnist(nb_class: int, img_size: int,
             grad_norm_cnn.append(m.get_networks()[0].seq_lin[0].weight.grad.norm())
             grad_norm_pred.append(m.get_networks()[-1].seq_lin[0].weight.grad.norm())
 
-            tqdm_bar.set_description(f"Epoch {e}, Loss = {sum_loss / (i + 1):.4f}, "
+            tqdm_bar.set_description(f"Epoch {e} eps({eps:.5f}), Loss = {sum_loss / (i + 1) / len(ag):.4f}, "
                                      f"grad_cnn_norm_mean = {sum(grad_norm_cnn) / len(grad_norm_cnn):.6f}, "
                                      f"grad_pred_norm_mean = {sum(grad_norm_pred) / len(grad_norm_pred):.6f}, "
                                      f"CNN_el = {m.get_networks()[0].seq_lin[0].weight.grad.nelement()}, "
@@ -513,7 +521,7 @@ def main() -> None:
     train_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action")
 
     # Training arguments
-    train_parser.add_argument("--batch-size", type=int, default=64, dest="batch_size")
+    train_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size")
     train_parser.add_argument("--step", type=int, default=7)
     train_parser.add_argument("--nb-epoch", type=int, default=10, dest="nb_epoch")
     train_parser.add_argument("--cuda", action="store_true", dest="cuda")
