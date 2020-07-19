@@ -308,6 +308,7 @@ def train_mnist(nb_class: int, img_size: int,
     ag.append(a2)
     ag.append(a3)
 
+    # for agents hidden tensors (belief etc.)
     if cuda:
         for a in ag:
             a.cuda()
@@ -318,6 +319,7 @@ def train_mnist(nb_class: int, img_size: int,
     if cuda:
         criterion.cuda()
 
+    # for RL agent models parameters
     params = []
     for net in m.get_networks():
         if cuda:

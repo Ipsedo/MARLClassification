@@ -14,12 +14,12 @@ class ModelsUnion:
             self.__b_theta_5.seq_conv = pretrained_seq_conv_cnn
 
         #self.__b_theta_5 = CNN_MNIST_2(f, n)
-        self.__d_theta_6 = MessageReceiver(n_m, n).eval()
-        self.__lambda_theta_7 = StateToFeatures(d, n).eval()
-        self.__belief_unit = BeliefUnit(n).eval()
-        self.__m_theta_4 = MessageSender(n, n_m).eval()
-        self.__action_unit = ActionUnit(n).eval()
-        self.__pi_theta_3 = Policy(nb_action, n).eval()
+        self.__d_theta_6 = MessageReceiver(n_m, n)
+        self.__lambda_theta_7 = StateToFeatures(d, n)
+        self.__belief_unit = BeliefUnit(n)
+        self.__m_theta_4 = MessageSender(n, n_m)
+        self.__action_unit = ActionUnit(n)
+        self.__pi_theta_3 = Policy(nb_action, n)
         self.__q_theta_8 = Prediction(n, nb_class)
 
     def map_obs(self, o_t):
