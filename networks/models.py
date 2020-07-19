@@ -50,6 +50,9 @@ class ModelsUnion:
         return [self.__b_theta_5, self.__d_theta_6, self.__lambda_theta_7, self.__belief_unit,
                 self.__m_theta_4, self.__action_unit, self.__pi_theta_3, self.__q_theta_8]
 
+    def parameters(self):
+        return [p for net in self.get_networks() for p in net.parameters()]
+
     def cuda(self):
         for n in self.get_networks():
             n.cuda()

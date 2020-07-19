@@ -1,7 +1,7 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
 from environment.agent import Agent
-from environment.core import step, detailled_step
+from environment.core import episode, detailled_step
 
 from networks.models import ModelsUnion
 from networks.ft_extractor import TestCNN
@@ -12,7 +12,7 @@ import torch as th
 from torch.nn import Softmax, MSELoss, NLLLoss
 
 from math import ceil
-from random import randint, random
+from random import randint
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -162,7 +162,7 @@ def test_core_step():
 
     for e in range(nb_epoch):
         optim.zero_grad()
-        pred, proba = step(ag, img, 5, sm, False, False, 10)
+        pred, proba = episode(ag, img, 5, sm, False, False, 10)
         r = mse(pred, c)
 
         Nr = 1
@@ -262,7 +262,7 @@ def test_mnist():
 def train_mnist(nb_class: int, img_size: int,
                 n: int, f: int, n_m: int,
                 d: int, nb_action: int, batch_size: int, t: int,
-                nr: int,
+                nr: int, eps: float, eps_decay: float,
                 nb_epoch: int, cuda: bool):
     """
     TODO
@@ -287,6 +287,10 @@ def train_mnist(nb_class: int, img_size: int,
     :type t:
     :param nr:
     :type nr:
+    :param eps:
+    :type eps:
+    :param eps_decay:
+    :type eps_decay:
     :param nb_epoch:
     :type nb_epoch:
     :param cuda:
@@ -308,25 +312,15 @@ def train_mnist(nb_class: int, img_size: int,
     ag.append(a2)
     ag.append(a3)
 
+    # Pass pytorch stuff to GPU
     # for agents hidden tensors (belief etc.)
     if cuda:
+        m.cuda()
         for a in ag:
             a.cuda()
 
-    sm = Softmax(dim=-1)
-
-    criterion = MSELoss()
-    if cuda:
-        criterion.cuda()
-
     # for RL agent models parameters
-    params = []
-    for net in m.get_networks():
-        if cuda:
-            net.cuda()
-        params += list(net.parameters())
-
-    optim = th.optim.Adam(params, lr=1e-3)
+    optim = th.optim.Adam(m.parameters(), lr=1e-3)
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
     x_train, y_train = x_train[:10000], y_train[:10000]
@@ -335,9 +329,6 @@ def train_mnist(nb_class: int, img_size: int,
 
     loss_v = []
     acc = []
-
-    eps = 1.0
-    eps_decay = 1.0 - 1e-4
 
     for e in range(nb_epoch):
         sum_loss = 0
@@ -354,22 +345,19 @@ def train_mnist(nb_class: int, img_size: int,
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
-            losses = th.zeros(nr, len(ag), batch_size)
+            losses = th.zeros(nr, len(ag), batch_size,
+                              device=th.device("cuda") if cuda else th.device("cpu"))
 
             for k in range(nr):
-
-                x, y = x_train[i_min:i_max, :, :], y_train[i_min:i_max]
-
-                if cuda:
-                    x, y = x.cuda(), y.cuda()
+                x, y = x_train[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
+                       y_train[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
                 # get predictions and probabilities
-                preds, log_probas = step(ag, x, t, sm, cuda, random() < eps, nb_class)
+                preds, log_probas = episode(ag, x, t, cuda, eps, nb_class)
 
                 # Class one hot encoding
-                y_eye = th.eye(nb_class)[y].repeat(preds.size(0), 1, 1)
-                if cuda:
-                    y_eye = y_eye.cuda()
+                y_eye = th.eye(nb_class, device=th.device("cuda") if cuda else th.device("cpu"))[y]\
+                    .repeat(preds.size(0), 1, 1)
 
                 # SE Loss
                 r = -(preds - y_eye) ** 2
@@ -396,7 +384,7 @@ def train_mnist(nb_class: int, img_size: int,
             grad_norm_cnn.append(m.get_networks()[0].seq_lin[0].weight.grad.norm())
             grad_norm_pred.append(m.get_networks()[-1].seq_lin[0].weight.grad.norm())
 
-            tqdm_bar.set_description(f"Epoch {e} eps({eps:.5f}), Loss = {sum_loss / (i + 1) / len(ag):.4f}, "
+            tqdm_bar.set_description(f"Epoch {e} eps({eps:.5f}), Loss = {sum_loss / (i + 1):.4f}, "
                                      f"grad_cnn_norm_mean = {sum(grad_norm_cnn) / len(grad_norm_cnn):.6f}, "
                                      f"grad_pred_norm_mean = {sum(grad_norm_pred) / len(grad_norm_pred):.6f}, "
                                      f"CNN_el = {m.get_networks()[0].seq_lin[0].weight.grad.nelement()}, "
@@ -418,12 +406,14 @@ def train_mnist(nb_class: int, img_size: int,
                 i_max = (i + 1) * batch_size
                 i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
 
-                x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
+                x, y = x_valid[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
+                       y_valid[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
-                preds, proba = step(ag, x, t, sm, cuda, random() < eps, nb_class)
+                preds, proba = episode(ag, x, t, cuda, eps, nb_class)
 
                 nb_correct += (preds.mean(dim=0).argmax(dim=1) == y).sum().item()
 
+                # TODO real metrics -> F1
                 tqdm_bar.set_description(f"Epoch {e}, accuracy = {nb_correct / i_max}")
 
         acc.append(nb_correct)
@@ -436,10 +426,10 @@ def train_mnist(nb_class: int, img_size: int,
     plt.legend()
     plt.show()
 
-    viz(ag, x_test[randint(0, x_test.size(0)-1)], t, sm, f)
+    viz(ag, x_test[randint(0, x_test.size(0)-1)], t, f)
 
 
-def viz(agents: list, one_img: th.Tensor, max_it: int, softmax: Softmax, f: int) -> None:
+def viz(agents: list, one_img: th.Tensor, max_it: int, f: int) -> None:
     """
     TODO
 
@@ -449,29 +439,27 @@ def viz(agents: list, one_img: th.Tensor, max_it: int, softmax: Softmax, f: int)
     :type one_img:
     :param max_it:
     :type max_it:
-    :param softmax:
-    :type softmax:
     :param f:
     :type f:
     :return:
     :rtype:
     """
-    pred, pos = detailled_step(agents, one_img.unsqueeze(0).cuda(), max_it, softmax, True, 10)
+    preds, _, pos = detailled_step(agents, one_img.unsqueeze(0).cuda(), max_it, True, 10)
 
     plt.imshow(one_img)
     plt.show()
-
-    print(pos)
 
     tmp = th.zeros(28, 28) - 1
     for t in range(max_it):
 
         for i in range(len(agents)):
-            tmp[pos[i][t][0]:pos[i][t][0]+f, pos[i][t][1]:pos[i][t][1]+f] = \
-                one_img[pos[i][t][0]:pos[i][t][0]+f, pos[i][t][1]:pos[i][t][1]+f]
+            tmp[pos[t][i][0]:pos[t][i][0] + f, pos[t][i][1]:pos[t][i][1] + f] = \
+                one_img[pos[t][i][0]:pos[t][i][0] + f, pos[t][i][1]:pos[t][i][1] + f]
 
         plt.imshow(tmp, cmap='gray_r')
-        plt.title("Step = %d" % t)
+        prediction = preds[t].mean(dim=0)[0].argmax(dim=-1)
+        pred_proba = preds[t].mean(dim=0)[0][prediction]
+        plt.title(f"Step = {t}, step_pred_class = {prediction} ({pred_proba * 100.:.1f}%)")
         plt.show()
 
 
@@ -490,7 +478,7 @@ def main() -> None:
 
     unit_test_parser = sub_parser.add_parser("unit")
     train_parser = sub_parser.add_parser("train")
-    test_parser = sub_parser.add_parser("test")
+    test_parser = sub_parser.add_parser("infer")
     test_cnn_parser = sub_parser.add_parser("cnn")
 
     ##################
@@ -507,8 +495,10 @@ def main() -> None:
     # MNIST default params
 
     # Image / data set arguments
-    train_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class")
-    train_parser.add_argument("--img-size", type=int, default=28, dest="img_size")
+    train_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class",
+                              help="Image dataset number of class")
+    train_parser.add_argument("--img-size", type=int, default=28, dest="img_size",
+                              help="Image side size, assume all image are squared")
 
     # Algorithm arguments
     train_parser.add_argument("--n", type=int, default=8)
@@ -516,19 +506,30 @@ def main() -> None:
     train_parser.add_argument("--nm", type=int, default=2, dest="n_m")
 
     # Environment arguments
-    train_parser.add_argument("-d", "--dim", type=int, default=2)
-    train_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action")
+    train_parser.add_argument("-d", "--dim", type=int, default=2,
+                              help="State dimension (eg. 2 -> move on a plan)")
+    train_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action",
+                              help="Number of discrete actions")
 
     # Training arguments
-    train_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size")
-    train_parser.add_argument("--step", type=int, default=7)
-    train_parser.add_argument("--nb-epoch", type=int, default=10, dest="nb_epoch")
-    train_parser.add_argument("--cuda", action="store_true", dest="cuda")
-
-    train_parser.add_argument("--nr", type=int, default=7)
+    train_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size",
+                              help="Image batch size for training and evaluation")
+    train_parser.add_argument("--step", type=int, default=7,
+                              help="Step number of RL episode")
+    train_parser.add_argument("--nb-epoch", type=int, default=10, dest="nb_epoch",
+                              help="Number of training epochs")
+    train_parser.add_argument("--cuda", action="store_true", dest="cuda",
+                              help="Train NNs with CUDA")
+    train_parser.add_argument("--nr", type=int, default=7,
+                              help="Number of retry")
+    train_parser.add_argument("--eps", type=float, default=0.5, dest="eps",
+                              help="Epsilon value at training beginning")
+    train_parser.add_argument("--eps-decay", type=float, default=1.0 - 1e-4, dest="eps_decay",
+                              help="Epsilon decay, update epsilon after each episode : "
+                                   "eps = eps * eps_decay")
 
     ##################
-    # Test args
+    # Infer args
     ##################
 
     # TODO
@@ -564,7 +565,7 @@ def main() -> None:
                     args.n, args.f, args.n_m,
                     args.dim, args.nb_action,
                     args.batch_size, args.step,
-                    args.nr,
+                    args.nr, args.eps, args.eps_decay,
                     args.nb_epoch, args.cuda)
     # Test main
     elif args.mode == "test":

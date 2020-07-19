@@ -1,6 +1,7 @@
 import torch as th
 from networks.models import ModelsUnion
 from numpy.random import choice
+from random import random
 
 from typing import Callable, List, Tuple
 
@@ -14,26 +15,30 @@ class Agent:
         """
         TODO
 
-        :param neighbours:
-        :type neighbours:
-        :param model_union:
-        :type model_union:
-        :param n:
-        :type n:
+        Multi agent reinforcement learning for image classification.
+        Constructor method of agent.
+        One agent shares the same neural networks (models) with all the other agent.
+
+        :param neighbours: The list of other agents
+        :type neighbours: List[Agent]
+        :param model_union: The class (wrapper) containing all the neural networks and their call
+        :type model_union: ModelsUnion
+        :param n: The latent space size
+        :type n: int
         :param f:
-        :type f:
+        :type f: int
         :param n_m:
-        :type n_m:
-        :param size:
-        :type size:
-        :param action_size:
-        :type action_size:
-        :param batch_size:
-        :type batch_size:
-        :param obs:
-        :type obs:
-        :param trans:
-        :type trans:
+        :type n_m: int
+        :param size: The image side size (squared images)
+        :type size: int
+        :param action_size: The action space dimension
+        :type action_size: int
+        :param batch_size: The image batch size
+        :type batch_size: int
+        :param obs: The function which permits the observation recover
+        :type obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor]
+        :param trans: The function which permits the transition recover
+        :type trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]
         """
 
         self.__neighbours = neighbours
@@ -102,14 +107,14 @@ class Agent:
 
         return self.__m[self.__t]
 
-    def step(self, img: th.Tensor, random_walk: bool) -> None:
+    def step(self, img: th.Tensor, eps: float) -> None:
         """
         TODO
 
         :param img:
         :type img:
-        :param random_walk:
-        :type random_walk:
+        :param eps:
+        :type eps:
         :return:
         :rtype:
         """
@@ -120,9 +125,8 @@ class Agent:
         # Feature space
         b_t = self.__networks.map_obs(o_t)
 
-        d_bar_t = th.zeros(img.size(0), self.__n)
-        if self.is_cuda:
-            d_bar_t = d_bar_t.cuda()
+        d_bar_t = th.zeros(img.size(0), self.__n,
+                           device=th.device("cuda") if self.is_cuda else th.device("cpu"))
 
         # Get messages
         for ag in self.__neighbours:
@@ -158,40 +162,34 @@ class Agent:
         self.__c_caret.append(c_caret_t_next)
 
         # Define possible actions
-        actions = th.tensor([[1., 0.],
-                             [-1., 0.],
-                             [0., 1.],
-                             [0., -1.]])
-
-        if self.is_cuda:
-            actions = actions.cuda()
+        actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]],
+                            device=th.device("cuda") if self.is_cuda else th.device("cpu"))
 
         # Get action probabilities
         action_scores = self.__networks.policy(self.__h_caret[self.__t + 1])
 
         # If random walk : pick one action with uniform probability
         # Else : greedy policy
-        if random_walk:
-            idx = th.zeros(img.size(0))
-            for i in range(action_scores.size(0)):
-                # TODO generic action range
-                idx[i] = th.tensor(choice(range(4), p=action_scores[i].cpu().detach().numpy()))
-            idx = idx.to(th.long)
-        else:
-            idx = action_scores.argmax(dim=-1)
+        random_walk = (th.rand(img.size(0), device=th.device("cuda") if self.is_cuda else th.device("cpu"))
+                       < eps).to(th.float)
+
+        # Greedy policy
+        policy_actions = action_scores.argmax(dim=-1)
+
+        # Random choice
+        # uniform -> real pb ?
+        # random_actions[i] = th.tensor(choice(range(4), p=action_scores[i].cpu().detach().numpy()))
+        random_actions = th.randint(0, actions.size(0), (img.size(0),),
+                                    device=th.device("cuda") if self.is_cuda else th.device("cpu"))
+
+        # Get final actions of epsilon greedy policy
+        idx = (random_walk * random_actions + (1. - random_walk) * policy_actions).to(th.long)
 
         # Get a(t + 1) for each batch image
         a_t_next = actions[idx]
 
-        if self.is_cuda:
-            a_t_next = a_t_next.cuda()
-            idx = idx.cuda()
-
         # Get chosen action probabilities (one per batch image)
         prob = action_scores.gather(1, idx.view(-1, 1)).squeeze(1)
-
-        if self.is_cuda:
-            prob = prob.cuda()
 
         # Append log probability
         self.__log_probas.append(th.log(prob))
