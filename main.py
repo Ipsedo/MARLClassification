@@ -446,6 +446,8 @@ def viz(agents: list, one_img: th.Tensor, max_it: int, f: int) -> None:
     """
     preds, _, pos = detailled_step(agents, one_img.unsqueeze(0).cuda(), max_it, True, 10)
 
+    img_idx = 0
+
     plt.imshow(one_img)
     plt.show()
 
@@ -453,12 +455,14 @@ def viz(agents: list, one_img: th.Tensor, max_it: int, f: int) -> None:
     for t in range(max_it):
 
         for i in range(len(agents)):
-            tmp[pos[t][i][0]:pos[t][i][0] + f, pos[t][i][1]:pos[t][i][1] + f] = \
-                one_img[pos[t][i][0]:pos[t][i][0] + f, pos[t][i][1]:pos[t][i][1] + f]
+            tmp[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
+                pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f] = \
+                    one_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
+                            pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f]
 
         plt.imshow(tmp, cmap='gray_r')
-        prediction = preds[t].mean(dim=0)[0].argmax(dim=-1)
-        pred_proba = preds[t].mean(dim=0)[0][prediction]
+        prediction = preds[t].mean(dim=0)[img_idx].argmax(dim=-1)
+        pred_proba = preds[t].mean(dim=0)[img_idx][prediction]
         plt.title(f"Step = {t}, step_pred_class = {prediction} ({pred_proba * 100.:.1f}%)")
         plt.show()
 

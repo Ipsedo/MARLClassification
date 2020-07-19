@@ -70,7 +70,7 @@ def detailled_step(agents: List[Agent], img_batch: th.Tensor, max_it: int,
     for a in agents:
         a.new_img(img_batch.size(0))
 
-    pos = th.zeros(max_it, len(agents), *agents[0].p[0].size(), dtype=th.long)
+    pos = th.zeros(max_it, len(agents), *agents[0].p.size(), dtype=th.long)
 
     q = th.zeros(max_it, len(agents), img_batch.size(0), nb_class,
                  device=th.device("cuda") if cuda else th.device("cpu"))
@@ -81,7 +81,7 @@ def detailled_step(agents: List[Agent], img_batch: th.Tensor, max_it: int,
     for t in range(max_it):
         for i, a in enumerate(agents):
             a.step(img_batch, 0.)
-            pos[t, i, :] = a.p[0]
+            pos[t, i, :, :] = a.p
 
             pred, proba = a.predict()
             probas[i, :] = proba
