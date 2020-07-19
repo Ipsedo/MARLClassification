@@ -4,6 +4,9 @@ import torch as th
 def trans_MNIST(pos: th.Tensor, a_t_next: th.Tensor, f: int, img_size: int) -> th.Tensor:
     """
 
+    Check if MNIST transition is correct.
+    Return next position if `a_t_next` is possible, current position otherwise.
+
     :param pos:
     :param a_t_next: Tensor of size = (2,)
     :param f:

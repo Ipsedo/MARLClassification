@@ -2,11 +2,40 @@ import torch as th
 from networks.models import ModelsUnion
 from numpy.random import choice
 
+from typing import Callable, List, Tuple
+
+
 class Agent:
-    def __init__(self, neighbours: list, model_union: ModelsUnion,
+    def __init__(self, neighbours: List['Agent'], model_union: ModelsUnion,
                  n: int, f: int, n_m: int,
                  size: int, action_size: int, batch_size: int,
-                 obs: callable, trans: callable) -> None:
+                 obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
+                 trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> None:
+        """
+        TODO
+
+        :param neighbours:
+        :type neighbours:
+        :param model_union:
+        :type model_union:
+        :param n:
+        :type n:
+        :param f:
+        :type f:
+        :param n_m:
+        :type n_m:
+        :param size:
+        :type size:
+        :param action_size:
+        :type action_size:
+        :param batch_size:
+        :type batch_size:
+        :param obs:
+        :type obs:
+        :param trans:
+        :type trans:
+        """
+
         self.__neighbours = neighbours
         self.__batch_size = batch_size
         self.__size = size
@@ -36,7 +65,16 @@ class Agent:
 
         self.new_img(self.__batch_size)
 
-    def new_img(self, batch_size):
+    def new_img(self, batch_size: int) -> None:
+        """
+        TODO
+
+        :param batch_size:
+        :type batch_size:
+        :return:
+        :rtype:
+        """
+
         self.__t = 0
 
         self.__h = [th.zeros(batch_size, self.__n)]
@@ -55,9 +93,27 @@ class Agent:
             self.cuda()
 
     def get_t_msg(self) -> th.Tensor:
+        """
+        TODO
+
+        :return:
+        :rtype:
+        """
+
         return self.__m[self.__t]
 
     def step(self, img: th.Tensor, random_walk: bool) -> None:
+        """
+        TODO
+
+        :param img:
+        :type img:
+        :param random_walk:
+        :type random_walk:
+        :return:
+        :rtype:
+        """
+
         # Observation
         o_t = self.__obs(img, self.p, self.__f)
 
@@ -118,6 +174,7 @@ class Agent:
         if random_walk:
             idx = th.zeros(img.size(0))
             for i in range(action_scores.size(0)):
+                # TODO generic action range
                 idx[i] = th.tensor(choice(range(4), p=action_scores[i].cpu().detach().numpy()))
             idx = idx.to(th.long)
         else:
@@ -145,17 +202,33 @@ class Agent:
                               self.__size).to(th.long)
 
     def step_finished(self) -> None:
+        """
+        TODO
+
+        :return:
+        :rtype:
+        """
+
         self.__t += 1
 
-    def predict(self) -> tuple:
+    def predict(self) -> Tuple[th.Tensor, th.Tensor]:
         """
+        TODO
+
         :return: tuple <prediction, proba>
         """
 
         #return self.__networks.predict(self.__c[self.__t]), th.cat(self.__log_probas).sum(dim=0)
         return self.__networks.predict(self.__c[self.__t]), self.__log_probas[self.__t]
 
-    def cuda(self):
+    def cuda(self) -> None:
+        """
+        TODO
+
+        :return:
+        :rtype:
+        """
+
         self.is_cuda = True
 
         self.__h = [h.cuda() for h in self.__h]

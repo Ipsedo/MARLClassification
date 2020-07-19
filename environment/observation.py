@@ -2,6 +2,19 @@ import torch as th
 
 
 def obs_MNIST(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
+    """
+    TODO
+
+    :param img:
+    :type img:
+    :param pos:
+    :type pos:
+    :param f:
+    :type f:
+    :return:
+    :rtype:
+    """
+
     assert len(img.size()) == 3, "Need 3-D input"
     assert (pos[:, 0] + f < img.size(1)).any() and (pos[:, 0] >= 0).any(),\
         "Unbound obervation in first dim (pos = {}, f = {}, img_size = {}!".format(pos[:, 0], f, img.size(1))

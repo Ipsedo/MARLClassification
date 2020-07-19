@@ -3,8 +3,19 @@ import pickle
 import gzip
 from os.path import exists
 
+from typing import Tuple
 
-def load_mnist():
+
+def load_mnist() ->\
+        Tuple[Tuple[th.Tensor, th.Tensor],
+              Tuple[th.Tensor, th.Tensor],
+              Tuple[th.Tensor, th.Tensor]]:
+    """
+
+    :return:
+    :rtype:
+    """
+
     file = './res/downloaded/mnist.pkl.gz'
 
     assert exists(file), "You must download mnist dataset via download_mnist.sh script !"

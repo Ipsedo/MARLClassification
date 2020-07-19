@@ -1,8 +1,33 @@
 import torch as th
 import torch.nn as nn
 
+from .agent import Agent
+from typing import List, Tuple
 
-def step(agents: list, img: th.Tensor, max_it: int, softmax: nn.Softmax, cuda: bool, random_walk: bool, nb_class: int):
+
+def step(agents: List[Agent], img: th.Tensor, max_it: int, softmax: nn.Softmax,
+         cuda: bool, random_walk: bool, nb_class: int) -> Tuple[th.Tensor, th.Tensor]:
+    """
+    TODO
+
+    :param agents:
+    :type agents:
+    :param img:
+    :type img:
+    :param max_it:
+    :type max_it:
+    :param softmax:
+    :type softmax:
+    :param cuda:
+    :type cuda:
+    :param random_walk:
+    :type random_walk:
+    :param nb_class:
+    :type nb_class:
+    :return:
+    :rtype:
+    """
+
     for a in agents:
         a.new_img(img.size(0))
 
@@ -29,7 +54,27 @@ def step(agents: list, img: th.Tensor, max_it: int, softmax: nn.Softmax, cuda: b
     return softmax(q), probas
 
 
-def detailled_step(agents: list, img: th.Tensor, max_it: int, softmax: nn.Softmax, cuda: bool, nb_class: int):
+def detailled_step(agents: List[Agent], img: th.Tensor, max_it: int, softmax: nn.Softmax,
+                   cuda: bool, nb_class: int) -> Tuple[th.Tensor, List[List[th.Tensor]]]:
+    """
+    TODO
+
+    :param agents:
+    :type agents:
+    :param img:
+    :type img:
+    :param max_it:
+    :type max_it:
+    :param softmax:
+    :type softmax:
+    :param cuda:
+    :type cuda:
+    :param nb_class:
+    :type nb_class:
+    :return:
+    :rtype:
+    """
+
     for a in agents:
         a.new_img(img.size(0))
 
