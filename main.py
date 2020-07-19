@@ -343,9 +343,10 @@ def train_mnist(nb_class: int, img_size: int,
         grad_norm_cnn = []
         grad_norm_pred = []
 
-        random_walk = e < 5
+        random_walk = False
 
-        for i in tqdm(range(nb_batch)):
+        tqdm_bar = tqdm(range(nb_batch))
+        for i in tqdm_bar:
             i_min = i * batch_size
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
@@ -386,11 +387,13 @@ def train_mnist(nb_class: int, img_size: int,
             grad_norm_cnn.append(m.get_networks()[0].seq_lin[0].weight.grad.norm())
             grad_norm_pred.append(m.get_networks()[-1].seq_lin[0].weight.grad.norm())
 
-        sum_loss /= nb_batch
+            tqdm_bar.set_description(f"Epoch {e}, Loss = {sum_loss / (i + 1):.4f}, "
+                                     f"grad_cnn_norm_mean = {sum(grad_norm_cnn) / len(grad_norm_cnn):.6f}, "
+                                     f"grad_pred_norm_mean = {sum(grad_norm_pred) / len(grad_norm_pred):.6f}, "
+                                     f"CNN_el = {m.get_networks()[0].seq_lin[0].weight.grad.nelement()}, "
+                                     f"Pred_el = {m.get_networks()[-1].seq_lin[0].weight.grad.nelement()}")
 
-        print("Epoch %d, loss = %f" % (e, sum_loss))
-        print("grad_cnn_norm_mean = %f, grad_pred_norm_mean = %f" % (sum(grad_norm_cnn) / len(grad_norm_cnn), sum(grad_norm_pred) / len(grad_norm_pred)))
-        print("CNN_el = %d, Pred_el = %d" % (m.get_networks()[0].seq_lin[0].weight.grad.nelement(), m.get_networks()[-1].seq_lin[0].weight.grad.nelement()))
+        sum_loss /= nb_batch
 
         nb_correct = 0
 
@@ -400,7 +403,8 @@ def train_mnist(nb_class: int, img_size: int,
             net.eval()
 
         with th.no_grad():
-            for i in tqdm(range(nb_batch_valid)):
+            tqdm_bar = tqdm(range(nb_batch_valid))
+            for i in tqdm_bar:
                 i_min = i * batch_size
                 i_max = (i + 1) * batch_size
                 i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
@@ -411,11 +415,10 @@ def train_mnist(nb_class: int, img_size: int,
 
                 nb_correct += (pred.argmax(dim=1) == y).sum().item()
 
-            nb_correct /= x_valid.size(0)
+                tqdm_bar.set_description(f"Epoch {e}, accuracy = {nb_correct / i_max}")
 
-            acc.append(nb_correct)
-            loss_v.append(sum_loss)
-            print("Epoch %d, accuracy = %f" % (e, nb_correct))
+        acc.append(nb_correct)
+        loss_v.append(sum_loss)
 
     plt.plot(acc, "b", label="accuracy")
     plt.plot(loss_v, "r", label="criterion value")
