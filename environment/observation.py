@@ -32,17 +32,10 @@ def obs_MNIST(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     pos_max = pos_min + f
 
     values_x = th.arange(0, img.size(1), device=pos.device).view(1, 1, img.size(1)).repeat(pos.size(0), img.size(0), 1)
-
-    mask_x = th.where((pos_min[:, :, 0, None] <= values_x) &
-                      (values_x < pos_max[:, :, 0, None]),
-                      th.tensor(True, device=pos.device),
-                      th.tensor(False, device=pos.device))
+    mask_x = (pos_min[:, :, 0, None] <= values_x) & (values_x < pos_max[:, :, 0, None])
 
     values_y = th.arange(0, img.size(1), device=pos.device).view(1, 1, img.size(1)).repeat(pos.size(0), img.size(0), 1)
-    mask_y = th.where((pos_min[:, :, 1, None] <= values_y) &
-                      (values_y < pos_max[:, :, 1, None]),
-                      th.tensor(True, device=pos.device),
-                      th.tensor(False, device=pos.device))
+    mask_y = (pos_min[:, :, 1, None] <= values_y) & (values_y < pos_max[:, :, 1, None])
 
     mask_x = mask_x.view(pos.size(0), img.size(0), img.size(1), 1).repeat(1, 1, 1, img.size(1))
     mask_y = mask_y.view(pos.size(0), img.size(0), img.size(1), 1).repeat(1, 1, 1, img.size(1)).permute(0, 1, 3, 2)
