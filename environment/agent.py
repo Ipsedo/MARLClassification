@@ -227,6 +227,10 @@ class MultiAgent:
         return self.__nb_agents
 
 
+##################################
+# OLD - pourri niveau perf (time)
+##################################
+
 class Agent:
     def __init__(self, neighbours: List['Agent'], model_union: ModelsUnion,
                  n: int, f: int, n_m: int,

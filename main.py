@@ -1,6 +1,6 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
-from environment.agent import Agent, MultiAgent
+from environment.agent import MultiAgent
 from environment.core import episode, detailled_step
 
 from networks.models import ModelsUnion
@@ -9,13 +9,15 @@ from networks.ft_extractor import TestCNN
 from data.mnist import load_mnist
 
 import torch as th
-from torch.nn import Softmax, MSELoss, NLLLoss
+from torch.nn import MSELoss
 
 from math import ceil
 from random import randint
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+
+from typing import NamedTuple
 
 import argparse
 
@@ -104,14 +106,12 @@ def test_agent_step():
     print(marl_m.msg[0])
 
     marl_m.step(img, 0.5)
-    marl_m.step_finished()
 
     print("Second step")
     print(marl_m.pos)
     print(marl_m.msg[1])
 
     marl_m.step(img, 0.5)
-    marl_m.step_finished()
 
     print("Third step")
     print(marl_m.pos)
@@ -125,7 +125,6 @@ def test_core_step():
     :return:
     :rtype:
     """
-    ag = []
 
     nb_class = 10
     img_size = 28
@@ -138,20 +137,13 @@ def test_core_step():
     batch_size = 2
 
     m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
-
-    a1 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
-
-    ag.append(a1)
-    ag.append(a2)
-    ag.append(a3)
+    m.cuda()
+    marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, obs_MNIST, trans_MNIST)
+    marl_m.cuda()
 
     img = th.rand(batch_size, 28, 28)
     c = th.zeros(batch_size, 10)
     c[:, 5] = 1
-
-    sm = Softmax(dim=1)
 
     mse = MSELoss()
 
@@ -163,14 +155,15 @@ def test_core_step():
     nb_epoch = 10
 
     for e in range(nb_epoch):
+        pred, proba = episode(marl_m, img, 5, True, 0.5, 10)
+
+        r = -(pred - c) ** 2
+        r = r.mean(dim=-1)
+
+        loss = th.log(proba) * r.detach() + r
+        loss = -loss.sum() / batch_size
+
         optim.zero_grad()
-        pred, proba = episode(ag, img, 5, sm, False, False, 10)
-        r = mse(pred, c)
-
-        Nr = 1
-        loss = (th.log(proba) * r.detach() + r) / Nr
-        loss = loss.sum() / batch_size
-
         loss.backward()
         optim.step()
 
@@ -261,80 +254,67 @@ def test_mnist():
 # Train - Main
 ######################
 
-def train_mnist(nb_class: int, img_size: int,
-                n: int, f: int, n_m: int,
-                d: int, nb_action: int, batch_size: int, t: int,
-                nr: int, eps: float, eps_decay: float,
-                nb_epoch: int, cuda: bool):
-    """
-    TODO
+MAOptions = NamedTuple("MAOption",
+                       [("nb_agent", int),
+                        ("dim", int),
+                        ("window_size", int),
+                        ("img_size", int),
+                        ("nb_class", int),
+                        ("nb_action", int)])
 
-    :param nb_class:
-    :type nb_class:
-    :param img_size:
-    :type img_size:
-    :param n:
-    :type n:
-    :param f:
-    :type f:
-    :param n_m:
-    :type n_m:
-    :param d:
-    :type d:
-    :param nb_action:
-    :type nb_action:
-    :param batch_size:
-    :type batch_size:
-    :param t:
-    :type t:
-    :param nr:
-    :type nr:
-    :param eps:
-    :type eps:
-    :param eps_decay:
-    :type eps_decay:
-    :param nb_epoch:
-    :type nb_epoch:
-    :param cuda:
-    :type cuda:
-    :return:
-    :rtype:
-    """
+RLOptions = NamedTuple("RLOptions",
+                       [("eps", float),
+                        ("eps_decay", float),
+                        ("nb_step", int),
+                        ("nb_epoch", int),
+                        ("learning_rate", float),
+                        ("hidden_size", int),
+                        ("hidden_size_msg", int),
+                        ("batch_size", int),
+                        ("cuda", bool)])
 
-    #ag = []
 
-    #m = ModelsUnion(n, f, n_m, d, nb_action, nb_class, test_mnist())
-    m = ModelsUnion(n, f, n_m, d, nb_action, nb_class)
+def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
 
-    """a1 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
-    a2 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
-    a3 = Agent(ag, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
+    m = ModelsUnion(rl_option.hidden_size,
+                    ma_options.window_size,
+                    rl_option.hidden_size_msg,
+                    ma_options.dim,
+                    ma_options.nb_action,
+                    ma_options.nb_class)
 
-    ag.append(a1)
-    ag.append(a2)
-    ag.append(a3)"""
-    marl_m = MultiAgent(3, m, n, f, n_m, img_size, nb_action, obs_MNIST, trans_MNIST)
+    marl_m = MultiAgent(ma_options.nb_agent,
+                        m,
+                        rl_option.hidden_size,
+                        ma_options.window_size,
+                        rl_option.hidden_size_msg,
+                        ma_options.img_size,
+                        ma_options.nb_action,
+                        obs_MNIST, trans_MNIST)
+
+    cuda = rl_option.cuda
 
     # Pass pytorch stuff to GPU
     # for agents hidden tensors (belief etc.)
     if cuda:
         m.cuda()
-        """for a in ag:
-            a.cuda()"""
         marl_m.cuda()
 
     # for RL agent models parameters
-    optim = th.optim.Adam(m.parameters(), lr=1e-3)
+    optim = th.optim.Adam(m.parameters(), lr=rl_option.learning_rate)
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
     x_train, y_train = x_train[:30000], y_train[:30000]
 
-    nb_batch = ceil(x_train.size(0) / batch_size)
+    nb_batch = ceil(x_train.size(0) / rl_option.batch_size)
 
     loss_v = []
     acc = []
 
-    for e in range(nb_epoch):
+    eps = rl_option.eps
+    eps_decay = rl_option.eps_decay
+
+    for e in range(rl_option.nb_epoch):
         sum_loss = 0
 
         for net in m.get_networks():
@@ -345,18 +325,18 @@ def train_mnist(nb_class: int, img_size: int,
 
         tqdm_bar = tqdm(range(nb_batch))
         for i in tqdm_bar:
-            i_min = i * batch_size
-            i_max = (i + 1) * batch_size
+            i_min = i * rl_option.batch_size
+            i_max = (i + 1) * rl_option.batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
             x, y = x_train[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
                    y_train[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
             # get predictions and probabilities
-            preds, log_probas = episode(marl_m, x, t, cuda, eps, nb_class)
+            preds, log_probas = episode(marl_m, x, rl_option.nb_step, cuda, eps, ma_options.nb_class)
 
             # Class one hot encoding
-            y_eye = th.eye(nb_class, device=th.device("cuda") if cuda else th.device("cpu"))[y]\
+            y_eye = th.eye(ma_options.nb_class, device=th.device("cuda") if cuda else th.device("cpu"))[y]\
                 .repeat(preds.size(0), 1, 1)
 
             # SE Loss
@@ -399,7 +379,7 @@ def train_mnist(nb_class: int, img_size: int,
 
         nb_correct = 0
 
-        nb_batch_valid = ceil(x_valid.size(0) / batch_size)
+        nb_batch_valid = ceil(x_valid.size(0) / rl_option.batch_size)
 
         for net in m.get_networks():
             net.eval()
@@ -407,14 +387,14 @@ def train_mnist(nb_class: int, img_size: int,
         with th.no_grad():
             tqdm_bar = tqdm(range(nb_batch_valid))
             for i in tqdm_bar:
-                i_min = i * batch_size
-                i_max = (i + 1) * batch_size
+                i_min = i * rl_option.batch_size
+                i_max = (i + 1) * rl_option.batch_size
                 i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
 
                 x, y = x_valid[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
                        y_valid[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
-                preds, proba = episode(marl_m, x, t, cuda, eps, nb_class)
+                preds, proba = episode(marl_m, x, rl_option.nb_step, cuda, eps, ma_options.nb_class)
 
                 nb_correct += (preds.mean(dim=0).argmax(dim=1) == y).sum().item()
 
@@ -427,11 +407,15 @@ def train_mnist(nb_class: int, img_size: int,
     plt.plot(acc, "b", label="accuracy")
     plt.plot(loss_v, "r", label="criterion value")
     plt.xlabel("Epoch")
-    plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d, T=%d" % (f, n, n_m, d, t))
+    plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d, T=%d" % (ma_options.window_size,
+                                                                      rl_option.hidden_size,
+                                                                      rl_option.hidden_size_msg,
+                                                                      ma_options.dim,
+                                                                      rl_option.nb_step))
     plt.legend()
     plt.show()
 
-    viz(marl_m, x_test[randint(0, x_test.size(0) - 1)], t, f)
+    viz(marl_m, x_test[randint(0, x_test.size(0) - 1)], rl_option.nb_step, ma_options.window_size)
 
 
 def viz(agents: MultiAgent, one_img: th.Tensor, max_it: int, f: int) -> None:
@@ -472,6 +456,10 @@ def viz(agents: MultiAgent, one_img: th.Tensor, max_it: int, f: int) -> None:
         plt.show()
 
 
+#######################
+# Main script function
+#######################
+
 def main() -> None:
     """
     TODO
@@ -510,6 +498,8 @@ def main() -> None:
                               help="Image side size, assume all image are squared")
 
     # Algorithm arguments
+    train_parser.add_argument("-a", "--agents", type=int, default=3, dest="agents",
+                              help="Number of agents")
     train_parser.add_argument("--n", type=int, default=8)
     train_parser.add_argument("--f", type=int, default=7)
     train_parser.add_argument("--nm", type=int, default=2, dest="n_m")
@@ -521,6 +511,8 @@ def main() -> None:
                               help="Number of discrete actions")
 
     # Training arguments
+    train_parser.add_argument("--lr", "--learning-rate", type=float, default=1e-3, dest="learning_rate",
+                              help="")
     train_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size",
                               help="Image batch size for training and evaluation")
     train_parser.add_argument("--step", type=int, default=7,
@@ -570,12 +562,16 @@ def main() -> None:
             parser.error(f"Unrecognized unit test ID : \"{args.test_id}\", choices = {unit_test_choices}.")
     # Train main
     elif args.mode == "train":
-        train_mnist(args.nb_class, args.img_size,
-                    args.n, args.f, args.n_m,
-                    args.dim, args.nb_action,
-                    args.batch_size, args.step,
-                    args.nr, args.eps, args.eps_decay,
-                    args.nb_epoch, args.cuda)
+        rl_options = RLOptions(args.eps, args.eps_decay,
+                               args.step, args.nb_epoch, args.learning_rate,
+                               args.n, args.n_m,
+                               args.batch_size, args.cuda)
+
+        ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
+                               args.nb_class, args.nb_action)
+
+        train_mnist(ma_options, rl_options)
+
     # Test main
     elif args.mode == "test":
         pass

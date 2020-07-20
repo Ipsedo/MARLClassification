@@ -26,26 +26,6 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     :rtype:
     """
 
-    """for a in agents:
-        a.new_img(img_batch.size(0))
-
-    for t in range(max_it):
-        for a in agents:
-            a.step(img_batch, eps)
-        for a in agents:
-            a.step_finished()
-
-    q = th.zeros(len(agents), img_batch.size(0), nb_class,
-                 device=th.device("cuda") if cuda else th.device("cpu"))
-
-    probas = th.zeros(len(agents), img_batch.size(0),
-                      device=th.device("cuda") if cuda else th.device("cpu"))
-
-    for i, a in enumerate(agents):
-        pred, proba = a.predict()
-        probas[i, :] = proba
-        q[i, :, :] = pred"""
-
     agents.new_episode(img_batch.size(0))
 
     for t in range(max_it):
