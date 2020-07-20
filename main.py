@@ -55,14 +55,12 @@ def test_mnist_obs():
     :return:
     :rtype:
     """
-    img = th.arange(0, 28 * 28).view(1, 28, 28).cuda()
+    img = th.arange(0, 28).view(1, 1, 28).repeat(2, 28, 1).cuda()
 
-    print(img)
-    print()
+    pos = th.tensor([[[0, 0]], [[0, 4]], [[4, 0]], [[4, 4]], [[0 + 1, 0 + 1]], [[0 + 1, 4 + 1]], [[4 + 1, 0 + 1]], [[4 + 1, 4 + 1]]]).cuda()
 
-    pos = th.tensor([[[0, 0]], [[0, 4]], [[4, 0]], [[4, 4]]]).cuda()
-
-    print(obs_MNIST(img, pos, 4))
+    print(obs_MNIST(img, pos, 6))
+    print(obs_MNIST(img.permute(0, 2, 1), pos, 6))
     print()
 
     for p in [[[0, 0]], [[0, 27]], [[27, 0]], [[27, 27]]]:
