@@ -3,13 +3,14 @@ from environment.transition import trans_MNIST
 from environment.agent import MultiAgent
 from environment.core import episode, detailled_step
 
-from networks.models import ModelsUnion
+from networks.models import ModelsWrapper
 from networks.ft_extractor import TestCNN
 
 from data.mnist import load_mnist
 
 import torch as th
 from torch.nn import MSELoss
+from torchnet.meter import ConfusionMeter
 
 from math import ceil
 from random import randint
@@ -90,9 +91,9 @@ def test_agent_step():
     action_size = 2
     batch_size = 1
 
-    m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
+    m = ModelsWrapper(n, f, n_m, d, action_size, nb_class)
 
-    marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, batch_size, obs_MNIST, trans_MNIST)
+    marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, obs_MNIST, trans_MNIST)
 
     m.cuda()
     marl_m.cuda()
@@ -136,7 +137,7 @@ def test_core_step():
 
     batch_size = 2
 
-    m = ModelsUnion(n, f, n_m, d, action_size, nb_class)
+    m = ModelsWrapper(n, f, n_m, d, action_size, nb_class)
     m.cuda()
     marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, obs_MNIST, trans_MNIST)
     marl_m.cuda()
@@ -145,12 +146,7 @@ def test_core_step():
     c = th.zeros(batch_size, 10)
     c[:, 5] = 1
 
-    mse = MSELoss()
-
-    params = []
-    for n in m.get_networks():
-        params += n.parameters()
-    optim = th.optim.SGD(params, lr=1e-4)
+    optim = th.optim.SGD(m.parameters(), lr=1e-4)
 
     nb_epoch = 10
 
@@ -276,15 +272,15 @@ RLOptions = NamedTuple("RLOptions",
 
 def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
 
-    m = ModelsUnion(rl_option.hidden_size,
-                    ma_options.window_size,
-                    rl_option.hidden_size_msg,
-                    ma_options.dim,
-                    ma_options.nb_action,
-                    ma_options.nb_class)
+    nn_models = ModelsWrapper(rl_option.hidden_size,
+                              ma_options.window_size,
+                              rl_option.hidden_size_msg,
+                              ma_options.dim,
+                              ma_options.nb_action,
+                              ma_options.nb_class)
 
     marl_m = MultiAgent(ma_options.nb_agent,
-                        m,
+                        nn_models,
                         rl_option.hidden_size,
                         ma_options.window_size,
                         rl_option.hidden_size_msg,
@@ -297,19 +293,19 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
     # Pass pytorch stuff to GPU
     # for agents hidden tensors (belief etc.)
     if cuda:
-        m.cuda()
+        nn_models.cuda()
         marl_m.cuda()
 
     # for RL agent models parameters
-    optim = th.optim.Adam(m.parameters(), lr=rl_option.learning_rate)
+    optim = th.optim.Adam(nn_models.parameters(), lr=rl_option.learning_rate)
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
-    x_train, y_train = x_train[:30000], y_train[:30000]
 
     nb_batch = ceil(x_train.size(0) / rl_option.batch_size)
 
     loss_v = []
-    acc = []
+    prec_epoch = []
+    recall_epoch = []
 
     eps = rl_option.eps
     eps_decay = rl_option.eps_decay
@@ -317,11 +313,9 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
     for e in range(rl_option.nb_epoch):
         sum_loss = 0
 
-        for net in m.get_networks():
-            net.train()
+        nn_models.train()
 
-        grad_norm_cnn = []
-        grad_norm_pred = []
+        conf_meter = ConfusionMeter(ma_options.nb_class)
 
         tqdm_bar = tqdm(range(nb_batch))
         for i in tqdm_bar:
@@ -333,11 +327,17 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
                    y_train[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
             # get predictions and probabilities
-            preds, log_probas = episode(marl_m, x, rl_option.nb_step, cuda, eps, ma_options.nb_class)
+            preds, log_probas = episode(marl_m, x, rl_option.nb_step,
+                                        cuda, eps, ma_options.nb_class)
 
             # Class one hot encoding
-            y_eye = th.eye(ma_options.nb_class, device=th.device("cuda") if cuda else th.device("cpu"))[y]\
+            y_eye = th.eye(ma_options.nb_class,
+                           device=th.device("cuda") if cuda else th.device("cpu"))[y]\
                 .repeat(preds.size(0), 1, 1)
+
+            # Update confusion meter
+            conf_meter.add(preds.mean(dim=0).view(-1, ma_options.nb_class).detach(),
+                           y.detach())
 
             # SE Loss
             r = -(preds - y_eye) ** 2
@@ -365,24 +365,30 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
             # Update epoch loss sum
             sum_loss += loss.item()
 
-            # Update epoch gradient norm sum
-            grad_norm_cnn.append(m.get_networks()[0].seq_lin[0].weight.grad.norm())
-            grad_norm_pred.append(m.get_networks()[-1].seq_lin[0].weight.grad.norm())
+            # Compute score
+            conf_mat = conf_meter.value()
 
-            tqdm_bar.set_description(f"Epoch {e} eps({eps:.5f}), Loss = {sum_loss / (i + 1):.4f}, "
-                                     f"grad_cnn_norm_mean = {sum(grad_norm_cnn) / len(grad_norm_cnn):.6f}, "
-                                     f"grad_pred_norm_mean = {sum(grad_norm_pred) / len(grad_norm_pred):.6f}, "
-                                     f"CNN_el = {m.get_networks()[0].seq_lin[0].weight.grad.nelement()}, "
-                                     f"Pred_el = {m.get_networks()[-1].seq_lin[0].weight.grad.nelement()}")
+            lissage = 1e-30  # 10^(-38) -> float64
+
+            prec = th.tensor(
+                [(conf_mat[i, i] / (conf_mat[:, i].sum() + lissage)).item()
+                 for i in range(ma_options.nb_class)]).mean()
+
+            rec = th.tensor(
+                [(conf_mat[i, i] / (conf_mat[i, :].sum() + lissage)).item()
+                 for i in range(ma_options.nb_class)]).mean()
+
+            tqdm_bar.set_description(f"Epoch {e} eps({eps:.5f}), "
+                                     f"Loss = {sum_loss / (i + 1):.4f}, "
+                                     f"train_prec = {prec:.4f}, "
+                                     f"train_rec = {rec:.4f}")
 
         sum_loss /= nb_batch
 
-        nb_correct = 0
-
         nb_batch_valid = ceil(x_valid.size(0) / rl_option.batch_size)
 
-        for net in m.get_networks():
-            net.eval()
+        nn_models.eval()
+        conf_meter.reset()
 
         with th.no_grad():
             tqdm_bar = tqdm(range(nb_batch_valid))
@@ -396,16 +402,31 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
 
                 preds, proba = episode(marl_m, x, rl_option.nb_step, cuda, eps, ma_options.nb_class)
 
-                nb_correct += (preds.mean(dim=0).argmax(dim=1) == y).sum().item()
+                conf_meter.add(preds.mean(dim=0).view(-1, ma_options.nb_class).detach(),
+                               y.detach())
 
-                # TODO real metrics -> F1
-                tqdm_bar.set_description(f"Epoch {e}, accuracy = {nb_correct / i_max:.4f}")
+                # Compute score
+                conf_mat = conf_meter.value()
+                lissage = 1e-30  # 10^(-38) -> float64
+                prec = th.tensor([(conf_mat[i, i] / (conf_mat[:, i].sum() + lissage)).item() for i in
+                                  range(ma_options.nb_class)]).mean()
+                rec = th.tensor([(conf_mat[i, i] / (conf_mat[i, :].sum() + lissage)).item() for i in
+                                 range(ma_options.nb_class)]).mean()
 
-        acc.append(nb_correct)
+                tqdm_bar.set_description(f"Epoch {e}, eval_prec = {prec:.4f}, eval_rec = {rec:.4f}")
+
+        # Compute score
+        conf_mat = conf_meter.value()
+        prec = th.tensor([conf_mat[i, i] / conf_mat[:, i].sum() for i in range(ma_options.nb_class)]).mean()
+        rec = th.tensor([conf_mat[i, i] / conf_mat[i, i].sum() for i in range(ma_options.nb_class)]).mean()
+
+        prec_epoch.append(prec)
+        recall_epoch.append(rec)
         loss_v.append(sum_loss)
 
-    plt.plot(acc, "b", label="accuracy")
-    plt.plot(loss_v, "r", label="criterion value")
+    plt.plot(prec_epoch, "b", label="precision - mean")
+    plt.plot(recall_epoch, "r", label="recall - mean")
+    plt.plot(loss_v, "g", label="criterion value")
     plt.xlabel("Epoch")
     plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d, T=%d" % (ma_options.window_size,
                                                                       rl_option.hidden_size,

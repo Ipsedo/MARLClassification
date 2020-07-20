@@ -5,6 +5,56 @@ from networks.policy import Policy
 from networks.prediction import Prediction
 import torch.nn as nn
 
+from typing import Optional, Dict
+
+
+class ModelsWrapper(nn.Module):
+    map_obs: int = 0
+    map_pos: int = 1
+
+    decode_msg: int = 2
+    evaluate_msg: int = 3
+
+    belief_unit: int = 4
+    action_unit: int = 5
+
+    policy: int = 6
+    predict: int = 7
+
+    def __init__(self, n: int, f: int, n_m: int, d: int,
+                 nb_action: int, nb_class: int,
+                 pretrained_seq_conv_cnn: Optional[nn.Module] = None) -> None:
+        super().__init__()
+
+        self.__b_theta_5 = CNN_MNIST(f, n)
+
+        if pretrained_seq_conv_cnn is not None:
+            self.__b_theta_5.seq_conv = pretrained_seq_conv_cnn
+
+        # self.__b_theta_5 = CNN_MNIST_2(f, n)
+        self.__d_theta_6 = MessageReceiver(n_m, n)
+        self.__lambda_theta_7 = StateToFeatures(d, n)
+        self.__belief_unit = BeliefUnit(n)
+        self.__m_theta_4 = MessageSender(n, n_m)
+        self.__action_unit = ActionUnit(n)
+        self.__pi_theta_3 = Policy(nb_action, n)
+        self.__q_theta_8 = Prediction(n, nb_class)
+
+        self.__op_to_module: Dict[int, nn.Module] = {
+            0: self.__b_theta_5,
+            1: self.__lambda_theta_7,
+            2: self.__d_theta_6,
+            3: self.__m_theta_4,
+            4: self.__belief_unit,
+            5: self.__action_unit,
+            6: self.__pi_theta_3,
+            7: self.__q_theta_8
+        }
+
+    def forward(self, op: int, *args):
+        return self.__op_to_module[op](*args)
+
+
 
 class ModelsUnion:
     def __init__(self, n: int, f: int, n_m: int, d: int, nb_action: int, nb_class: int, pretrained_seq_conv_cnn: nn.Sequential=None):

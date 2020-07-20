@@ -1,8 +1,8 @@
 import torch as th
 import torch.nn as nn
 
-from .agent import Agent, MultiAgent
-from typing import List, Tuple
+from .agent import MultiAgent
+from typing import Tuple
 
 
 def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
