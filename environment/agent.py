@@ -1,11 +1,13 @@
 import torch as th
-from networks.models import ModelsUnion, ModelsWrapper
+from networks.models import ModelsWrapper
 
-from typing import Callable, Tuple
+from typing import Callable, Tuple, AnyStr
+
+import json
 
 
 class MultiAgent:
-    def __init__(self, nb_agents: int, model_union: ModelsWrapper,
+    def __init__(self, nb_agents: int, model_wrapper: ModelsWrapper,
                  n: int, f: int, n_m: int,
                  size: int, nb_action: int,
                  obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
@@ -14,8 +16,8 @@ class MultiAgent:
 
         :param nb_agents:
         :type nb_agents:
-        :param model_union:
-        :type model_union:
+        :param model_wrapper:
+        :type model_wrapper:
         :param n:
         :type n:
         :param f:
@@ -48,7 +50,7 @@ class MultiAgent:
         self.__trans = trans
 
         # NNs wrapper
-        self.__networks = model_union
+        self.__networks = model_wrapper
 
         # initial state
         self.pos = None
@@ -246,3 +248,37 @@ class MultiAgent:
         :rtype:
         """
         return self.__nb_agents
+
+    def params_to_json(self, out_json_path: AnyStr) -> None:
+        with open(out_json_path, mode="w") as f_json:
+
+            json_raw_txt = "{" \
+                           "    \"nb_agent\": " + str(self.__nb_agents) + ",\n" \
+                           "    \"hidden_size\": " + str(self.__n) + ",\n" \
+                           "    \"window_size\": " + str(self.__f) + ",\n" \
+                           "    \"hidden_size_msg\": " + str(self.__n_m) + ",\n" \
+                           "    \"size\": " + str(self.__size) + ",\n" \
+                           "    \"nb_action\": " + str(self.__nb_action) + "\n" \
+                           "}\n"
+
+            f_json.write(json_raw_txt)
+            f_json.close()
+
+    def load_from(self, json_file: AnyStr, model_wrapper: ModelsWrapper,
+                  obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
+                  trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> None:
+
+        with open(json_file, "r") as f_json:
+            j_obj = json.load(f_json)
+
+            self.__nb_agents = j_obj["nb_agent"]
+            self.__n = j_obj["hidden_size"]
+            self.__f = j_obj["window_size"]
+            self.__n_m = j_obj["hidden_size_msg"]
+            self.__size = j_obj["size"]
+            self.__nb_action = j_obj["nb_action"]
+
+            self.__networks = model_wrapper
+            self.__obs = obs
+            self.__trans = trans
+

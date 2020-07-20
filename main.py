@@ -18,7 +18,10 @@ from random import randint
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from typing import NamedTuple
+from typing import NamedTuple, AnyStr, Optional
+
+from os import mkdir
+from os.path import join, exists, isdir
 
 import argparse
 
@@ -270,7 +273,24 @@ RLOptions = NamedTuple("RLOptions",
                         ("cuda", bool)])
 
 
-def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
+def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr) -> None:
+    """
+
+    :param ma_options:
+    :type ma_options:
+    :param rl_option:
+    :type rl_option:
+    :param output_dir:
+    :type output_dir:
+    :return:
+    :rtype:
+    """
+
+    model_dir = "models"
+    if not exists(join(output_dir, model_dir)):
+        mkdir(join(output_dir, model_dir))
+    if exists(join(output_dir, model_dir)) and not isdir(join(output_dir, model_dir)):
+        raise Exception(f"\"{join(output_dir, model_dir)}\" is not a directory.")
 
     nn_models = ModelsWrapper(rl_option.hidden_size,
                               ma_options.window_size,
@@ -408,40 +428,48 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions) -> None:
                 # Compute score
                 conf_mat = conf_meter.value()
                 lissage = 1e-30  # 10^(-38) -> float64
-                prec = th.tensor([(conf_mat[i, i] / (conf_mat[:, i].sum() + lissage)).item() for i in
-                                  range(ma_options.nb_class)]).mean()
-                rec = th.tensor([(conf_mat[i, i] / (conf_mat[i, :].sum() + lissage)).item() for i in
-                                 range(ma_options.nb_class)]).mean()
+                prec = th.tensor([(conf_mat[i, i] / (conf_mat[:, i].sum() + lissage)).item()
+                                  for i in range(ma_options.nb_class)]).mean()
+                rec = th.tensor([(conf_mat[i, i] / (conf_mat[i, :].sum() + lissage)).item()
+                                 for i in range(ma_options.nb_class)]).mean()
 
                 tqdm_bar.set_description(f"Epoch {e}, eval_prec = {prec:.4f}, eval_rec = {rec:.4f}")
 
         # Compute score
         conf_mat = conf_meter.value()
-        prec = th.tensor([conf_mat[i, i] / conf_mat[:, i].sum() for i in range(ma_options.nb_class)]).mean()
-        rec = th.tensor([conf_mat[i, i] / conf_mat[i, i].sum() for i in range(ma_options.nb_class)]).mean()
+        prec = th.tensor([conf_mat[i, i] / conf_mat[:, i].sum()
+                          for i in range(ma_options.nb_class)]).mean()
+        rec = th.tensor([conf_mat[i, i] / conf_mat[i, :].sum()
+                         for i in range(ma_options.nb_class)]).mean()
 
         prec_epoch.append(prec)
         recall_epoch.append(rec)
         loss_v.append(sum_loss)
 
-    plt.plot(prec_epoch, "b", label="precision - mean")
-    plt.plot(recall_epoch, "r", label="recall - mean")
+        marl_m.params_to_json(join(output_dir, model_dir, f"marl_epoch_{e}.json"))
+        th.save(nn_models.state_dict(), join(output_dir, model_dir, f"nn_models_epoch_{e}.pt"))
+        th.save(optim.state_dict(), join(output_dir, model_dir, f"optim_epoch_{e}.pt"))
+
+    plt.figure()
+    plt.plot(prec_epoch, "b", label="precision - mean (eval)")
+    plt.plot(recall_epoch, "r", label="recall - mean (eval)")
     plt.plot(loss_v, "g", label="criterion value")
     plt.xlabel("Epoch")
-    plt.title("MARL Classification f=%d, n=%d, n_m=%d, d=%d, T=%d" % (ma_options.window_size,
-                                                                      rl_option.hidden_size,
-                                                                      rl_option.hidden_size_msg,
-                                                                      ma_options.dim,
-                                                                      rl_option.nb_step))
+    plt.title(f"MARL Classification f={ma_options.window_size}, "
+              f"n={rl_option.hidden_size}, n_m={rl_option.hidden_size_msg}, "
+              f"d={ma_options.dim}, T={rl_option.nb_step}")
+
     plt.legend()
-    plt.show()
+    plt.savefig(join(output_dir, "train_graph.png"))
 
-    viz(marl_m, x_test[randint(0, x_test.size(0) - 1)], rl_option.nb_step, ma_options.window_size)
+    viz(marl_m, x_test[randint(0, x_test.size(0) - 1)],
+        rl_option.nb_step, ma_options.window_size,
+        output_dir)
 
 
-def viz(agents: MultiAgent, one_img: th.Tensor, max_it: int, f: int) -> None:
+def viz(agents: MultiAgent, one_img: th.Tensor,
+        max_it: int, f: int, output_dir: AnyStr) -> None:
     """
-    TODO
 
     :param agents:
     :type agents:
@@ -451,30 +479,37 @@ def viz(agents: MultiAgent, one_img: th.Tensor, max_it: int, f: int) -> None:
     :type max_it:
     :param f:
     :type f:
+    :param output_dir:
+    :type output_dir:
     :return:
     :rtype:
     """
-    preds, _, pos = detailled_step(agents, one_img.unsqueeze(0).cuda(), max_it, True, 10)
+
+    preds, _, pos = detailled_step(agents, one_img.unsqueeze(0).cuda(),
+                                   max_it, True, 10)
 
     img_idx = 0
 
-    plt.imshow(one_img)
-    plt.show()
+    plt.figure()
+    plt.imshow(one_img, cmap='gray_r')
+    plt.savefig(join(output_dir, f"pred_original.png"))
 
-    tmp = th.zeros(28, 28) - 1
+    curr_img = th.zeros(28, 28) - 1
     for t in range(max_it):
 
         for i in range(len(agents)):
-            tmp[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f] = \
-                    one_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                            pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f]
+            curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
+                     pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f] = \
+                one_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
+                        pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f]
 
-        plt.imshow(tmp, cmap='gray_r')
+        plt.figure()
+        plt.imshow(curr_img, cmap='gray_r')
         prediction = preds[t].mean(dim=0)[img_idx].argmax(dim=-1)
         pred_proba = preds[t].mean(dim=0)[img_idx][prediction]
         plt.title(f"Step = {t}, step_pred_class = {prediction} ({pred_proba * 100.:.1f}%)")
-        plt.show()
+
+        plt.savefig(join(output_dir, f"pred_step_{t}.png"))
 
 
 #######################
@@ -488,7 +523,8 @@ def main() -> None:
     :return:
     :rtype:
     """
-    parser = argparse.ArgumentParser("Multi agent reinforcement learning for image classification - Main")
+    parser = argparse.ArgumentParser("Multi agent reinforcement learning "
+                                     "for image classification - Main")
 
     sub_parser = parser.add_subparsers()
     sub_parser.dest = "mode"
@@ -511,6 +547,9 @@ def main() -> None:
     ##################
 
     # MNIST default params
+    train_parser.add_argument("-o", "--output-dir", type=str, required=True, dest="output_dir",
+                              help="The output dir containing res and models per epoch. "
+                                   "Created if needed.")
 
     # Image / data set arguments
     train_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class",
@@ -580,7 +619,8 @@ def main() -> None:
         elif args.test_id == "core-step":
             test_core_step()
         else:
-            parser.error(f"Unrecognized unit test ID : \"{args.test_id}\", choices = {unit_test_choices}.")
+            parser.error(f"Unrecognized unit test ID : "
+                         f"\"{args.test_id}\", choices = {unit_test_choices}.")
     # Train main
     elif args.mode == "train":
         rl_options = RLOptions(args.eps, args.eps_decay,
@@ -591,7 +631,12 @@ def main() -> None:
         ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
                                args.nb_class, args.nb_action)
 
-        train_mnist(ma_options, rl_options)
+        if not exists(args.output_dir):
+            mkdir(args.output_dir)
+        if exists(args.output_dir) and not isdir(args.output_dir):
+            raise Exception(f"\"{args.output_dir}\" is not a directory.")
+
+        train_mnist(ma_options, rl_options, args.output_dir)
 
     # Test main
     elif args.mode == "test":
