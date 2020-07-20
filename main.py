@@ -315,7 +315,7 @@ def train_mnist(nb_class: int, img_size: int,
     ag.append(a1)
     ag.append(a2)
     ag.append(a3)"""
-    marl_m = MultiAgent(3, m, n, f, n_m, img_size, nb_action, batch_size, obs_MNIST, trans_MNIST)
+    marl_m = MultiAgent(3, m, n, f, n_m, img_size, nb_action, obs_MNIST, trans_MNIST)
 
     # Pass pytorch stuff to GPU
     # for agents hidden tensors (belief etc.)

@@ -9,11 +9,10 @@ from typing import Callable, List, Tuple
 class MultiAgent:
     def __init__(self, nb_agents: int, model_union: ModelsUnion,
                  n: int, f: int, n_m: int,
-                 size: int, action_size: int, batch_size: int,
+                 size: int, action_size: int,
                  obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
                  trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> None:
         """
-        TODO
 
         :param nb_agents:
         :type nb_agents:
@@ -29,8 +28,6 @@ class MultiAgent:
         :type size:
         :param action_size:
         :type action_size:
-        :param batch_size:
-        :type batch_size:
         :param obs:
         :type obs:
         :param trans:
@@ -46,7 +43,7 @@ class MultiAgent:
 
         self.__size = size
         self.__action_size = action_size
-        self.__batch_size = batch_size
+        self.__batch_size = None
 
         # Env info
         self.__obs = obs
@@ -74,6 +71,16 @@ class MultiAgent:
         self.is_cuda = False
 
     def new_img(self, batch_size: int) -> None:
+        """
+
+        :param batch_size:
+        :type batch_size:
+        :return:
+        :rtype:
+        """
+
+        self.__batch_size = batch_size
+
         self.__t = 0
 
         self.__h = [th.zeros(self.__nb_agents, batch_size, self.__n,
@@ -94,26 +101,26 @@ class MultiAgent:
                                     .view(self.__nb_agents, batch_size))]
 
         self.pos = th.randint(self.__size - self.__f, (self.__nb_agents, batch_size, 2),
-                            device=th.device("cuda") if self.is_cuda else th.device("cpu"))
+                              device=th.device("cuda") if self.is_cuda else th.device("cpu"))
 
     def step(self, img: th.Tensor, eps: float) -> None:
+        """
+
+        :param img:
+        :type img:
+        :param eps:
+        :type eps:
+        :return:
+        :rtype:
+        """
+
         # Observation
         o_t = self.__obs(img, self.pos, self.__f)
 
         # Feature space
         b_t = self.__networks.map_obs(o_t.flatten(0, 1)).view(len(self), self.__batch_size, self.__n)
 
-        """d_bar_t = th.zeros(img.size(0), self.__n,
-                           device=th.device("cuda") if self.is_cuda else th.device("cpu"))
-
         # Get messages
-        for ag in self.__neighbours:
-            msg = ag.get_t_msg()
-            d_bar_t += self.__networks.decode_msg(msg)
-            
-        # Compute average message
-        d_bar_t /= len(self.__neighbours)"""
-
         d_bar_t_tmp = self.__networks.decode_msg(self.msg[self.__t])
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
         d_bar_t = ((d_bar_t_mean * self.__nb_agents) - d_bar_t_tmp) / (self.__nb_agents - 1)
@@ -126,29 +133,27 @@ class MultiAgent:
 
         # Belief LSTM
         h_t_next, c_t_next = \
-            self.__networks.belief_unit(self.__h[self.__t].flatten(0, 1),
-                                        self.__c[self.__t].flatten(0, 1),
-                                        u_t.flatten(0, 1))
+            self.__networks.belief_unit(self.__h[self.__t],
+                                        self.__c[self.__t],
+                                        u_t)
 
         # Append new h and c (t + 1 step)
-        self.__h.append(h_t_next.view(len(self), self.__batch_size, -1))
-        self.__c.append(c_t_next.view(len(self), self.__batch_size, -1))
+        self.__h.append(h_t_next)
+        self.__c.append(c_t_next)
 
         # Evaluate message
         self.msg.append(self.__networks
-                        .evaluate_msg(self.__h[self.__t + 1]
-                                      .flatten(0, 1)
-                                      .view(len(self), self.__batch_size, -1)))
+                        .evaluate_msg(self.__h[self.__t + 1]))
 
         # Action unit LSTM
         h_caret_t_next, c_caret_t_next = \
-            self.__networks.action_unit(self.__h_caret[self.__t].flatten(0, 1),
-                                        self.__c_caret[self.__t].flatten(0, 1),
-                                        u_t.flatten(0, 1))
+            self.__networks.action_unit(self.__h_caret[self.__t],
+                                        self.__c_caret[self.__t],
+                                        u_t)
 
         # Append ĥ et ĉ (t + 1 step)
-        self.__h_caret.append(h_caret_t_next.view(len(self), self.__batch_size, -1))
-        self.__c_caret.append(c_caret_t_next.view(len(self), self.__batch_size, -1))
+        self.__h_caret.append(h_caret_t_next)
+        self.__c_caret.append(c_caret_t_next)
 
         # Define possible actions
         actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]],
