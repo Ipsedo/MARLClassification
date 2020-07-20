@@ -70,7 +70,7 @@ class MultiAgent:
         # CPU vs GPU
         self.is_cuda = False
 
-    def new_img(self, batch_size: int) -> None:
+    def new_episode(self, batch_size: int) -> None:
         """
 
         :param batch_size:
@@ -96,9 +96,8 @@ class MultiAgent:
         self.msg = [th.zeros(self.__nb_agents, batch_size, self.__n_m,
                              device=th.device("cuda") if self.is_cuda else th.device("cpu"))]
 
-        self.__log_probas = [th.log(th.tensor([1. / 4.] * batch_size * self.__nb_agents,
-                                              device=th.device("cuda") if self.is_cuda else th.device("cpu"))
-                                    .view(self.__nb_agents, batch_size))]
+        self.__log_probas = [th.log(th.ones(self.__nb_agents, batch_size,
+                                            device=th.device("cuda") if self.is_cuda else th.device("cpu"))) * 1. / 4.]
 
         self.pos = th.randint(self.__size - self.__f, (self.__nb_agents, batch_size, 2),
                               device=th.device("cuda") if self.is_cuda else th.device("cpu"))
@@ -118,10 +117,12 @@ class MultiAgent:
         o_t = self.__obs(img, self.pos, self.__f)
 
         # Feature space
+        # CNN need (N, C, W, H) not (N1, ..., N18, C, W, H)
         b_t = self.__networks.map_obs(o_t.flatten(0, 1)).view(len(self), self.__batch_size, self.__n)
 
         # Get messages
         d_bar_t_tmp = self.__networks.decode_msg(self.msg[self.__t])
+        # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
         d_bar_t = ((d_bar_t_mean * self.__nb_agents) - d_bar_t_tmp) / (self.__nb_agents - 1)
 
@@ -161,8 +162,7 @@ class MultiAgent:
             .repeat(self.__nb_agents, self.__batch_size, 1, 1)
 
         # Get action probabilities
-        action_scores = self.__networks.policy(self.__h_caret[self.__t + 1].flatten(0, 1))\
-            .view(len(self), self.__batch_size, self.__action_size)
+        action_scores = self.__networks.policy(self.__h_caret[self.__t + 1])
 
         # If random walk : pick one action with uniform probability
         # Else : greedy policy
@@ -197,12 +197,6 @@ class MultiAgent:
                                 a_t_next, self.__f,
                                 self.__size).to(th.long)
 
-    def step_finished(self) -> None:
-        """
-
-        :return:
-        :rtype:
-        """
         self.__t += 1
 
     def predict(self) -> Tuple[th.Tensor, th.Tensor]:
@@ -215,6 +209,11 @@ class MultiAgent:
         return self.__networks.predict(self.__c[self.__t]), self.__log_probas[self.__t]
 
     def cuda(self) -> None:
+        """
+
+        :return:
+        :rtype:
+        """
         self.is_cuda = True
 
         # TODO pass model union to cuda here ? better real separation NNs wrapper and rl/ma agent

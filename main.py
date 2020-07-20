@@ -99,7 +99,7 @@ def test_agent_step():
 
     img = th.rand(batch_size, 28, 28, device=th.device("cuda"))
 
-    marl_m.new_img(batch_size)
+    marl_m.new_episode(batch_size)
 
     print("First step")
     print(marl_m.pos)
@@ -329,7 +329,7 @@ def train_mnist(nb_class: int, img_size: int,
     optim = th.optim.Adam(m.parameters(), lr=1e-3)
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
-    x_train, y_train = x_train[:10000], y_train[:10000]
+    x_train, y_train = x_train[:30000], y_train[:30000]
 
     nb_batch = ceil(x_train.size(0) / batch_size)
 
@@ -351,43 +351,43 @@ def train_mnist(nb_class: int, img_size: int,
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
-            losses = th.zeros(nr, len(marl_m), batch_size,
-                              device=th.device("cuda") if cuda else th.device("cpu"))
+            x, y = x_train[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
+                   y_train[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
 
-            for k in range(nr):
-                x, y = x_train[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
-                       y_train[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
+            # get predictions and probabilities
+            preds, log_probas = episode(marl_m, x, t, cuda, eps, nb_class)
 
-                # get predictions and probabilities
-                #preds, log_probas = episode(ag, x, t, cuda, eps, nb_class)
-                preds, log_probas = episode(marl_m, x, t, cuda, eps, nb_class)
+            # Class one hot encoding
+            y_eye = th.eye(nb_class, device=th.device("cuda") if cuda else th.device("cpu"))[y]\
+                .repeat(preds.size(0), 1, 1)
 
-                # Class one hot encoding
-                y_eye = th.eye(nb_class, device=th.device("cuda") if cuda else th.device("cpu"))[y]\
-                    .repeat(preds.size(0), 1, 1)
+            # SE Loss
+            r = -(preds - y_eye) ** 2
 
-                # SE Loss
-                r = -(preds - y_eye) ** 2
+            # Mean on one hot encoding
+            r = r.mean(dim=-1)
 
-                # Sum on one hot encoding
-                r = r.sum(dim=-1)
+            # Keep loss for future update
+            losses = log_probas * r.detach() + r
 
-                # Keep loss for future update
-                losses[k, :, :] = log_probas * r.detach() + r
+            eps *= eps_decay
 
-                eps *= eps_decay
+            # Losses mean on agents and batch
+            loss = -losses.mean()
 
-            # sum / nr -> mean all experiments
-            # sum / len(ag) -> mean all agent
-            # mean -> mean on batch
-            loss = -((losses.sum(dim=0) / nr).sum(dim=0) / len(marl_m)).mean()
-
+            # Reset gradient
             optim.zero_grad()
+
+            # Backward on compute graph
             loss.backward()
+
+            # Update weights
             optim.step()
 
+            # Update epoch loss sum
             sum_loss += loss.item()
 
+            # Update epoch gradient norm sum
             grad_norm_cnn.append(m.get_networks()[0].seq_lin[0].weight.grad.norm())
             grad_norm_pred.append(m.get_networks()[-1].seq_lin[0].weight.grad.norm())
 
@@ -533,9 +533,9 @@ def main() -> None:
                               help="Train NNs with CUDA")
     train_parser.add_argument("--nr", type=int, default=7,
                               help="Number of retry")
-    train_parser.add_argument("--eps", type=float, default=0.5, dest="eps",
+    train_parser.add_argument("--eps", type=float, default=0.7, dest="eps",
                               help="Epsilon value at training beginning")
-    train_parser.add_argument("--eps-decay", type=float, default=1.0 - 1e-4, dest="eps_decay",
+    train_parser.add_argument("--eps-decay", type=float, default=1.0 - 4e-5, dest="eps_decay",
                               help="Epsilon decay, update epsilon after each episode : "
                                    "eps = eps * eps_decay")
 

@@ -46,11 +46,10 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
         probas[i, :] = proba
         q[i, :, :] = pred"""
 
-    agents.new_img(img_batch.size(0))
+    agents.new_episode(img_batch.size(0))
 
     for t in range(max_it):
         agents.step(img_batch, eps)
-        agents.step_finished()
 
     q, probas = agents.predict()
 
@@ -76,14 +75,14 @@ def detailled_step(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     :rtype:
     """
 
-    agents.new_img(img_batch.size(0))
+    agents.new_episode(img_batch.size(0))
 
     pos = th.zeros(max_it, *agents.pos.size(), dtype=th.long)
 
     q = th.zeros(max_it, len(agents), img_batch.size(0), nb_class,
                  device=th.device("cuda") if cuda else th.device("cpu"))
 
-    probas = th.zeros(max_it, len(agents), img_batch.size(0),
+    all_probas = th.zeros(max_it, len(agents), img_batch.size(0),
                       device=th.device("cuda") if cuda else th.device("cpu"))
 
     for t in range(max_it):
@@ -92,9 +91,8 @@ def detailled_step(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
         pos[t, :, :, :] = agents.pos
 
         preds, probas = agents.predict()
+
         q[t, :, :] = preds
-        probas[t, :] = probas
+        all_probas[t, :, :] = probas
 
-        agents.step_finished()
-
-    return nn.functional.softmax(q, dim=-1), probas, pos
+    return nn.functional.softmax(q, dim=-1), all_probas, pos

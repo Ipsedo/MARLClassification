@@ -13,10 +13,18 @@ class BeliefUnit(nn.Module):
         self.lstm = nn.LSTMCell(self.__n * 3, self.__n)
 
     def forward(self, h_t, c_t, u_t):
-        # h_t.size() == (1, nb_agent, batch_size, hidden)
-        #assert u_t.size(1) == 1, "Only one time iteration is allowed"
-
-        #h_t, c_t = h_t[:u_t.size(0), :], c_t[:u_t.size(0), :]
+        """
+        TODO
+        *
+        :param h_t:
+        :type h_t:
+        :param c_t:
+        :type c_t:
+        :param u_t:
+        :type u_t:
+        :return:
+        :rtype:
+        """
 
         nb_ag, batch_size, hidden_size = h_t.size()
 
@@ -42,9 +50,18 @@ class ActionUnit(nn.Module):
         self.lstm = nn.LSTMCell(self.__n * 3, self.__n)
 
     def forward(self, h_caret_t, c_caret_t, u_t):
-        #assert u_t.size(1) == 1, "Only one time iteration is allowed"
+        """
+        TODO
 
-        #h_caret_t, c_caret_t = h_caret_t[:u_t.size(0), :], c_caret_t[:u_t.size(0), :]
+        :param h_caret_t:
+        :type h_caret_t:
+        :param c_caret_t:
+        :type c_caret_t:
+        :param u_t:
+        :type u_t:
+        :return:
+        :rtype:
+        """
 
         nb_ag, batch_size, hidden_size = h_caret_t.size()
 

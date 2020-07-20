@@ -21,7 +21,7 @@ class Policy(nn.Module):
         if len(h_caret_t_next.size()) == 1:
             h_caret_t_next = h_caret_t_next.unsqueeze(0)
 
-        assert len(h_caret_t_next.size()) == 2,\
-            "action unit lstm hidden state must be 2-D tensor (curr = {})".format(len(h_caret_t_next.size()))
+        assert len(h_caret_t_next.size()) == 3,\
+            f"action unit lstm hidden state must be 2-D tensor (nb_ag, batch_size, ft), curr = {h_caret_t_next.size()}"
 
         return self.seq_lin(h_caret_t_next)
