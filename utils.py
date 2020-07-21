@@ -50,8 +50,9 @@ def viz(agents: MultiAgent, one_img: th.Tensor,
     :rtype:
     """
 
-    preds, _, pos = detailed_episode(agents, one_img.unsqueeze(0).cuda(),
-                                     max_it, True, 10)
+    preds, log_probas, pos = \
+        detailed_episode(agents, one_img.unsqueeze(0).cuda(),
+                         max_it, True, 10)
 
     img_idx = 0
 
@@ -72,6 +73,8 @@ def viz(agents: MultiAgent, one_img: th.Tensor,
         plt.imshow(curr_img, cmap=color_map)
         prediction = preds[t].mean(dim=0)[img_idx].argmax(dim=-1)
         pred_proba = preds[t].mean(dim=0)[img_idx][prediction]
-        plt.title(f"Step = {t}, step_pred_class = {prediction} ({pred_proba * 100.:.1f}%)")
+        path_probas = th.exp(log_probas[t]).mean(dim=0)[img_idx]
+        plt.title(f"Step = {t} - action {path_probas * 100:.1f}%, "
+                  f"pred = {prediction} ({pred_proba * 100.:.1f}%)")
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
