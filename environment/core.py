@@ -36,8 +36,8 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     return nn.functional.softmax(q, dim=-1), probas
 
 
-def detailled_step(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
-                   cuda: bool, nb_class: int) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
+                     cuda: bool, nb_class: int) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """
     TODO
 
