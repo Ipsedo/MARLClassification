@@ -1,6 +1,12 @@
 import torch.nn as nn
+import torch as th
 
 
+############################
+# Features extraction stuff
+############################
+
+# MNIST Stuff
 class TestCNN(nn.Module):
     def __init__(self, n: int) -> None:
         super().__init__()
@@ -26,7 +32,7 @@ class TestCNN(nn.Module):
         return self.seq_lin(out)
 
 
-class CNN_MNIST(nn.Module):
+class MNISTCnn(nn.Module):
     """
     b_θ5 : R^f*f -> R^n
     """
@@ -77,6 +83,35 @@ class CNN_MNIST_2(nn.Module):
         return self.seq_lin(out)
 
 
+# RESISC-45 Stuff
+
+class RESISC45Cnn(nn.Module):
+    def __init__(self, f: int = 128, n: int = 1024) -> None:
+        super().__init__()
+
+        self.seq_conv = nn.Sequential(
+            nn.Conv2d(3, 12, kernel_size=5, padding=2),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(12, 24, kernel_size=5, padding=2),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU(),
+            nn.Conv2d(24, 32, kernel_size=5, stride=2, padding=2),
+            nn.MaxPool2d(2, 2),
+            nn.ReLU()
+        )
+
+        self.lin = nn.Linear(32 * (f // 2 // 2 // 2 // 2) ** 2, n)
+
+    def forward(self, o_t: th.Tensor) -> th.Tensor:
+        out = self.seq_conv(o_t)
+        out = out.flatten(1, -1)
+        out = self.lin(out)
+        return out
+
+############################
+# State to features stuff
+############################
 class StateToFeatures(nn.Module):
     """
     λ_θ7 : R^d -> R^n
