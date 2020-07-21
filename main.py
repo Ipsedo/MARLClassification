@@ -20,8 +20,6 @@ from random import randint
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from typing import AnyStr
-
 from os import mkdir
 from os.path import join, exists, isdir
 
@@ -255,7 +253,7 @@ def test_mnist():
 # Train - Main
 ######################
 
-def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr) -> None:
+def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: str) -> None:
     """
 
     :param ma_options:
