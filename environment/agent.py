@@ -252,7 +252,7 @@ class MultiAgent:
     def params_to_json(self, out_json_path: AnyStr) -> None:
         with open(out_json_path, mode="w") as f_json:
 
-            json_raw_txt = "{" \
+            json_raw_txt = "{\n" \
                            "    \"nb_agent\": " + str(self.__nb_agents) + ",\n" \
                            "    \"hidden_size\": " + str(self.__n) + ",\n" \
                            "    \"window_size\": " + str(self.__f) + ",\n" \
