@@ -264,21 +264,27 @@ class MultiAgent:
             f_json.write(json_raw_txt)
             f_json.close()
 
-    def load_from(self, json_file: AnyStr, model_wrapper: ModelsWrapper,
+    @classmethod
+    def load_from(cls, json_file: AnyStr, model_wrapper: ModelsWrapper,
                   obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
-                  trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> None:
+                  trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> 'MultiAgent':
 
         with open(json_file, "r") as f_json:
             j_obj = json.load(f_json)
 
-            self.__nb_agents = j_obj["nb_agent"]
-            self.__n = j_obj["hidden_size"]
-            self.__f = j_obj["window_size"]
-            self.__n_m = j_obj["hidden_size_msg"]
-            self.__size = j_obj["size"]
-            self.__nb_action = j_obj["nb_action"]
+            try:
+                nb_agents = j_obj["nb_agent"]
+                n = j_obj["hidden_size"]
+                f = j_obj["window_size"]
+                n_m = j_obj["hidden_size_msg"]
+                size = j_obj["size"]
+                nb_action = j_obj["nb_action"]
 
-            self.__networks = model_wrapper
-            self.__obs = obs
-            self.__trans = trans
+                obs = obs
+                trans = trans
+
+                return cls(nb_agents, model_wrapper, n, f, n_m, size, nb_action, obs, trans)
+            except Exception as e:
+                print(f"Exception during loading MultiAgent from file !\nCatched Exception :")
+                raise e
 
