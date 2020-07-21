@@ -1,12 +1,14 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
 from environment.agent import MultiAgent
-from environment.core import episode, detailled_step
+from environment.core import episode, detailed_episode
 
-from networks.models import ModelsWrapper
+from networks.models import MNISTModelWrapper
 from networks.ft_extractor import TestCNN
 
 from data.mnist import load_mnist
+
+from utils import RLOptions, MAOptions, viz
 
 import torch as th
 from torch.nn import MSELoss
@@ -18,7 +20,7 @@ from random import randint
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from typing import NamedTuple, AnyStr, Optional
+from typing import AnyStr
 
 from os import mkdir
 from os.path import join, exists, isdir
@@ -90,11 +92,11 @@ def test_agent_step():
     n = 16
     f = 5
     n_m = 8
-    d = 2
+    # d = 2
     action_size = 2
     batch_size = 1
 
-    m = ModelsWrapper(n, f, n_m, d, action_size, nb_class)
+    m = MNISTModelWrapper(f, n, n_m)
 
     marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, obs_MNIST, trans_MNIST)
 
@@ -140,7 +142,7 @@ def test_core_step():
 
     batch_size = 2
 
-    m = ModelsWrapper(n, f, n_m, d, action_size, nb_class)
+    m = MNISTModelWrapper(f, n, n_m)
     m.cuda()
     marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, obs_MNIST, trans_MNIST)
     marl_m.cuda()
@@ -253,26 +255,6 @@ def test_mnist():
 # Train - Main
 ######################
 
-MAOptions = NamedTuple("MAOption",
-                       [("nb_agent", int),
-                        ("dim", int),
-                        ("window_size", int),
-                        ("img_size", int),
-                        ("nb_class", int),
-                        ("nb_action", int)])
-
-RLOptions = NamedTuple("RLOptions",
-                       [("eps", float),
-                        ("eps_decay", float),
-                        ("nb_step", int),
-                        ("nb_epoch", int),
-                        ("learning_rate", float),
-                        ("hidden_size", int),
-                        ("hidden_size_msg", int),
-                        ("batch_size", int),
-                        ("cuda", bool)])
-
-
 def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr) -> None:
     """
 
@@ -292,12 +274,9 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
     if exists(join(output_dir, model_dir)) and not isdir(join(output_dir, model_dir)):
         raise Exception(f"\"{join(output_dir, model_dir)}\" is not a directory.")
 
-    nn_models = ModelsWrapper(rl_option.hidden_size,
-                              ma_options.window_size,
-                              rl_option.hidden_size_msg,
-                              ma_options.dim,
-                              ma_options.nb_action,
-                              ma_options.nb_class)
+    nn_models = MNISTModelWrapper(ma_options.window_size,
+                                  rl_option.hidden_size,
+                                  rl_option.hidden_size_msg)
 
     marl_m = MultiAgent(ma_options.nb_agent,
                         nn_models,
@@ -464,52 +443,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
 
     viz(marl_m, x_test[randint(0, x_test.size(0) - 1)],
         rl_option.nb_step, ma_options.window_size,
-        output_dir)
-
-
-def viz(agents: MultiAgent, one_img: th.Tensor,
-        max_it: int, f: int, output_dir: AnyStr) -> None:
-    """
-
-    :param agents:
-    :type agents:
-    :param one_img:
-    :type one_img:
-    :param max_it:
-    :type max_it:
-    :param f:
-    :type f:
-    :param output_dir:
-    :type output_dir:
-    :return:
-    :rtype:
-    """
-
-    preds, _, pos = detailled_step(agents, one_img.unsqueeze(0).cuda(),
-                                   max_it, True, 10)
-
-    img_idx = 0
-
-    plt.figure()
-    plt.imshow(one_img, cmap='gray_r')
-    plt.savefig(join(output_dir, f"pred_original.png"))
-
-    curr_img = th.zeros(28, 28) - 1
-    for t in range(max_it):
-
-        for i in range(len(agents)):
-            curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                     pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f] = \
-                one_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                        pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f]
-
-        plt.figure()
-        plt.imshow(curr_img, cmap='gray_r')
-        prediction = preds[t].mean(dim=0)[img_idx].argmax(dim=-1)
-        pred_proba = preds[t].mean(dim=0)[img_idx][prediction]
-        plt.title(f"Step = {t}, step_pred_class = {prediction} ({pred_proba * 100.:.1f}%)")
-
-        plt.savefig(join(output_dir, f"pred_step_{t}.png"))
+        output_dir, color_map="gray_r")
 
 
 #######################
