@@ -29,13 +29,13 @@ def load_mnist() ->\
 
     f.close()
 
-    x_train = th.from_numpy(train_set[0]).view(-1, 28, 28)
+    x_train = th.from_numpy(train_set[0]).view(-1, 1, 28, 28)
     y_train = th.from_numpy(train_set[1])
 
-    x_valid = th.from_numpy(valid_set[0]).view(-1, 28, 28)
+    x_valid = th.from_numpy(valid_set[0]).view(-1, 1, 28, 28)
     y_valid = th.from_numpy(valid_set[1])
 
-    x_test = th.from_numpy(test_set[0]).view(-1, 28, 28)
+    x_test = th.from_numpy(test_set[0]).view(-1, 1, 28, 28)
     y_test = th.from_numpy(test_set[1])
 
     return (x_train, y_train), (x_valid, y_valid), (x_test, y_test)
