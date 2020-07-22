@@ -27,7 +27,7 @@ class ModelsWrapper(nn.Module):
                  nb_action: int, nb_class: int) -> None:
         super().__init__()
 
-        self.__networks_dict = nn.ModuleDict({
+        self._networks_dict = nn.ModuleDict({
             self.map_obs: map_obs_module,
             self.map_pos: StateToFeatures(d, n),
             self.decode_msg: MessageReceiver(n_m, n),
@@ -39,7 +39,7 @@ class ModelsWrapper(nn.Module):
         })
 
     def forward(self, op: str, *args):
-        return self.__networks_dict[op](*args)
+        return self._networks_dict[op](*args)
 
 
 #####################
@@ -48,6 +48,17 @@ class ModelsWrapper(nn.Module):
 class MNISTModelWrapper(ModelsWrapper):
     def __init__(self, f: int, n: int, n_m: int) -> None:
         super().__init__(MNISTCnn(f, n), n, n_m, 2, 4, 10)
+
+
+class MNISTModelsWrapperMsgLess(MNISTModelWrapper):
+    def __init__(self, f: int, n: int, n_m: int) -> None:
+        super().__init__(f, n, n_m)
+
+        for p in self._networks_dict[self.decode_msg].parameters():
+            p.requires_grad = False
+
+        for p in self._networks_dict[self.evaluate_msg].parameters():
+            p.requires_grad = False
 
 
 #####################
