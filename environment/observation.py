@@ -1,7 +1,7 @@
 import torch as th
 
 
-def obs_MNIST(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
+def obs_img(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     """
     TODO
 

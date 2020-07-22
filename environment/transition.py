@@ -1,7 +1,7 @@
 import torch as th
 
 
-def trans_MNIST(pos: th.Tensor, a_t_next: th.Tensor, f: int, img_size: int) -> th.Tensor:
+def trans_img(pos: th.Tensor, a_t_next: th.Tensor, f: int, img_size: int) -> th.Tensor:
     """
 
     Check if MNIST transition is correct.
