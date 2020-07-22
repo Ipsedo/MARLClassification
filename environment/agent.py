@@ -128,7 +128,7 @@ class MultiAgent:
 
         # Feature space
         # CNN need (N, C, W, H) not (N1, ..., N18, C, W, H)
-        b_t = self.__networks(self.__networks.map_obs, o_t.flatten(0, 1))\
+        b_t = self.__networks(self.__networks.map_obs, o_t.flatten(0, -4))\
             .view(len(self), self.__batch_size, self.__n)
 
         # Get messages
@@ -285,6 +285,6 @@ class MultiAgent:
 
                 return cls(nb_agents, model_wrapper, n, f, n_m, size, nb_action, obs, trans)
             except Exception as e:
-                print(f"Exception during loading MultiAgent from file !\nCatched Exception :")
+                print(f"Exception during loading MultiAgent from file !\nRaised Exception :")
                 raise e
 
