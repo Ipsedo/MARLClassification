@@ -54,7 +54,7 @@ class MNISTCnn(nn.Module):
         )
 
     def forward(self, o_t):
-        out = self.seq_conv(o_t.unsqueeze(1))
+        out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
         return self.seq_lin(out)
 
@@ -78,7 +78,7 @@ class CNN_MNIST_2(nn.Module):
         )
 
     def forward(self, o_t):
-        out = self.seq_conv(o_t.unsqueeze(1))
+        out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
         return self.seq_lin(out)
 
