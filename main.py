@@ -1,14 +1,14 @@
 from environment.observation import obs_MNIST
 from environment.transition import trans_MNIST
 from environment.agent import MultiAgent
-from environment.core import episode, detailed_episode
+from environment.core import episode
 
 from networks.models import MNISTModelWrapper
 from networks.ft_extractor import TestCNN
 
 from data.mnist import load_mnist
 
-from utils import RLOptions, MAOptions, viz
+from utils import RLOptions, MAOptions, TrainOptions, TestOptions, viz
 
 import torch as th
 from torch.nn import MSELoss
@@ -63,12 +63,19 @@ def test_mnist_obs():
     :return:
     :rtype:
     """
-    img = th.arange(0, 28).view(1, 1, 28).repeat(2, 28, 1).cuda()
+    img = th.arange(0, 28).view(1, 1, 28).repeat(2, 28, 1).unsqueeze(1).cuda()
 
-    pos = th.tensor([[[0, 0]], [[0, 4]], [[4, 0]], [[4, 4]], [[0 + 1, 0 + 1]], [[0 + 1, 4 + 1]], [[4 + 1, 0 + 1]], [[4 + 1, 4 + 1]]]).cuda()
+    pos = th.tensor([[[0, 0], [0, 0]],
+                     [[0, 4], [0, 4]],
+                     [[4, 0], [4, 0]],
+                     [[4, 4], [4, 4]],
+                     [[0 + 1, 0 + 1], [0 + 1, 0 + 1]],
+                     [[0 + 1, 4 + 1], [0 + 1, 4 + 1]],
+                     [[4 + 1, 0 + 1], [4 + 1, 0 + 1]],
+                     [[4 + 1, 4 + 1], [4 + 1, 4 + 1]]]).cuda()
 
     print(obs_MNIST(img, pos, 6))
-    print(obs_MNIST(img.permute(0, 2, 1), pos, 6))
+    print(obs_MNIST(img.permute(0, 1, 3, 2), pos, 6))
     print()
 
     for p in [[[0, 0]], [[0, 27]], [[27, 0]], [[27, 27]]]:
@@ -255,7 +262,7 @@ def test_mnist():
 # Train - Main
 ######################
 
-def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr) -> None:
+def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptions) -> None:
     """
 
     :param ma_options:
@@ -268,7 +275,9 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
     :rtype:
     """
 
+    output_dir = train_options.output_model_path
     model_dir = "models"
+
     if not exists(join(output_dir, model_dir)):
         mkdir(join(output_dir, model_dir))
     if exists(join(output_dir, model_dir)) and not isdir(join(output_dir, model_dir)):
@@ -296,20 +305,22 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
         marl_m.cuda()
 
     # for RL agent models parameters
-    optim = th.optim.Adam(nn_models.parameters(), lr=rl_option.learning_rate)
+    optim = th.optim.Adam(nn_models.parameters(), lr=train_options.learning_rate)
 
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
 
-    nb_batch = ceil(x_train.size(0) / rl_option.batch_size)
+
+    batch_size = train_options.batch_size
+    nb_batch = ceil(x_train.size(0) / batch_size)
 
     loss_v = []
     prec_epoch = []
     recall_epoch = []
 
-    eps = rl_option.eps
-    eps_decay = rl_option.eps_decay
+    eps = train_options.eps
+    eps_decay = train_options.eps_decay
 
-    for e in range(rl_option.nb_epoch):
+    for e in range(train_options.nb_epoch):
         sum_loss = 0
 
         nn_models.train()
@@ -318,8 +329,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
 
         tqdm_bar = tqdm(range(nb_batch))
         for i in tqdm_bar:
-            i_min = i * rl_option.batch_size
-            i_max = (i + 1) * rl_option.batch_size
+            i_min = i * batch_size
+            i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
             x, y = x_train[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
@@ -384,7 +395,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
 
         sum_loss /= nb_batch
 
-        nb_batch_valid = ceil(x_valid.size(0) / rl_option.batch_size)
+        nb_batch_valid = ceil(x_valid.size(0) / batch_size)
 
         nn_models.eval()
         conf_meter.reset()
@@ -392,8 +403,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
         with th.no_grad():
             tqdm_bar = tqdm(range(nb_batch_valid))
             for i in tqdm_bar:
-                i_min = i * rl_option.batch_size
-                i_max = (i + 1) * rl_option.batch_size
+                i_min = i * batch_size
+                i_max = (i + 1) * batch_size
                 i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
 
                 x, y = x_valid[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
@@ -443,7 +454,14 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr)
 
     viz(marl_m, x_test[randint(0, x_test.size(0) - 1)],
         rl_option.nb_step, ma_options.window_size,
-        output_dir, color_map="gray_r")
+        output_dir)
+
+#######################
+# Test - Main
+#######################
+
+def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions) -> None:
+    pass
 
 
 #######################
@@ -460,14 +478,36 @@ def main() -> None:
     parser = argparse.ArgumentParser("Multi agent reinforcement learning "
                                      "for image classification - Main")
 
+    # root subparser
     sub_parser = parser.add_subparsers()
-    sub_parser.dest = "mode"
+    sub_parser.dest = "prgm"
     sub_parser.required = True
+    sub_parser.nargs = 1
 
-    unit_test_parser = sub_parser.add_parser("unit")
-    train_parser = sub_parser.add_parser("train")
-    test_parser = sub_parser.add_parser("infer")
-    test_cnn_parser = sub_parser.add_parser("cnn")
+    # prgm parser
+    main_parser = sub_parser.add_parser("main")
+    aux_parser = sub_parser.add_parser("aux")
+
+    # prgm subparsers creation
+    # main subparser
+    choice_main_subparser = main_parser.add_subparsers()
+    choice_main_subparser.dest = "main_choice"
+    choice_main_subparser.required = True
+    choice_main_subparser.nargs = 1
+
+    # aux subparser
+    choice_aux_subparser = aux_parser.add_subparsers()
+    choice_aux_subparser.default = "unit"
+    choice_aux_subparser.dest = "aux_choice"
+    choice_aux_subparser.nargs = 1
+
+    # main parsers
+    train_parser = choice_main_subparser.add_parser("train")
+    test_parser = choice_main_subparser.add_parser("infer")
+
+    # aux parsers
+    unit_test_parser = choice_aux_subparser.add_parser("unit")
+    test_cnn_parser = choice_aux_subparser.add_parser("cnn")
 
     ##################
     # Unit test args
@@ -477,46 +517,50 @@ def main() -> None:
                                   default=unit_test_choices[0], dest="test_id")
 
     ##################
+    # Main args
+    ##################
+
+    # Algorithm arguments
+    main_parser.add_argument("-a", "--agents", type=int, default=3, dest="agents",
+                              help="Number of agents")
+    main_parser.add_argument("-d", "--dim", type=int, default=2,
+                              help="State dimension (eg. 2 -> move on a plan)")
+    main_parser.add_argument("--f", type=int, default=7)
+
+    # Image / data set arguments
+    main_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class",
+                              help="Image dataset number of class")
+    main_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action",
+                              help="Number of discrete actions")
+    main_parser.add_argument("--img-size", type=int, default=28, dest="img_size",
+                              help="Image side size, assume all image are squared")
+
+    # RL Options
+    main_parser.add_argument("--step", type=int, default=7,
+                              help="Step number of RL episode")
+    main_parser.add_argument("--n", type=int, default=8,
+                              help="Hidden size for NNs")
+    main_parser.add_argument("--nm", type=int, default=2, dest="n_m",
+                              help="Message size for NNs")
+    main_parser.add_argument("--cuda", action="store_true", dest="cuda",
+                              help="Train NNs with CUDA")
+
+    ##################
     # Train args
     ##################
 
-    # MNIST default params
+    # Training arguments
     train_parser.add_argument("-o", "--output-dir", type=str, required=True, dest="output_dir",
                               help="The output dir containing res and models per epoch. "
                                    "Created if needed.")
-
-    # Image / data set arguments
-    train_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class",
-                              help="Image dataset number of class")
-    train_parser.add_argument("--img-size", type=int, default=28, dest="img_size",
-                              help="Image side size, assume all image are squared")
-
-    # Algorithm arguments
-    train_parser.add_argument("-a", "--agents", type=int, default=3, dest="agents",
-                              help="Number of agents")
-    train_parser.add_argument("--n", type=int, default=8)
-    train_parser.add_argument("--f", type=int, default=7)
-    train_parser.add_argument("--nm", type=int, default=2, dest="n_m")
-
-    # Environment arguments
-    train_parser.add_argument("-d", "--dim", type=int, default=2,
-                              help="State dimension (eg. 2 -> move on a plan)")
-    train_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action",
-                              help="Number of discrete actions")
-
-    # Training arguments
     train_parser.add_argument("--lr", "--learning-rate", type=float, default=1e-3, dest="learning_rate",
                               help="")
     train_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size",
                               help="Image batch size for training and evaluation")
-    train_parser.add_argument("--step", type=int, default=7,
-                              help="Step number of RL episode")
     train_parser.add_argument("--nb-epoch", type=int, default=10, dest="nb_epoch",
                               help="Number of training epochs")
-    train_parser.add_argument("--cuda", action="store_true", dest="cuda",
-                              help="Train NNs with CUDA")
     train_parser.add_argument("--nr", type=int, default=7,
-                              help="Number of retry")
+                              help="Number of retry - unused")
     train_parser.add_argument("--eps", type=float, default=0.7, dest="eps",
                               help="Epsilon value at training beginning")
     train_parser.add_argument("--eps-decay", type=float, default=1.0 - 4e-5, dest="eps_decay",
@@ -527,7 +571,14 @@ def main() -> None:
     # Infer args
     ##################
 
-    # TODO
+    test_parser.add_argument("--json-path", type=str, required=True, dest="json_path",
+                             help="JSON multi agent metadata path")
+    test_parser.add_argument("--state-dict", type=str, required=True, dest="state_dict",
+                             help="networks.models.ModelsWrapper PyTorch state dict file")
+    test_parser.add_argument("-o", "--output-image-dir", type=str, required=True, dest="output_image_dir",
+                             help="The directory where the model outputs will be saved. Created if needed")
+    test_parser.add_argument("--nb-test-img", type=str, default=10, dest="nb_test_img",
+                             help="The number of test image to infer and output")
 
     ##################
     # CNN test args
@@ -542,7 +593,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Unit tests main
-    if args.mode == "unit":
+    if args.prgm == "aux" and args.aux_choice == "unit":
         # Choose between one of basic test
         if args.test_id == "transition":
             test_mnist_transition()
@@ -556,27 +607,37 @@ def main() -> None:
             parser.error(f"Unrecognized unit test ID : "
                          f"\"{args.test_id}\", choices = {unit_test_choices}.")
     # Train main
-    elif args.mode == "train":
-        rl_options = RLOptions(args.eps, args.eps_decay,
-                               args.step, args.nb_epoch, args.learning_rate,
-                               args.n, args.n_m,
-                               args.batch_size, args.cuda)
+    elif args.prgm == "main" and args.main_choice == "train":
+        rl_options = RLOptions(args.step, args.n, args.n_m, args.cuda)
 
         ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
                                args.nb_class, args.nb_action)
+
+        train_options = TrainOptions(args.eps, args.eps_decay,
+                                     args.nb_epoch, args.learning_rate,
+                                     args.batch_size, args.output_dir)
 
         if not exists(args.output_dir):
             mkdir(args.output_dir)
         if exists(args.output_dir) and not isdir(args.output_dir):
             raise Exception(f"\"{args.output_dir}\" is not a directory.")
 
-        train_mnist(ma_options, rl_options, args.output_dir)
+        train_mnist(ma_options, rl_options, train_options)
 
     # Test main
-    elif args.mode == "test":
-        pass
+    elif args.prgm == "main" and args.main_choice == "test":
+        rl_options = RLOptions(args.step, args.n, args.n_m, args.cuda)
+
+        ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
+                               args.nb_class, args.nb_action)
+
+        test_options = TestOptions(args.json_path, args.state_dict,
+                                   args.output_image_dir, args.nb_img_test)
+
+        test(ma_options, rl_options, test_options)
+
     # CNN test main
-    elif args.mode == "cnn":
+    elif args.prgm == "aux" and args.mode == "cnn":
         print(test_mnist())
         pass
     else:
