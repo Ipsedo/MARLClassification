@@ -20,8 +20,6 @@ from random import randint
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from typing import AnyStr
-
 from os import mkdir
 from os.path import join, exists, isdir
 

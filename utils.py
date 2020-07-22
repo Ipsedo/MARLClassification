@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from os.path import join
 
-from typing import NamedTuple, AnyStr, Optional
+from typing import NamedTuple
 
 MAOptions = NamedTuple("MAOption",
                        [("nb_agent", int),
@@ -39,7 +39,7 @@ TestOptions = NamedTuple("TestOptions",
 
 
 def viz(agents: MultiAgent, one_img: th.Tensor,
-        max_it: int, f: int, output_dir: AnyStr) -> None:
+        max_it: int, f: int, output_dir: str) -> None:
     """
 
     :param agents:
