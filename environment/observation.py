@@ -36,9 +36,6 @@ def obs_MNIST(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     values_y = th.arange(0, h, device=pos.device)
     mask_y = (pos_min[:, :, 1, None] <= values_y.view(1, 1, h)) & (values_y.view(1, 1, h) < pos_max[:, :, 1, None])
 
-    mask_x = mask_x.unsqueeze(-2).repeat(1, 1, w, 1)
-    mask_y = mask_y.unsqueeze(-2).repeat(1, 1, h, 1).permute(0, 1, 3, 2)
-
-    mask = mask_x & mask_y
+    mask = mask_x.unsqueeze(-2) & mask_y.unsqueeze(-1)
 
     return img.unsqueeze(0).masked_select(mask.unsqueeze(-3)).view(nb_a, b_img, c, f, f)
