@@ -1,7 +1,7 @@
 import torch as th
 from networks.models import ModelsWrapper
 
-from typing import Callable, Tuple, AnyStr
+from typing import Callable, Tuple
 
 import json
 
@@ -249,7 +249,7 @@ class MultiAgent:
         """
         return self.__nb_agents
 
-    def params_to_json(self, out_json_path: AnyStr) -> None:
+    def params_to_json(self, out_json_path: str) -> None:
         with open(out_json_path, mode="w") as f_json:
 
             json_raw_txt = "{\n" \
@@ -265,7 +265,7 @@ class MultiAgent:
             f_json.close()
 
     @classmethod
-    def load_from(cls, json_file: AnyStr, model_wrapper: ModelsWrapper,
+    def load_from(cls, json_file: str, model_wrapper: ModelsWrapper,
                   obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
                   trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> 'MultiAgent':
 

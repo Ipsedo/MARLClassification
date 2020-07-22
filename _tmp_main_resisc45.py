@@ -9,8 +9,6 @@ from torchnet.meter import ConfusionMeter
 from os import mkdir
 from os.path import join, exists, isdir
 
-from typing import AnyStr
-
 from math import ceil
 from random import randint
 
@@ -21,7 +19,7 @@ from tqdm import tqdm
 
 # TODO transition, observation and data loading
 # TODO tester genericité du code x)
-def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: AnyStr) -> None:
+def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: str) -> None:
     """
 
     :param ma_options:
