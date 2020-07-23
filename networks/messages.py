@@ -58,8 +58,8 @@ class DummyMessageSender(nn.Module):
         self.__n = n
         self.__n_m = n_m
 
-        self.register_buffer("w", th.rand(n, n_m, requires_grad=False))
-        self.register_buffer("b", th.rand(1, n_m, requires_grad=False))
+        self.register_buffer("w", th.rand(n, n_m, requires_grad=False) * 2. - 1.)
+        self.register_buffer("b", th.rand(1, n_m, requires_grad=False) * 2 - 1.)
 
     def forward(self, h_t):
         return th.matmul(h_t, self.w) + self.b
@@ -75,8 +75,8 @@ class DummyMessageReceiver(nn.Module):
         self.__n = n
         self.__n_m = n_m
 
-        self.register_buffer("w", th.rand(n_m, n, requires_grad=False))
-        self.register_buffer("b", th.rand(1, n, requires_grad=False))
+        self.register_buffer("w", th.rand(n_m, n, requires_grad=False) * 2. - 1.)
+        self.register_buffer("b", th.rand(1, n, requires_grad=False) * 2 - 1.)
 
     def forward(self, h_t):
         return th.matmul(h_t, self.w) + self.b
