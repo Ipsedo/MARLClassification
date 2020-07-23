@@ -23,6 +23,8 @@ from tqdm import tqdm
 from os import mkdir
 from os.path import join, exists, isdir
 
+import sys
+
 import argparse
 
 
@@ -274,6 +276,12 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     """
 
     output_dir = train_options.output_model_path
+
+    with open(join(output_dir, "args.txt"), "w") as args_file:
+        args_str = " ".join([a for a in sys.argv])
+        args_file.write(args_str + "\n")
+        args_file.close()
+
     model_dir = "models"
 
     if not exists(join(output_dir, model_dir)):
@@ -480,7 +488,6 @@ def main() -> None:
     sub_parser = parser.add_subparsers()
     sub_parser.dest = "prgm"
     sub_parser.required = True
-    sub_parser.nargs = 1
 
     # prgm parser
     main_parser = sub_parser.add_parser("main")
@@ -491,13 +498,11 @@ def main() -> None:
     choice_main_subparser = main_parser.add_subparsers()
     choice_main_subparser.dest = "main_choice"
     choice_main_subparser.required = True
-    choice_main_subparser.nargs = 1
 
     # aux subparser
     choice_aux_subparser = aux_parser.add_subparsers()
     choice_aux_subparser.default = "unit"
     choice_aux_subparser.dest = "aux_choice"
-    choice_aux_subparser.nargs = 1
 
     # main parsers
     train_parser = choice_main_subparser.add_parser("train")
