@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if ! [[ -d "./donwloaded" ]]; then
+if ! [[ -d "./downloaded" ]]; then
     mkdir downloaded
 fi
 cd downloaded
