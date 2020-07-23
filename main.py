@@ -291,12 +291,12 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     if exists(join(output_dir, model_dir)) and not isdir(join(output_dir, model_dir)):
         raise Exception(f"\"{join(output_dir, model_dir)}\" is not a directory.")
 
-    """nn_models = MNISTModelWrapper(ma_options.window_size,
-                                  rl_option.hidden_size,
-                                  rl_option.hidden_size_msg)"""
-    nn_models = MNISTModelsWrapperMsgLess(ma_options.window_size,
+    nn_models = MNISTModelWrapper(ma_options.window_size,
                                   rl_option.hidden_size,
                                   rl_option.hidden_size_msg)
+    """nn_models = MNISTModelsWrapperMsgLess(ma_options.window_size,
+                                  rl_option.hidden_size,
+                                  rl_option.hidden_size_msg)"""
 
     marl_m = MultiAgent(ma_options.nb_agent,
                         nn_models,
