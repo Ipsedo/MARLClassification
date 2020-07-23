@@ -1,5 +1,5 @@
 from networks.ft_extractor import MNISTCnn, RESISC45Cnn, StateToFeatures
-from networks.messages import MessageReceiver, MessageSender
+from networks.messages import MessageReceiver, MessageSender, DummyMessageReceiver, DummyMessageSender
 from networks.recurrents import BeliefUnit, ActionUnit
 from networks.policy import Policy
 from networks.prediction import Prediction
@@ -54,11 +54,15 @@ class MNISTModelsWrapperMsgLess(MNISTModelWrapper):
     def __init__(self, f: int, n: int, n_m: int) -> None:
         super().__init__(f, n, n_m)
 
-        for p in self._networks_dict[self.decode_msg].parameters():
+        """for p in self._networks_dict[self.decode_msg].parameters():
             p.requires_grad = False
 
         for p in self._networks_dict[self.evaluate_msg].parameters():
-            p.requires_grad = False
+            p.requires_grad = False"""
+        self._networks_dict.update({
+            self.decode_msg: DummyMessageReceiver(n, n_m),
+            self.evaluate_msg: DummyMessageSender(n, n_m)
+        })
 
 
 #####################

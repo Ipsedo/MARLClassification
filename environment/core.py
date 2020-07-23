@@ -5,8 +5,8 @@ from .agent import MultiAgent
 from typing import Tuple
 
 
-def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
-            cuda: bool, eps: float, nb_class: int) -> Tuple[th.Tensor, th.Tensor]:
+def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int, eps: float) -> \
+        Tuple[th.Tensor, th.Tensor]:
     """
     TODO
 
@@ -60,10 +60,10 @@ def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     pos = th.zeros(max_it, *agents.pos.size(), dtype=th.long)
 
     q = th.zeros(max_it, len(agents), img_batch.size(0), nb_class,
-                 device=th.device("cuda") if cuda else th.device("cpu"))
+                 device=img_batch.device)
 
     all_probas = th.zeros(max_it, len(agents), img_batch.size(0),
-                      device=th.device("cuda") if cuda else th.device("cpu"))
+                          device=img_batch.device)
 
     for t in range(max_it):
         agents.step(img_batch, 0.)

@@ -68,7 +68,8 @@ class MultiAgent:
         self.__log_probas = None
 
         # CPU vs GPU
-        self.is_cuda = False
+        self.__is_cuda = False
+        self.__device_str = "cpu"
 
     def new_episode(self, batch_size: int) -> None:
         """
@@ -84,33 +85,26 @@ class MultiAgent:
         self.__t = 0
 
         self.__h = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                             device=th.device("cuda")
-                             if self.is_cuda else th.device("cpu"))]
+                             device=th.device(self.__device_str))]
         self.__c = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                             device=th.device("cuda")
-                             if self.is_cuda else th.device("cpu"))]
+                             device=th.device(self.__device_str))]
 
         self.__h_caret = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                                   device=th.device("cuda")
-                                   if self.is_cuda else th.device("cpu"))]
+                                   device=th.device(self.__device_str))]
         self.__c_caret = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                                   device=th.device("cuda")
-                                   if self.is_cuda else th.device("cpu"))]
+                                   device=th.device(self.__device_str))]
 
         self.msg = [th.zeros(self.__nb_agents, batch_size, self.__n_m,
-                             device=th.device("cuda")
-                             if self.is_cuda else th.device("cpu"))]
+                             device=th.device(self.__device_str))]
 
         self.__log_probas = [
             th.log(th.ones(self.__nb_agents,
-                           device=th.device("cuda")
-                           if self.is_cuda else th.device("cpu"))) / self.__nb_action
+                           device=th.device(self.__device_str))) / self.__nb_action
         ]
 
         self.pos = th.randint(self.__size - self.__f,
                               (self.__nb_agents, batch_size, 2),
-                              device=th.device("cuda")
-                              if self.is_cuda else th.device("cpu"))
+                              device=th.device(self.__device_str))
 
     def step(self, img: th.Tensor, eps: float) -> None:
         """
@@ -172,9 +166,9 @@ class MultiAgent:
 
         # Define possible actions
         # TODO generic actions
+        # TODO limit explicit memory copy -> broadcast
         actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]],
-                            device=th.device("cuda")
-                            if self.is_cuda else th.device("cpu"))\
+                            device=th.device(self.__device_str))\
             .repeat(self.__nb_agents, self.__batch_size, 1, 1)
 
         # Get action probabilities
@@ -184,8 +178,7 @@ class MultiAgent:
         # If random walk : pick one action with uniform probability
         # Else : greedy policy
         random_walk = (th.rand(self.__nb_agents, img.size(0),
-                               device=th.device("cuda")
-                               if self.is_cuda else th.device("cpu"))
+                               device=th.device(self.__device_str))
                        < eps).to(th.float)
 
         # Greedy policy
@@ -195,8 +188,7 @@ class MultiAgent:
         # uniform -> real pb ?
         random_actions = th.randint(0, self.__nb_action,
                                     (self.__nb_agents, img.size(0),),
-                                    device=th.device("cuda")
-                                    if self.is_cuda else th.device("cpu"))
+                                    device=th.device(self.__device_str))
 
         # Get final actions of epsilon greedy policy
         idx = (random_walk * random_actions +
@@ -231,15 +223,22 @@ class MultiAgent:
         return self.__networks(self.__networks.predict, self.__c[self.__t].squeeze(0)),\
                self.__log_probas[self.__t]
 
+    @property
+    def is_cuda(self) -> bool:
+        return self.__is_cuda
+
     def cuda(self) -> None:
         """
 
         :return:
         :rtype:
         """
-        self.is_cuda = True
+        self.__is_cuda = True
+        self.__device_str = "cuda"
 
-        # TODO pass model union to cuda here ? better real separation NNs wrapper and rl/ma agent
+    def cpu(self) -> None:
+        self.__is_cuda = False
+        self.__device_str = "cpu"
 
     def __len__(self):
         """

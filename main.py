@@ -3,12 +3,12 @@ from environment.transition import trans_img
 from environment.agent import MultiAgent
 from environment.core import episode
 
-from networks.models import MNISTModelWrapper
+from networks.models import MNISTModelWrapper, MNISTModelsWrapperMsgLess
 from networks.ft_extractor import TestCNN
 
 from data.mnist import load_mnist
 
-from utils import RLOptions, MAOptions, TrainOptions, TestOptions, viz
+from utils import RLOptions, MAOptions, TrainOptions, TestOptions, viz, prec_rec, format_metric
 
 import torch as th
 from torch.nn import MSELoss
@@ -19,6 +19,8 @@ from random import randint
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import datetime
+from datetime import timedelta
 
 from os import mkdir
 from os.path import join, exists, isdir
@@ -277,10 +279,10 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
     output_dir = train_options.output_model_path
 
-    with open(join(output_dir, "args.txt"), "w") as args_file:
-        args_str = " ".join([a for a in sys.argv])
-        args_file.write(args_str + "\n")
-        args_file.close()
+    logs_file =  open(join(output_dir, "train.log"), "w")
+    args_str = " ".join([a for a in sys.argv])
+    logs_file.write(args_str + "\n")
+    logs_file.flush()
 
     model_dir = "models"
 
@@ -289,7 +291,10 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     if exists(join(output_dir, model_dir)) and not isdir(join(output_dir, model_dir)):
         raise Exception(f"\"{join(output_dir, model_dir)}\" is not a directory.")
 
-    nn_models = MNISTModelWrapper(ma_options.window_size,
+    """nn_models = MNISTModelWrapper(ma_options.window_size,
+                                  rl_option.hidden_size,
+                                  rl_option.hidden_size_msg)"""
+    nn_models = MNISTModelsWrapperMsgLess(ma_options.window_size,
                                   rl_option.hidden_size,
                                   rl_option.hidden_size_msg)
 
@@ -303,12 +308,14 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                         obs_img, trans_img)
 
     cuda = rl_option.cuda
+    device_str = "cpu"
 
     # Pass pytorch stuff to GPU
     # for agents hidden tensors (belief etc.)
     if cuda:
         nn_models.cuda()
         marl_m.cuda()
+        device_str = "cuda"
 
     # for RL agent models parameters
     optim = th.optim.Adam(nn_models.parameters(), lr=train_options.learning_rate)
@@ -327,6 +334,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     eps_decay = train_options.eps_decay
 
     for e in range(train_options.nb_epoch):
+        train_ep_st = datetime.datetime.now()
+
         sum_loss = 0
 
         nn_models.train()
@@ -339,16 +348,15 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
-            x, y = x_train[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
-                   y_train[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
+            x, y = x_train[i_min:i_max, :, :].to(th.device(device_str)),\
+                   y_train[i_min:i_max].to(th.device(device_str))
 
             # get predictions and probabilities
-            preds, log_probas = episode(marl_m, x, rl_option.nb_step,
-                                        cuda, eps, ma_options.nb_class)
+            preds, log_probas = episode(marl_m, x, rl_option.nb_step, eps)
 
             # Class one hot encoding
             y_eye = th.eye(ma_options.nb_class,
-                           device=th.device("cuda") if cuda else th.device("cpu"))[y]\
+                           device=th.device(device_str))[y]\
                 .repeat(preds.size(0), 1, 1)
 
             # Update confusion meter
@@ -382,29 +390,37 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
             sum_loss += loss.item()
 
             # Compute score
-            conf_mat = conf_meter.value()
+            precs, recs = prec_rec(conf_meter, smoothing=1e-30)
 
-            lissage = 1e-30  # 10^(-38) -> float64
-
-            prec = th.tensor(
-                [(conf_mat[i, i] / (conf_mat[:, i].sum() + lissage)).item()
-                 for i in range(ma_options.nb_class)]).mean()
-
-            rec = th.tensor(
-                [(conf_mat[i, i] / (conf_mat[i, :].sum() + lissage)).item()
-                 for i in range(ma_options.nb_class)]).mean()
-
-            tqdm_bar.set_description(f"Epoch {e} eps({eps:.5f}), "
+            tqdm_bar.set_description(f"Epoch {e} - Train, "
+                                     f"eps({eps:.5f}), "
                                      f"Loss = {sum_loss / (i + 1):.4f}, "
-                                     f"train_prec = {prec:.4f}, "
-                                     f"train_rec = {rec:.4f}")
+                                     f"train_prec = {precs.mean():.4f}, "
+                                     f"train_rec = {recs.mean():.4f}")
+
+        precs, recs = prec_rec(conf_meter)
+
+        precs_str = format_metric(precs)
+        recs_str = format_metric(recs)
 
         sum_loss /= nb_batch
+        elapsed_time = datetime.datetime.now() - train_ep_st
+        logs_file.write(f"Epoch {e} - Train -"
+                        f" eps({eps:.5f}), "
+                        f"Loss = {sum_loss:.4f}, "
+                        f"train_prec = [{precs_str}], "
+                        f"train_rec = [{recs_str}], "
+                        f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
+                        f"{elapsed_time.seconds // 60 % 60}min "
+                        f"{elapsed_time.seconds % 60}s\n")
+        logs_file.flush()
 
         nb_batch_valid = ceil(x_valid.size(0) / batch_size)
 
         nn_models.eval()
         conf_meter.reset()
+
+        train_ep_st = datetime.datetime.now()
 
         with th.no_grad():
             tqdm_bar = tqdm(range(nb_batch_valid))
@@ -413,33 +429,39 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                 i_max = (i + 1) * batch_size
                 i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
 
-                x, y = x_valid[i_min:i_max, :, :].to(th.device("cuda") if cuda else th.device("cpu")),\
-                       y_valid[i_min:i_max].to(th.device("cuda") if cuda else th.device("cpu"))
+                x, y = x_valid[i_min:i_max, :, :].to(th.device(device_str)),\
+                       y_valid[i_min:i_max].to(th.device(device_str))
 
-                preds, proba = episode(marl_m, x, rl_option.nb_step, cuda, eps, ma_options.nb_class)
+                preds, proba = episode(marl_m, x, rl_option.nb_step, eps)
 
                 conf_meter.add(preds.mean(dim=0).view(-1, ma_options.nb_class).detach(),
                                y.detach())
 
                 # Compute score
-                conf_mat = conf_meter.value()
-                lissage = 1e-30  # 10^(-38) -> float64
-                prec = th.tensor([(conf_mat[i, i] / (conf_mat[:, i].sum() + lissage)).item()
-                                  for i in range(ma_options.nb_class)]).mean()
-                rec = th.tensor([(conf_mat[i, i] / (conf_mat[i, :].sum() + lissage)).item()
-                                 for i in range(ma_options.nb_class)]).mean()
+                precs, recs = prec_rec(conf_meter, smoothing=1e-30)
 
-                tqdm_bar.set_description(f"Epoch {e}, eval_prec = {prec:.4f}, eval_rec = {rec:.4f}")
+                tqdm_bar.set_description(f"Epoch {e} - Eval, "
+                                         f"eval_prec = {precs.mean():.4f}, "
+                                         f"eval_rec = {recs.mean():.4f}")
 
         # Compute score
-        conf_mat = conf_meter.value()
-        prec = th.tensor([conf_mat[i, i] / conf_mat[:, i].sum()
-                          for i in range(ma_options.nb_class)]).mean()
-        rec = th.tensor([conf_mat[i, i] / conf_mat[i, :].sum()
-                         for i in range(ma_options.nb_class)]).mean()
+        precs, recs = prec_rec(conf_meter)
 
-        prec_epoch.append(prec)
-        recall_epoch.append(rec)
+        precs_str = format_metric(precs)
+        recs_str = format_metric(recs)
+
+        elapsed_time = datetime.datetime.now() - train_ep_st
+        logs_file.write(f"Epoch {e} - Eval -"
+                        f" eps({eps:.5f}), "
+                        f"train_prec = [{precs_str}], "
+                        f"train_rec = [{recs_str}], "
+                        f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
+                        f"{elapsed_time.seconds // 60}min "
+                        f"{elapsed_time.seconds % 60}s\n")
+        logs_file.flush()
+
+        prec_epoch.append(precs.mean())
+        recall_epoch.append(recs.mean())
         loss_v.append(sum_loss)
 
         marl_m.params_to_json(join(output_dir, model_dir, f"marl_epoch_{e}.json"))
@@ -461,6 +483,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     viz(marl_m, x_test[randint(0, x_test.size(0) - 1)],
         rl_option.nb_step, ma_options.window_size,
         output_dir)
+
+    logs_file.close()
 
 #######################
 # Test - Main

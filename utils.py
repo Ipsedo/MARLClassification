@@ -2,12 +2,15 @@ from environment.agent import MultiAgent
 from environment.core import detailed_episode
 
 import torch as th
+from torchnet.meter import ConfusionMeter
+
+import numpy as np
 
 import matplotlib.pyplot as plt
 
 from os.path import join
 
-from typing import NamedTuple
+from typing import NamedTuple, Tuple
 
 MAOptions = NamedTuple("MAOption",
                        [("nb_agent", int),
@@ -91,3 +94,19 @@ def viz(agents: MultiAgent, one_img: th.Tensor,
         plt.title(f"Step = {t}, step_pred_class = {prediction} ({pred_proba * 100.:.1f}%)")
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
+
+
+def prec_rec(conf_meter: ConfusionMeter, smoothing: float = 0.) -> Tuple[np.ndarray, np.ndarray]:
+    conf_mat = conf_meter.value()
+
+    precs = np.array([(conf_mat[i, i] / (conf_mat[:, i].sum() + smoothing))
+                      for i in range(conf_mat.shape[1])])
+
+    recs = np.array([(conf_mat[i, i] / (conf_mat[i, :].sum() + smoothing))
+                     for i in range(conf_mat.shape[0])])
+
+    return precs, recs
+
+
+def format_metric(metric: np.ndarray) -> str:
+    return ", ".join([f'\"{curr_cls}\" : {metric[curr_cls] * 100.:.1f}%' for curr_cls in range(metric.shape[0])])
