@@ -5,7 +5,7 @@ from .agent import MultiAgent
 from typing import Tuple
 
 
-def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int, eps: float) -> \
+def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
         Tuple[th.Tensor, th.Tensor]:
     """
     TODO
@@ -29,11 +29,11 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int, eps: float) -
     agents.new_episode(img_batch.size(0))
 
     for t in range(max_it):
-        agents.step(img_batch, eps)
+        agents.step(img_batch)
 
     q, probas = agents.predict()
 
-    return nn.functional.softmax(q, dim=-1), probas
+    return q, probas
 
 
 def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
