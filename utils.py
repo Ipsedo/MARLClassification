@@ -27,9 +27,7 @@ RLOptions = NamedTuple("RLOptions",
                         ("cuda", bool)])
 
 TrainOptions = NamedTuple("TrainOptions",
-                          [("eps", float),
-                           ("eps_decay", float),
-                           ("nb_epoch", int),
+                          [("nb_epoch", int),
                            ("learning_rate", float),
                            ("batch_size", int),
                            ("output_model_path", str)])
@@ -41,8 +39,8 @@ TestOptions = NamedTuple("TestOptions",
                           ("nb_test_img", int)])
 
 
-def viz(agents: MultiAgent, one_img: th.Tensor,
-        max_it: int, f: int, output_dir: str) -> None:
+def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
+                    max_it: int, f: int, output_dir: str) -> None:
     """
 
     :param agents:
