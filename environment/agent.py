@@ -84,35 +84,43 @@ class MultiAgent:
 
         self.__t = 0
 
-        self.__h = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                             device=th.device(self.__device_str))]
-        self.__c = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                             device=th.device(self.__device_str))]
+        self.__h = [
+            th.zeros(self.__nb_agents, batch_size, self.__n,
+                     device=th.device(self.__device_str))
+        ]
+        self.__c = [
+            th.zeros(self.__nb_agents, batch_size, self.__n,
+                     device=th.device(self.__device_str))
+        ]
 
-        self.__h_caret = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                                   device=th.device(self.__device_str))]
-        self.__c_caret = [th.zeros(self.__nb_agents, batch_size, self.__n,
-                                   device=th.device(self.__device_str))]
+        self.__h_caret = [
+            th.zeros(self.__nb_agents, batch_size, self.__n,
+                     device=th.device(self.__device_str))
+        ]
+        self.__c_caret = [
+            th.zeros(self.__nb_agents, batch_size, self.__n,
+                     device=th.device(self.__device_str))
+        ]
 
-        self.msg = [th.zeros(self.__nb_agents, batch_size, self.__n_m,
-                             device=th.device(self.__device_str))]
+        self.msg = [
+            th.zeros(self.__nb_agents, batch_size, self.__n_m,
+                     device=th.device(self.__device_str))
+        ]
 
         self.__log_probas = [
-            th.log(th.ones(self.__nb_agents,
-                           device=th.device(self.__device_str))) / self.__nb_action
+            (th.ones(self.__nb_agents, batch_size,
+                     device=th.device(self.__device_str)) / self.__nb_action).log()
         ]
 
         self.pos = th.randint(self.__size - self.__f,
                               (self.__nb_agents, batch_size, 2),
                               device=th.device(self.__device_str))
 
-    def step(self, img: th.Tensor, eps: float) -> None:
+    def step(self, img: th.Tensor) -> None:
         """
 
         :param img:
         :type img:
-        :param eps:
-        :type eps:
         :return:
         :rtype:
         """
@@ -166,42 +174,26 @@ class MultiAgent:
 
         # Define possible actions
         # TODO generic actions
-        # TODO limit explicit memory copy -> broadcast
         actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]],
-                            device=th.device(self.__device_str))\
-            .repeat(self.__nb_agents, self.__batch_size, 1, 1)
+                            device=th.device(self.__device_str))
 
         # Get action probabilities
         action_scores = self.__networks(self.__networks.policy,
                                         self.__h_caret[self.__t + 1].squeeze(0))
 
-        # If random walk : pick one action with uniform probability
-        # Else : greedy policy
-        random_walk = (th.rand(self.__nb_agents, img.size(0),
-                               device=th.device(self.__device_str))
-                       < eps).to(th.float)
-
         # Greedy policy
-        policy_actions = action_scores.argmax(dim=-1)
+        prob, policy_actions = action_scores.max(dim=-1)
 
-        # Random choice
-        # uniform -> real pb ?
-        random_actions = th.randint(0, self.__nb_action,
-                                    (self.__nb_agents, img.size(0),),
-                                    device=th.device(self.__device_str))
+        # Create next action mask
+        actions_mask = th.arange(0, action_scores.size(-1),
+                                 device=th.device(self.__device_str))
+        actions_mask = actions_mask.view(-1, 1)\
+            .repeat(1, actions.size(-1))\
+            .view(1, 1, action_scores.size(-1), actions.size(-1))
+        actions_mask = actions_mask == policy_actions.view(*policy_actions.size(), 1, 1)
 
-        # Get final actions of epsilon greedy policy
-        idx = (random_walk * random_actions +
-               (1. - random_walk) * policy_actions).to(th.long)
-
-        # Get a(t + 1) for each batch image
-        idx_one_hot = th.nn.functional.one_hot(idx.view(-1, 1)).view(-1)
-        a_t_next = actions.flatten(0, 2)[idx_one_hot.nonzero(), :]\
-            .view(len(self), self.__batch_size, 2)
-
-        # Get chosen action probabilities (one per batch image)
-        prob = action_scores.flatten(0, 2)[idx_one_hot.nonzero()]\
-            .view(len(self), self.__batch_size)
+        a_t_next = actions.masked_select(actions_mask)\
+            .view(self.__nb_agents, self.__batch_size, actions.size(-1))
 
         # Append log probability
         self.__log_probas.append(th.log(prob))
@@ -220,8 +212,19 @@ class MultiAgent:
         :return: tuple <prediction, proba>
         """
 
+        # Pour proba -> big pb stabilité numérique (explosion / disparition gradient)
+        #
+        # Idée 1
+        # prob [0; 1]         -> prod on step -> prod on agent
+        # log prob [-inf, 0]  -> sum          -> sum
+        #
+        # Idée 2
+        # chemin par step (5 step pour un agent par exemple) :
+        #   pas un trirage indépendant ie pas de p(p_5, p_4, ..., p_0) - LSTM / Recurrent
+        #   plus p(p_5 | p_4 | ... | p_0) <-> p(A /\ B) -> flemme donc on prend le dernier ie p_5
+        # chemin par agent équiprobable -> moyenne des probas
         return self.__networks(self.__networks.predict, self.__c[self.__t].squeeze(0)),\
-               self.__log_probas[self.__t]
+               self.__log_probas[self.__t].mean(dim=0)
 
     @property
     def is_cuda(self) -> bool:
