@@ -3,7 +3,11 @@ from networks.messages import MessageReceiver, MessageSender, DummyMessageReceiv
 from networks.recurrents import BeliefUnit, ActionUnit
 from networks.policy import Policy
 from networks.prediction import Prediction
+
+import torch as th
 import torch.nn as nn
+
+from typing import List
 
 
 #####################
@@ -41,6 +45,22 @@ class ModelsWrapper(nn.Module):
     def forward(self, op: str, *args):
         return self._networks_dict[op](*args)
 
+    def erase_grad(self, ops: List[str]) -> None:
+        """
+        Erase gradients from module(s) in op
+        :param ops:
+        :type ops:
+        :return:
+        :rtype:
+        """
+
+        for op in ops:
+            for p in self._networks_dict[op].parameters():
+                p.grad = th.zeros_like(p.grad)
+
+    def get_params(self, ops: List[str]) -> List[th.Tensor]:
+        return [p for op in ops for p in self._networks_dict[op].parameters()]
+
 
 #####################
 # MNIST version
@@ -48,21 +68,6 @@ class ModelsWrapper(nn.Module):
 class MNISTModelWrapper(ModelsWrapper):
     def __init__(self, f: int, n: int, n_m: int) -> None:
         super().__init__(MNISTCnn(f, n), n, n_m, 2, 4, 10)
-
-
-class MNISTModelsWrapperMsgLess(MNISTModelWrapper):
-    def __init__(self, f: int, n: int, n_m: int) -> None:
-        super().__init__(f, n, n_m)
-
-        """for p in self._networks_dict[self.decode_msg].parameters():
-            p.requires_grad = False
-
-        for p in self._networks_dict[self.evaluate_msg].parameters():
-            p.requires_grad = False"""
-        self._networks_dict.update({
-            self.decode_msg: DummyMessageReceiver(n, n_m),
-            self.evaluate_msg: DummyMessageSender(n, n_m)
-        })
 
 
 #####################
