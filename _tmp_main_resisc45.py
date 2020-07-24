@@ -1,7 +1,7 @@
 from networks.models import RESISC45ModelsWrapper
 from environment.agent import MultiAgent
 from environment.core import episode
-from utils import MAOptions, RLOptions, viz
+from utils import MAOptions, RLOptions, visualize_steps
 
 import torch as th
 from torchnet.meter import ConfusionMeter
@@ -205,6 +205,6 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, output_dir: str) ->
     plt.legend()
     plt.savefig(join(output_dir, "train_graph.png"))
 
-    viz(marl_m, x_test[randint(0, x_test.size(0) - 1)],
-        rl_option.nb_step, ma_options.window_size,
-        output_dir)
+    visualize_steps(marl_m, x_test[randint(0, x_test.size(0) - 1)],
+                    rl_option.nb_step, ma_options.window_size,
+                    output_dir)
