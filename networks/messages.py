@@ -9,11 +9,11 @@ class MessageSender(nn.Module):
     """
     m_θ4 : R^n -> R^n_m
     """
-    def __init__(self, n: int, n_m: int) -> None:
+    def __init__(self, n: int, n_m: int, hidden_size: int) -> None:
         super().__init__()
         self.__n = n
         self.__n_m = n_m
-        self.__n_e = 64
+        self.__n_e = hidden_size
 
         self.seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
@@ -41,42 +41,3 @@ class MessageReceiver(nn.Module):
 
     def forward(self, m_t):
         return self.seq_lin(m_t)
-
-
-###################
-# Dummy networks
-# for test
-###################
-
-class DummyMessageSender(nn.Module):
-    """
-    m_θ4 : R^n -> R^n_m
-    """
-
-    def __init__(self, n: int, n_m: int) -> None:
-        super().__init__()
-        self.__n = n
-        self.__n_m = n_m
-
-        self.register_buffer("w", th.rand(n, n_m, requires_grad=False) * 2. - 1.)
-        self.register_buffer("b", th.rand(1, n_m, requires_grad=False) * 2 - 1.)
-
-    def forward(self, h_t):
-        return th.matmul(h_t, self.w) + self.b
-
-
-class DummyMessageReceiver(nn.Module):
-    """
-    m_θ6 : R^n_m -> R^n
-    """
-
-    def __init__(self, n: int, n_m: int) -> None:
-        super().__init__()
-        self.__n = n
-        self.__n_m = n_m
-
-        self.register_buffer("w", th.rand(n_m, n, requires_grad=False) * 2. - 1.)
-        self.register_buffer("b", th.rand(1, n, requires_grad=False) * 2 - 1.)
-
-    def forward(self, h_t):
-        return th.matmul(h_t, self.w) + self.b

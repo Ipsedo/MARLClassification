@@ -5,16 +5,16 @@ class Prediction(nn.Module):
     """
     q_θ8 : R^n -> R^M
     """
-    def __init__(self, n: int, M: int) -> None:
+    def __init__(self, n: int, nb_class: int, hidden_size: int) -> None:
         super().__init__()
 
         self.__n = n
-        self.__nb_class = M
+        self.__nb_class = nb_class
 
         self.seq_lin = nn.Sequential(
-            nn.Linear(self.__n, 64),
+            nn.Linear(self.__n, hidden_size),
             nn.ReLU(),
-            nn.Linear(64, self.__nb_class)
+            nn.Linear(hidden_size, self.__nb_class)
         )
 
     def forward(self, c_t):
