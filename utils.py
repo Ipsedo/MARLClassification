@@ -47,7 +47,8 @@ TestOptions = typ.NamedTuple("TestOptions",
 
 def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
                     max_it: int, f: int, output_dir: str,
-                    nb_class: int, cuda: bool) -> None:
+                    nb_class: int, cuda: bool,
+                    class_map: typ.Mapping[typ.Any, int]) -> None:
     """
 
     :param agents:
@@ -67,6 +68,8 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
     :return:
     :rtype:
     """
+
+    idx_to_class = {class_map[k]: k for k in class_map}
 
     color_map = None
 
@@ -104,7 +107,7 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
         plt.imshow(curr_img, cmap=color_map)
         prediction = preds[t].mean(dim=0)[img_idx].argmax(dim=-1)
         pred_proba = th.nn.functional.softmax(preds[t].mean(dim=0), dim=-1)[img_idx][prediction]
-        plt.title(f"Step = {t}, step_pred_class = {prediction} ({pred_proba * 100.:.1f}%)")
+        plt.title(f"Step = {t}, step_pred_class = {idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)")
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
 
@@ -123,8 +126,10 @@ def prec_rec(conf_meter: ConfusionMeter) -> typ.Tuple[np.ndarray, np.ndarray]:
     return precs, recs
 
 
-def format_metric(metric: np.ndarray) -> str:
-    return ", ".join([f'\"{curr_cls}\" : {metric[curr_cls] * 100.:.1f}%' for curr_cls in range(metric.shape[0])])
+def format_metric(metric: np.ndarray, class_map: typ.Mapping[typ.Any, int]) -> str:
+    idx_to_class = {class_map[k]: k for k in class_map}
+    return ", ".join([f'\"{idx_to_class[curr_cls]}\" : {metric[curr_cls] * 100.:.1f}%'
+                      for curr_cls in range(metric.shape[0])])
 
 
 class SetAppendAction(Action):

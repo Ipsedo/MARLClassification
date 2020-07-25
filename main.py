@@ -425,8 +425,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
         precs, recs = prec_rec(conf_meter)
 
-        precs_str = format_metric(precs)
-        recs_str = format_metric(recs)
+        precs_str = format_metric(precs, class_map)
+        recs_str = format_metric(recs, class_map)
 
         sum_loss /= nb_batch
         elapsed_time = datetime.datetime.now() - train_ep_st
@@ -472,8 +472,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
         # Compute score
         precs, recs = prec_rec(conf_meter)
 
-        precs_str = format_metric(precs)
-        recs_str = format_metric(recs)
+        precs_str = format_metric(precs, class_map)
+        recs_str = format_metric(recs, class_map)
 
         elapsed_time = datetime.datetime.now() - train_ep_st
         logs_file.write(f"#############################################\n"
