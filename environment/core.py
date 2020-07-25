@@ -1,5 +1,4 @@
 import torch as th
-import torch.nn as nn
 
 from .agent import MultiAgent
 from typing import Tuple
@@ -55,24 +54,29 @@ def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     :rtype:
     """
 
+    device_str = "cuda" if cuda else "cpu"
+
+    img_batch = img_batch.to(th.device(device_str))
+
+    step_pos = th.zeros(max_it, *agents.pos.size(), dtype=th.long,
+                        device=th.device(device_str))
+
+    step_preds = th.zeros(max_it, len(agents), img_batch.size(0), nb_class,
+                          device=th.device(device_str))
+
+    step_probas = th.zeros(max_it, len(agents), img_batch.size(0),
+                           device=th.device(device_str))
+
     agents.new_episode(img_batch.size(0))
 
-    pos = th.zeros(max_it, *agents.pos.size(), dtype=th.long)
-
-    q = th.zeros(max_it, len(agents), img_batch.size(0), nb_class,
-                 device=img_batch.device)
-
-    all_probas = th.zeros(max_it, len(agents), img_batch.size(0),
-                          device=img_batch.device)
-
     for t in range(max_it):
-        agents.step(img_batch, 0.)
+        agents.step(img_batch)
 
-        pos[t, :, :, :] = agents.pos
+        step_pos[t, :, :, :] = agents.pos
 
         preds, probas = agents.predict()
 
-        q[t, :, :] = preds
-        all_probas[t, :, :] = probas
+        step_preds[t, :, :, :] = preds
+        step_probas[t, :, :] = probas
 
-    return nn.functional.softmax(q, dim=-1), all_probas, pos
+    return step_preds, step_probas, step_pos
