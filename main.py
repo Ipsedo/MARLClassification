@@ -168,7 +168,7 @@ def test_core_step():
     nb_epoch = 10
 
     for e in range(nb_epoch):
-        pred, proba = episode(marl_m, img, 5, True, 0.5, 10)
+        pred, proba = episode(marl_m, img, 5)
 
         r = -(pred - c) ** 2
         r = r.mean(dim=-1)
@@ -324,6 +324,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                         ma_options.nb_action,
                         obs_img, trans_img)
 
+    criterion = nn.CrossEntropyLoss(reduction='none')
+
     cuda = rl_option.cuda
     device_str = "cpu"
 
@@ -372,26 +374,27 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                    y_train[i_min:i_max].to(th.device(device_str))
 
             # get predictions and probabilities
-            preds, log_probas = episode(marl_m, x, rl_option.nb_step)
+            preds, log_prob = episode(marl_m, x, rl_option.nb_step)
 
             # Class one hot encoding
             y_eye = th.eye(ma_options.nb_class,
                            device=th.device(device_str))[y]
 
-            # Mean on all agents then to class proba (softmax)
+            # Mean on all agents
+            # then pass to class proba (softmax)
             preds = F.softmax(preds.mean(dim=0), dim=-1)
 
             # Update confusion meter
             conf_meter.add(preds.detach(), y.detach())
 
             # L2 Loss - Classification error / reward
-            # reward = -error(y_pred, y_true).sum(class_dim)
-            r = -th.pow(y_eye - preds, 2.).sum(dim=-1)
+            # reward = 1 - error(y_pred, y_true).mean(class_dim)
+            r = 1. - th.pow(y_eye - preds, 2.).mean(dim=-1)
 
             # Compute loss
-            losses = log_probas * r.detach() + r
+            losses = log_prob * r.detach() + r
 
-            # Losses mean batch
+            # Losses mean image batch
             # maximize(E[reward]) -> minimize(-E[reward])
             loss = -losses.mean()
 
@@ -507,7 +510,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
     visualize_steps(marl_m, x_test[randint(0, x_test.size(0) - 1)],
                     rl_option.nb_step, ma_options.window_size,
-                    output_dir, ma_options.nb_class, cuda)
+                    output_dir, ma_options.nb_class, cuda, class_map)
 
     logs_file.close()
 

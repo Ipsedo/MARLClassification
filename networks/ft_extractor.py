@@ -122,14 +122,19 @@ class RESISC45CnnSmall(nn.Module):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 12, kernel_size=3, padding=1),
+            nn.Conv2d(3, 8, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(12, 32, kernel_size=5, padding=2),
+            nn.Conv2d(8, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 24, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(24, 32, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool2d(2, 2)
         )
 
-        self.lin = nn.Linear(32 * (f // 2) ** 2, n)
+        self.lin = nn.Linear(32 * (f // 2 // 2) ** 2, n)
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)

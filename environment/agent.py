@@ -65,7 +65,7 @@ class MultiAgent:
 
         self.msg = None
 
-        self.__log_probas = None
+        self.__action_probas = None
 
         # CPU vs GPU
         self.__is_cuda = False
@@ -107,9 +107,9 @@ class MultiAgent:
                      device=th.device(self.__device_str))
         ]
 
-        self.__log_probas = [
-            (th.ones(self.__nb_agents, batch_size,
-                     device=th.device(self.__device_str)) / self.__nb_action).log()
+        self.__action_probas = [
+            th.ones(self.__nb_agents, batch_size,
+                    device=th.device(self.__device_str)) / self.__nb_action
         ]
 
         self.pos = th.randint(self.__size - self.__f,
@@ -196,7 +196,7 @@ class MultiAgent:
             .view(self.__nb_agents, self.__batch_size, actions.size(-1))
 
         # Append log probability
-        self.__log_probas.append(th.log(prob))
+        self.__action_probas.append(prob)
 
         # Apply action / Upgrade agent state
         self.pos = self.__trans(self.pos.to(th.float),
@@ -224,7 +224,7 @@ class MultiAgent:
         #   plus p(p_5 | p_4 | ... | p_0) <-> p(A /\ B) -> flemme donc on prend le dernier ie p_5
         # chemin par agent équiprobable -> moyenne des probas
         return self.__networks(self.__networks.predict, self.__c[self.__t].squeeze(0)),\
-               self.__log_probas[self.__t].mean(dim=0)
+               th.cat(self.__action_probas).log().mean(dim=0).mean(dim=0)
 
     @property
     def is_cuda(self) -> bool:
