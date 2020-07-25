@@ -3,13 +3,10 @@ import pickle
 import gzip
 from os.path import exists
 
-from typing import Tuple
+from typing import Tuple, Mapping, Any
 
 
-def load_mnist() ->\
-        Tuple[Tuple[th.Tensor, th.Tensor],
-              Tuple[th.Tensor, th.Tensor],
-              Tuple[th.Tensor, th.Tensor]]:
+def load_mnist() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
     """
 
     :return:
@@ -38,5 +35,8 @@ def load_mnist() ->\
     x_test = th.from_numpy(test_set[0]).view(-1, 1, 28, 28)
     y_test = th.from_numpy(test_set[1])
 
-    return (x_train, y_train), (x_valid, y_valid), (x_test, y_test)
+    x = th.cat([x_train, x_valid, x_test])
+    y = th.cat([y_train, y_valid, y_test])
+
+    return (x, y), {i: i for i in range(10)}
 
