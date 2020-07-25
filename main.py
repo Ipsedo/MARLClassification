@@ -3,16 +3,19 @@ from environment.transition import trans_img
 from environment.agent import MultiAgent
 from environment.core import episode
 
-from networks.models import MNISTModelWrapper
+from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrapper
 from networks.ft_extractor import TestCNN
 
 from data.mnist import load_mnist
+from data.resisc45 import load_resisc45
 
-from utils import RLOptions, MAOptions, TrainOptions, TestOptions, visualize_steps, prec_rec, format_metric
+from utils import RLOptions, MAOptions, TrainOptions, TestOptions,\
+    visualize_steps, prec_rec, format_metric, SetAppendAction
 
 import torch as th
 import torch.nn as nn
-from torch.nn import MSELoss
+import torch.nn.functional as F
+
 from torchnet.meter import ConfusionMeter
 
 from math import ceil
@@ -22,7 +25,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import datetime
 
-from os import mkdir
+from os import mkdir, makedirs
 from os.path import join, exists, isdir
 
 import sys
@@ -204,7 +207,7 @@ def test_mnist():
     (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
 
     m = TestCNN(10)
-    mse = MSELoss()
+    mse = nn.MSELoss()
 
     m.cuda()
     mse.cuda()
@@ -271,8 +274,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     :type ma_options:
     :param rl_option:
     :type rl_option:
-    :param output_dir:
-    :type output_dir:
+    :param train_options:
+    :type train_options:
     :return:
     :rtype:
     """
@@ -290,12 +293,27 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     logs_file.write(args_str + "\n\n")
     logs_file.flush()
 
-    #ops_to_skip = [MNISTModelWrapper.decode_msg, MNISTModelWrapper.evaluate_msg]
-    ops_to_skip = []
+    ops_to_skip = train_options.frozen_modules
 
-    nn_models = MNISTModelWrapper(ma_options.window_size,
-                                  rl_option.hidden_size,
-                                  rl_option.hidden_size_msg)
+    (x, y), class_map = (th.zeros(1), th.tensor(1)), {}
+
+    nn_models = None
+
+    if train_options.data_set == "mnist":
+        (x, y), class_map = load_mnist()
+
+        nn_models = MNISTModelWrapper(ma_options.window_size,
+                                      rl_option.hidden_size,
+                                      rl_option.hidden_size_msg)
+    elif train_options.data_set == "resisc45":
+        (x, y), class_map = load_resisc45()
+
+        nn_models = RESISC45ModelsWrapper(ma_options.window_size,
+                                          rl_option.hidden_size,
+                                          rl_option.hidden_size_msg)
+    else:
+        print(f"Unrecognized data set \"{train_options.data_set}\"")
+        exit(1)
 
     marl_m = MultiAgent(ma_options.nb_agent,
                         nn_models,
@@ -319,7 +337,12 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     # for RL agent models parameters
     optim = th.optim.Adam(nn_models.parameters(), lr=train_options.learning_rate)
 
-    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
+    limit_train = int(0.7 * x.size(0))
+    limit_eval = int(0.85 * x.size(0))
+
+    x_train, y_train = x[:limit_train, :, :, :], y[:limit_train]
+    x_valid, y_valid = x[limit_train:limit_eval, :, :, :], y[limit_train:limit_eval]
+    x_test, y_test = x[limit_eval:, :, :, :], y[limit_eval:]
 
     batch_size = train_options.batch_size
     nb_batch = ceil(x_train.size(0) / batch_size)
@@ -339,10 +362,12 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
         tqdm_bar = tqdm(range(nb_batch))
         for i in tqdm_bar:
+            # Get real batch indexes
             i_min = i * batch_size
             i_max = (i + 1) * batch_size
             i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
 
+            # Select batch images & class
             x, y = x_train[i_min:i_max, :, :].to(th.device(device_str)),\
                    y_train[i_min:i_max].to(th.device(device_str))
 
@@ -353,18 +378,17 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
             y_eye = th.eye(ma_options.nb_class,
                            device=th.device(device_str))[y]
 
-            # Mean on all agents
-            preds = nn.functional.softmax(preds.mean(dim=0), dim=-1)
+            # Mean on all agents then to class proba (softmax)
+            preds = F.softmax(preds.mean(dim=0), dim=-1)
 
             # Update confusion meter
             conf_meter.add(preds.detach(), y.detach())
 
-            # CrossEntropyLoss Loss
-            # reward = -error(y_pred, y_true).sum(on_class)
-            r = -th.pow(y_eye - preds, 2.)
-            r = r.sum(dim=-1)
+            # L2 Loss - Classification error / reward
+            # reward = -error(y_pred, y_true).sum(class_dim)
+            r = -th.pow(y_eye - preds, 2.).sum(dim=-1)
 
-            # Keep loss for future update
+            # Compute loss
             losses = log_probas * r.detach() + r
 
             # Losses mean batch
@@ -377,7 +401,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
             # Backward on compute graph
             loss.backward()
 
-            # Erase gradient
+            # Erase gradient - test
             nn_models.erase_grad(ops_to_skip)
 
             # Update weights
@@ -387,14 +411,13 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
             sum_loss += loss.item()
 
             # Compute score
-            precs, recs = prec_rec(conf_meter, smoothing=1e-30)
+            precs, recs = prec_rec(conf_meter)
 
-            # verify some parameters are un-optimized
+            # verify some parameters are un-optimized - test
             param_list = nn_models.get_params(ops_to_skip)
             mean_param_list_str = ", ".join([f'{p.mean():.4f}' for p in param_list])
 
             tqdm_bar.set_description(f"Epoch {e} - Train, "
-                                     #f"eps({eps:.4f}), "
                                      f"loss = {sum_loss / (i + 1):.4f}, "
                                      f"train_prec = {precs.mean():.4f}, "
                                      f"train_rec = {recs.mean():.4f}, "
@@ -409,8 +432,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
         elapsed_time = datetime.datetime.now() - train_ep_st
         logs_file.write(f"#############################################\n"
                         f"Epoch {e} - Train - Loss = {sum_loss:.4f}\n"
-                        f"train_prec = mean([{precs_str}]) = {precs.mean()}\n"
-                        f"train_rec = mean([{recs_str}]) = {recs.mean()}\n"
+                        f"train_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
+                        f"train_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
                         f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
                         f"{elapsed_time.seconds // 60 % 60}min "
                         f"{elapsed_time.seconds % 60}s\n")
@@ -435,12 +458,12 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
                 preds, proba = episode(marl_m, x, rl_option.nb_step)
 
-                preds = nn.functional.softmax(preds.mean(dim=0), dim=-1)
+                preds = F.softmax(preds.mean(dim=0), dim=-1)
 
                 conf_meter.add(preds.detach(), y.detach())
 
                 # Compute score
-                precs, recs = prec_rec(conf_meter, smoothing=1e-30)
+                precs, recs = prec_rec(conf_meter)
 
                 tqdm_bar.set_description(f"Epoch {e} - Eval, "
                                          f"eval_prec = {precs.mean():.4f}, "
@@ -455,10 +478,10 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
         elapsed_time = datetime.datetime.now() - train_ep_st
         logs_file.write(f"#############################################\n"
                         f"Epoch {e} - Eval\n"
-                        f"eval_prec = mean[{precs_str}])) = {precs.mean()}\n"
-                        f"eval_rec = mean([{recs_str}]) = {recs.mean()}\n"
+                        f"eval_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
+                        f"eval_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
                         f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
-                        f"{elapsed_time.seconds // 60}min "
+                        f"{elapsed_time.seconds // 60 % 60}min "
                         f"{elapsed_time.seconds % 60}s\n\n")
         logs_file.flush()
 
@@ -484,7 +507,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
     visualize_steps(marl_m, x_test[randint(0, x_test.size(0) - 1)],
                     rl_option.nb_step, ma_options.window_size,
-                    output_dir)
+                    output_dir, ma_options.nb_class, cuda)
 
     logs_file.close()
 
@@ -552,34 +575,36 @@ def main() -> None:
 
     # Algorithm arguments
     main_parser.add_argument("-a", "--agents", type=int, default=3, dest="agents",
-                              help="Number of agents")
+                             help="Number of agents")
     main_parser.add_argument("-d", "--dim", type=int, default=2,
-                              help="State dimension (eg. 2 -> move on a plan)")
+                             help="State dimension (eg. 2 -> move on a plan)")
     main_parser.add_argument("--f", type=int, default=7)
 
     # Image / data set arguments
     main_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class",
-                              help="Image dataset number of class")
+                             help="Image dataset number of class")
     main_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action",
-                              help="Number of discrete actions")
+                             help="Number of discrete actions")
     main_parser.add_argument("--img-size", type=int, default=28, dest="img_size",
-                              help="Image side size, assume all image are squared")
+                             help="Image side size, assume all image are squared")
 
     # RL Options
     main_parser.add_argument("--step", type=int, default=7,
-                              help="Step number of RL episode")
+                             help="Step number of RL episode")
     main_parser.add_argument("--n", type=int, default=8,
-                              help="Hidden size for NNs")
+                             help="Hidden size for NNs")
     main_parser.add_argument("--nm", type=int, default=2, dest="n_m",
-                              help="Message size for NNs")
+                             help="Message size for NNs")
     main_parser.add_argument("--cuda", action="store_true", dest="cuda",
-                              help="Train NNs with CUDA")
+                             help="Train NNs with CUDA")
 
     ##################
     # Train args
     ##################
 
     # Training arguments
+    train_parser.add_argument("--dataset", type=str, choices=["mnist", "resisc45"], default="mnist",
+                              dest="dataset", help="Choose the training data set")
     train_parser.add_argument("-o", "--output-dir", type=str, required=True, dest="output_dir",
                               help="The output dir containing res and models per epoch. "
                                    "Created if needed.")
@@ -591,11 +616,19 @@ def main() -> None:
                               help="Number of training epochs")
     train_parser.add_argument("--nr", type=int, default=7,
                               help="Number of retry - unused")
+    train_parser.add_argument("--freeze", type=str, default=[], nargs="+",
+                              dest="frozen_modules", action=SetAppendAction,
+                              choices=[ModelsWrapper.map_obs, ModelsWrapper.map_pos,
+                                       ModelsWrapper.evaluate_msg, ModelsWrapper.decode_msg,
+                                       ModelsWrapper.belief_unit, ModelsWrapper.action_unit,
+                                       ModelsWrapper.predict, ModelsWrapper.policy],
+                              help="Choose module(s) to be frozen during training")
 
     ##################
     # Infer args
     ##################
-
+    test_parser.add_argument("-i", "--images", type=str, required=True, nargs="+", dest="images",
+                             help="Input images for inference")
     test_parser.add_argument("--json-path", type=str, required=True, dest="json_path",
                              help="JSON multi agent metadata path")
     test_parser.add_argument("--state-dict", type=str, required=True, dest="state_dict",
@@ -633,16 +666,18 @@ def main() -> None:
                          f"\"{args.test_id}\", choices = {unit_test_choices}.")
     # Train main
     elif args.prgm == "main" and args.main_choice == "train":
+        # Create Options
         rl_options = RLOptions(args.step, args.n, args.n_m, args.cuda)
 
         ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
                                args.nb_class, args.nb_action)
 
         train_options = TrainOptions(args.nb_epoch, args.learning_rate,
-                                     args.batch_size, args.output_dir)
+                                     args.batch_size, args.output_dir,
+                                     args.frozen_modules, args.dataset)
 
         if not exists(args.output_dir):
-            mkdir(args.output_dir)
+            makedirs(args.output_dir)
         if exists(args.output_dir) and not isdir(args.output_dir):
             raise Exception(f"\"{args.output_dir}\" is not a directory.")
 
