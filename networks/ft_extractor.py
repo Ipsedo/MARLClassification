@@ -86,6 +86,9 @@ class CNN_MNIST_2(nn.Module):
 # RESISC-45 Stuff
 
 class RESISC45Cnn(nn.Module):
+    """
+    for 5000*5000px img
+    """
     def __init__(self, f: int = 128, n: int = 1024) -> None:
         super().__init__()
 
@@ -108,6 +111,32 @@ class RESISC45Cnn(nn.Module):
         out = out.flatten(1, -1)
         out = self.lin(out)
         return out
+
+
+class RESISC45CnnSmall(nn.Module):
+    """
+        for 256*256px img
+        """
+
+    def __init__(self, f: int = 8, n: int = 1024) -> None:
+        super().__init__()
+
+        self.seq_conv = nn.Sequential(
+            nn.Conv2d(3, 12, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(12, 32, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
+        )
+
+        self.lin = nn.Linear(32 * (f // 2) ** 2, n)
+
+    def forward(self, o_t: th.Tensor) -> th.Tensor:
+        out = self.seq_conv(o_t)
+        out = out.flatten(1, -1)
+        out = self.lin(out)
+        return out
+
 
 ############################
 # State to features stuff
