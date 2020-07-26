@@ -216,15 +216,15 @@ class MultiAgent:
         #
         # Idée 1
         # prob [0; 1]         -> prod on step -> prod on agent
-        # log prob [-inf, 0]  -> sum          -> sum
+        # log prob [-inf, 0]  -> sum          -> sum            : le plus censé
         #
         # Idée 2
         # chemin par step (5 step pour un agent par exemple) :
         #   pas un trirage indépendant ie pas de p(p_5, p_4, ..., p_0) - LSTM / Recurrent
         #   plus p(p_5 | p_4 | ... | p_0) <-> p(A /\ B) -> flemme donc on prend le dernier ie p_5
         # chemin par agent équiprobable -> moyenne des probas
-        return self.__networks(self.__networks.predict, self.__c[self.__t].squeeze(0)),\
-               th.cat(self.__action_probas).log().mean(dim=0).mean(dim=0)
+        return self.__networks(self.__networks.predict, self.__c[-1].squeeze(0)).mean(dim=0),\
+               th.stack(self.__action_probas).log().sum(dim=0).sum(dim=0)
 
     @property
     def is_cuda(self) -> bool:
