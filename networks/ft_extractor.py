@@ -118,23 +118,25 @@ class RESISC45CnnSmall(nn.Module):
         for 256*256px img
         """
 
-    def __init__(self, f: int = 8, n: int = 1024) -> None:
+    def __init__(self, f: int, n: int) -> None:
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 8, kernel_size=3, padding=1),
+            nn.Conv2d(3, 7, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(8, 16, kernel_size=3, padding=1),
+            nn.Conv2d(7, 18, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(16, 24, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(24, 32, kernel_size=5, padding=2),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
+            nn.Conv2d(18, 24, kernel_size=5, padding=2, stride=2),
+            nn.ReLU()
         )
 
-        self.lin = nn.Linear(32 * (f // 2 // 2) ** 2, n)
+        out_size = 24 * (f // 2) ** 2
+
+        self.lin = nn.Sequential(
+            nn.Linear(out_size, out_size // 2),
+            nn.BatchNorm1d(out_size // 2),
+            nn.Linear(out_size // 2, n)
+        )
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
@@ -162,3 +164,4 @@ class StateToFeatures(nn.Module):
 
     def forward(self, p_t):
         return self.seq_lin(p_t)
+
