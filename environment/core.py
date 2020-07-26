@@ -36,7 +36,7 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
 
 
 def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
-                     cuda: bool, nb_class: int) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+                     device_str: str, nb_class: int) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """
     TODO
 
@@ -54,20 +54,18 @@ def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     :rtype:
     """
 
-    device_str = "cuda" if cuda else "cpu"
+    agents.new_episode(img_batch.size(0))
 
     img_batch = img_batch.to(th.device(device_str))
 
     step_pos = th.zeros(max_it, *agents.pos.size(), dtype=th.long,
                         device=th.device(device_str))
 
-    step_preds = th.zeros(max_it, len(agents), img_batch.size(0), nb_class,
+    step_preds = th.zeros(max_it, img_batch.size(0), nb_class,
                           device=th.device(device_str))
 
-    step_probas = th.zeros(max_it, len(agents), img_batch.size(0),
+    step_probas = th.zeros(max_it, img_batch.size(0),
                            device=th.device(device_str))
-
-    agents.new_episode(img_batch.size(0))
 
     for t in range(max_it):
         agents.step(img_batch)
@@ -76,7 +74,29 @@ def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
 
         preds, probas = agents.predict()
 
-        step_preds[t, :, :, :] = preds
-        step_probas[t, :, :] = probas
+        step_preds[t, :, :] = preds
+        step_probas[t, :] = probas
 
     return step_preds, step_probas, step_pos
+
+
+def episode_retry(agents: MultiAgent, img_batch: th.Tensor,
+                  max_it: int, max_retry: int, nb_class: int,
+                  device_str: str) -> \
+        Tuple[th.Tensor, th.Tensor]:
+
+    img_batch = img_batch.to(th.device(device_str))
+
+    retry_pred = th.zeros(max_retry, img_batch.size(0), nb_class,
+                          device=th.device(device_str))
+
+    retry_prob = th.zeros(max_retry, img_batch.size(0),
+                           device=th.device(device_str))
+
+    for r in range(max_retry):
+        pred, prob = episode(agents, img_batch, max_it)
+
+        retry_pred[r, :, :] = pred
+        retry_prob[r, :] = prob
+
+    return retry_pred, retry_prob
