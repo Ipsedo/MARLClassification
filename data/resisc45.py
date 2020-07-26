@@ -49,8 +49,7 @@ def load_resisc45() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
         curr_class = splitext(img_path)[-2].split("/")[-2]
 
         pil_img = Image.open(img_path, "r")
-        img = np.asarray(pil_img).copy() / 255.
-        img = th.from_numpy(img).permute(2, 0, 1)
+        img = th.from_numpy(np.asarray(pil_img).copy()).permute(2, 0, 1)
         pil_img.close()
 
         images[i, :, :, :] = img
