@@ -2,17 +2,19 @@ import torch as th
 
 import numpy as np
 
-import sys
 from os import listdir
 from os.path import exists, isdir, join, isfile, splitext
 
-import random
-
 from PIL import Image
+import gzip
+import pickle
 
 from typing import Tuple, Mapping, Any
 
 from tqdm import tqdm
+
+
+DATASET_CHOICES = ["mnist", "resisc45"]
 
 
 def load_resisc45() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
@@ -49,7 +51,7 @@ def load_resisc45() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
         curr_class = splitext(img_path)[-2].split("/")[-2]
 
         pil_img = Image.open(img_path, "r")
-        img = th.from_numpy(np.asarray(pil_img).copy()).permute(2, 0, 1) / 255.
+        img = th.from_numpy(np.asarray(pil_img).copy()).permute(2, 0, 1)
         pil_img.close()
 
         images[i, :, :, :] = img
@@ -57,13 +59,39 @@ def load_resisc45() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
 
         tqdm_bar.set_description(f"RESISCS45 - {i} / {nb_class * img_per_class} images loaded")
 
-    tqdm_bar = tqdm(range(images.size(0) - 1))
-    for i in tqdm_bar:
-        j = i + random.randint(0, sys.maxsize) // (sys.maxsize // (images.size(0) - i) + 1)
-
-        images[i, :, :, :], images[j, :, :, :] = images[j, :, :, :], images[i, :, :, :]
-        images_class[i], images_class[j] = images_class[j], images_class[i]
-
-        tqdm_bar.set_description(f"RESISCS45 - {i} / {nb_class * img_per_class} images shuffled")
-
     return (images, images_class), resisc45_class_map
+
+
+def load_mnist() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
+    """
+
+    :return:
+    :rtype:
+    """
+
+    file = './res/downloaded/mnist.pkl.gz'
+
+    assert exists(file), "You must download mnist dataset via download_mnist.sh script !"
+
+    f = gzip.open(file, 'rb')
+
+    u = pickle._Unpickler(f)
+    u.encoding = 'latin1'
+
+    train_set, valid_set, test_set = u.load()
+
+    f.close()
+
+    x_train = th.from_numpy(train_set[0]).view(-1, 1, 28, 28)
+    y_train = th.from_numpy(train_set[1])
+
+    x_valid = th.from_numpy(valid_set[0]).view(-1, 1, 28, 28)
+    y_valid = th.from_numpy(valid_set[1])
+
+    x_test = th.from_numpy(test_set[0]).view(-1, 1, 28, 28)
+    y_test = th.from_numpy(test_set[1])
+
+    x = th.cat([x_train, x_valid, x_test])
+    y = th.cat([y_train, y_valid, y_test])
+
+    return (x, y), {i: i for i in range(10)}

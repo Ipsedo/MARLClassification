@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch as th
 
+from math import pow
 
 ############################
 # Features extraction stuff
@@ -124,18 +125,20 @@ class RESISC45CnnSmall(nn.Module):
         self.seq_conv = nn.Sequential(
             nn.Conv2d(3, 7, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(7, 18, kernel_size=3, padding=1),
+            nn.Conv2d(7, 12, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(18, 24, kernel_size=5, padding=2, stride=2),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(12, 24, kernel_size=3, padding=1),
             nn.ReLU()
         )
 
         out_size = 24 * (f // 2) ** 2
+        hidden_size = 1024
 
         self.lin = nn.Sequential(
-            nn.Linear(out_size, out_size // 2),
-            nn.BatchNorm1d(out_size // 2),
-            nn.Linear(out_size // 2, n)
+            nn.Linear(out_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, n)
         )
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:

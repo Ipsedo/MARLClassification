@@ -6,7 +6,7 @@ from environment.core import episode, detailed_episode, episode_retry
 from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrapper
 from networks.ft_extractor import TestCNN
 
-from data.mnist import load_mnist
+from data.loader import load_mnist, DATASET_CHOICES
 from data.resisc45 import load_resisc45
 
 from utils import RLOptions, MAOptions, TrainOptions, TestOptions,\
@@ -304,13 +304,17 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
         nn_models = MNISTModelWrapper(ma_options.window_size,
                                       rl_option.hidden_size,
-                                      rl_option.hidden_size_msg)
+                                      rl_option.hidden_size_msg,
+                                      rl_option.hidden_size_linear)
+
     elif train_options.data_set == "resisc45":
         (x, y), class_map = load_resisc45()
 
         nn_models = RESISC45ModelsWrapper(ma_options.window_size,
                                           rl_option.hidden_size,
-                                          rl_option.hidden_size_msg)
+                                          rl_option.hidden_size_msg,
+                                          rl_option.hidden_size_linear)
+
     else:
         print(f"Unrecognized data set \"{train_options.data_set}\"")
         exit(1)
@@ -512,7 +516,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
     visualize_steps(marl_m, x_test[randint(0, x_test.size(0) - 1)],
                     rl_option.nb_step, ma_options.window_size,
-                    output_dir, ma_options.nb_class, cuda, class_map)
+                    output_dir, ma_options.nb_class, device_str, class_map)
 
     logs_file.close()
 
@@ -600,6 +604,8 @@ def main() -> None:
                              help="Hidden size for NNs")
     main_parser.add_argument("--nm", type=int, default=2, dest="n_m",
                              help="Message size for NNs")
+    main_parser.add_argument("--nl", type=int, default=64, dest="n_l",
+                             help="Network internal hidden size for linear projections")
     main_parser.add_argument("--cuda", action="store_true", dest="cuda",
                              help="Train NNs with CUDA")
 
@@ -608,7 +614,7 @@ def main() -> None:
     ##################
 
     # Training arguments
-    train_parser.add_argument("--dataset", type=str, choices=["mnist", "resisc45"], default="mnist",
+    train_parser.add_argument("--dataset", type=str, choices=DATASET_CHOICES, default="mnist",
                               dest="dataset", help="Choose the training data set")
     train_parser.add_argument("-o", "--output-dir", type=str, required=True, dest="output_dir",
                               help="The output dir containing res and models per epoch. "
@@ -672,7 +678,7 @@ def main() -> None:
     # Train main
     elif args.prgm == "main" and args.main_choice == "train":
         # Create Options
-        rl_options = RLOptions(args.step, args.n, args.n_m, args.cuda)
+        rl_options = RLOptions(args.step, args.n, args.n_l, args.n_m, args.cuda)
 
         ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
                                args.nb_class, args.nb_action)
@@ -691,7 +697,7 @@ def main() -> None:
 
     # Test main
     elif args.prgm == "main" and args.main_choice == "test":
-        rl_options = RLOptions(args.step, args.n, args.n_m, args.cuda)
+        rl_options = RLOptions(args.step, args.n, args.n_l, args.n_m, args.cuda)
 
         ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
                                args.nb_class, args.nb_action)

@@ -27,6 +27,7 @@ MAOptions = typ.NamedTuple("MAOption",
 RLOptions = typ.NamedTuple("RLOptions",
                            [("nb_step", int),
                             ("hidden_size", int),
+                            ("hidden_size_linear", int),
                             ("hidden_size_msg", int),
                             ("cuda", bool)])
 
@@ -64,8 +65,10 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
     :type output_dir:
     :param nb_class:
     :type nb_class:
-    :param cuda:
-    :type cuda:
+    :param device_str:
+    :type device_str:
+    :param class_map:
+    :type class_map:
     :return:
     :rtype:
     """
