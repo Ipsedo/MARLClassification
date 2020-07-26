@@ -1,38 +1,48 @@
+import torch as th
 from torch.utils.data import Dataset, ConcatDataset
-from torch.utils.data.dataset import T_co
+from typing import Tuple
 
 
-class MNISTDataset(Dataset):
-    def __init__(self, shuffle: bool = False,
-                 seed: int = 314159) -> None:
+class MainDataset(Dataset):
+    def __init__(self, shuffle: bool, seed: int,
+                 img_size: int, channel_size: int) -> None:
         super().__init__()
 
-        self.__img_size = 28
-        self.__channel_size = 1
+        self._shuffle = shuffle
+        self._seed = seed
 
-    def __getitem__(self, index: int) -> T_co:
+        self._img_size = img_size
+        self._channel_size = channel_size
+
+
+class MNISTDataset(MainDataset):
+    def __init__(self, shuffle: bool = False,
+                 seed: int = 314159) -> None:
+        super().__init__(shuffle, seed, 28, 1)
+
+    def __getitem__(self, index: int) -> Tuple[th.Tensor, th.Tensor]:
         return super().__getitem__(index)
 
     def __len__(self) -> int:
         return super().__len__()
 
-    def __add__(self, other: T_co) -> ConcatDataset[T_co]:
+    def __add__(self, other: Tuple[th.Tensor, th.Tensor]) -> ConcatDataset[Tuple[th.Tensor, th.Tensor]]:
         return super().__add__(other)
 
 
-class RESISCDataset(Dataset):
+class RESISCDataset(MainDataset):
     def __init__(self, shuffle: bool = False,
-                 seed: int = 314159) -> None:
-        super().__init__()
+                 seed: int = 314159,
+                 verbose: bool = True) -> None:
+        super().__init__(shuffle, seed, 256, 3)
 
-        self.__img_size = 256
-        self.__channel_size = 3
+        self.__verbose = True
 
-    def __getitem__(self, index: int) -> T_co:
+    def __getitem__(self, index: int) -> Tuple[th.Tensor, th.Tensor]:
         return super().__getitem__(index)
 
     def __len__(self) -> int:
         return super().__len__()
 
-    def __add__(self, other: T_co) -> ConcatDataset[T_co]:
+    def __add__(self, other: Tuple[th.Tensor, th.Tensor]) -> ConcatDataset[Tuple[th.Tensor, th.Tensor]]:
         return super().__add__(other)
