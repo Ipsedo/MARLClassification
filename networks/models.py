@@ -76,5 +76,5 @@ class MNISTModelWrapper(ModelsWrapper):
 #####################
 class RESISC45ModelsWrapper(ModelsWrapper):
     def __init__(self, f: int, n: int, n_m: int) -> None:
-        super().__init__(RESISC45CnnSmall(f, n), n, n_m, 2, 4, 45, 512)
+        super().__init__(RESISC45CnnSmall(f, n), n, n_m, 2, 4, 45, 2048)
 
