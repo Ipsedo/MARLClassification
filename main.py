@@ -1,7 +1,7 @@
 from environment.observation import obs_img
 from environment.transition import trans_img
 from environment.agent import MultiAgent
-from environment.core import episode
+from environment.core import episode, detailed_episode, episode_retry
 
 from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrapper
 from networks.ft_extractor import TestCNN
@@ -373,28 +373,30 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
             x, y = x_train[i_min:i_max, :, :].to(th.device(device_str)),\
                    y_train[i_min:i_max].to(th.device(device_str))
 
-            # get predictions and probabilities
-            preds, log_prob = episode(marl_m, x, rl_option.nb_step)
+            retry_pred, retry_prob = episode_retry(marl_m, x, rl_option.nb_step,
+                                                   train_options.retry_number,
+                                                   ma_options.nb_class, device_str)
 
             # Class one hot encoding
             y_eye = th.eye(ma_options.nb_class,
-                           device=th.device(device_str))[y]
+                           device=th.device(device_str))[y.unsqueeze(0)]
 
             # Mean on all agents
             # then pass to class proba (softmax)
-            preds = F.softmax(preds.mean(dim=0), dim=-1)
+            retry_pred = F.softmax(retry_pred, dim=-1)
 
             # Update confusion meter
-            conf_meter.add(preds.detach(), y.detach())
+            # mean between trials
+            conf_meter.add(retry_pred.detach().mean(dim=0), y)
 
             # L2 Loss - Classification error / reward
-            # reward = 1 - error(y_pred, y_true).mean(class_dim)
-            r = 1. - th.pow(y_eye - preds, 2.).mean(dim=-1)
+            # reward = -error(y_true, y_step_pred).mean(class_dim)
+            r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
 
             # Compute loss
-            losses = log_prob * r.detach() + r
+            losses = retry_prob * r.detach() + r
 
-            # Losses mean image batch
+            # Losses mean on images batch and trials
             # maximize(E[reward]) -> minimize(-E[reward])
             loss = -losses.mean()
 
@@ -424,7 +426,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                                      f"loss = {sum_loss / (i + 1):.4f}, "
                                      f"train_prec = {precs.mean():.4f}, "
                                      f"train_rec = {recs.mean():.4f}, "
-                                     f"param_mean_dummy = [{mean_param_list_str}]")
+                                     f"frozen_params = [{mean_param_list_str}]")
 
         precs, recs = prec_rec(conf_meter)
 
@@ -459,11 +461,11 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                 x, y = x_valid[i_min:i_max, :, :].to(th.device(device_str)),\
                        y_valid[i_min:i_max].to(th.device(device_str))
 
-                preds, proba = episode(marl_m, x, rl_option.nb_step)
+                preds, _ = episode(marl_m, x, rl_option.nb_step)
 
-                preds = F.softmax(preds.mean(dim=0), dim=-1)
+                preds = F.softmax(preds, dim=-1)
 
-                conf_meter.add(preds.detach(), y.detach())
+                conf_meter.add(preds.detach(), y)
 
                 # Compute score
                 precs, recs = prec_rec(conf_meter)
@@ -617,8 +619,8 @@ def main() -> None:
                               help="Image batch size for training and evaluation")
     train_parser.add_argument("--nb-epoch", type=int, default=10, dest="nb_epoch",
                               help="Number of training epochs")
-    train_parser.add_argument("--nr", type=int, default=7,
-                              help="Number of retry - unused")
+    train_parser.add_argument("--nr", "--number-retry", type=int, default=7, dest="number_retry",
+                              help="Number of retry to estimate expectation.")
     train_parser.add_argument("--freeze", type=str, default=[], nargs="+",
                               dest="frozen_modules", action=SetAppendAction,
                               choices=[ModelsWrapper.map_obs, ModelsWrapper.map_pos,
@@ -676,6 +678,7 @@ def main() -> None:
                                args.nb_class, args.nb_action)
 
         train_options = TrainOptions(args.nb_epoch, args.learning_rate,
+                                     args.number_retry,
                                      args.batch_size, args.output_dir,
                                      args.frozen_modules, args.dataset)
 
