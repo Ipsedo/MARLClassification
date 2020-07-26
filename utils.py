@@ -33,6 +33,7 @@ RLOptions = typ.NamedTuple("RLOptions",
 TrainOptions = typ.NamedTuple("TrainOptions",
                               [("nb_epoch", int),
                                ("learning_rate", float),
+                               ("retry_number", int),
                                ("batch_size", int),
                                ("output_model_path", str),
                                ("frozen_modules", typ.List[str]),
@@ -47,7 +48,7 @@ TestOptions = typ.NamedTuple("TestOptions",
 
 def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
                     max_it: int, f: int, output_dir: str,
-                    nb_class: int, cuda: bool,
+                    nb_class: int, device_str: str,
                     class_map: typ.Mapping[typ.Any, int]) -> None:
     """
 
@@ -74,7 +75,7 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
     color_map = None
 
     preds, _, pos = detailed_episode(agents, one_img.unsqueeze(0),
-                                     max_it, cuda, nb_class)
+                                     max_it, device_str, nb_class)
 
     one_img = one_img.permute(1, 2, 0)
 
