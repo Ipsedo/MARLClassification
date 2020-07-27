@@ -343,8 +343,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     # for RL agent models parameters
     optim = th.optim.Adam(nn_models.parameters(), lr=train_options.learning_rate)
 
-    limit_train = int(0.7 * x.size(0))
-    limit_eval = int(0.85 * x.size(0))
+    limit_train = int(0.85 * x.size(0))
+    limit_eval = int(x.size(0))
 
     x_train, y_train = x[:limit_train, :, :, :], y[:limit_train]
     x_valid, y_valid = x[limit_train:limit_eval, :, :, :], y[limit_train:limit_eval]
