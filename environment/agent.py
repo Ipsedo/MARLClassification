@@ -224,7 +224,7 @@ class MultiAgent:
         #   plus p(p_5 | p_4 | ... | p_0) <-> p(A /\ B) -> flemme donc on prend le dernier ie p_5
         # chemin par agent équiprobable -> moyenne des probas
         return self.__networks(self.__networks.predict, self.__c[-1].squeeze(0)).mean(dim=0),\
-               th.stack(self.__action_probas).log().sum(dim=0).sum(dim=0)
+               self.__action_probas[-1].log().sum(dim=0)
 
     @property
     def is_cuda(self) -> bool:
