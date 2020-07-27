@@ -14,7 +14,6 @@ from typing import Tuple, Mapping, Any
 from tqdm import tqdm
 
 
-DATASET_CHOICES = ["mnist", "resisc45"]
 
 
 def load_resisc45() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
