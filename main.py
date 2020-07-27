@@ -6,20 +6,23 @@ from environment.core import episode, detailed_episode, episode_retry
 from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrapper
 from networks.ft_extractor import TestCNN
 
-from data.loader import load_mnist, DATASET_CHOICES
-from data.resisc45 import load_resisc45
+from data.dataset import MNISTDataset, RESISC45Dataset, DATASET_CHOICES
+from data.loader import load_mnist
+import data.transforms as custom_tr
 
 from utils import RLOptions, MAOptions, TrainOptions, TestOptions,\
     visualize_steps, prec_rec, format_metric, SetAppendAction
 
 import torch as th
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as fun
+from torch.utils.data import Subset, DataLoader
+import torchvision.transforms as tr
 
 from torchnet.meter import ConfusionMeter
 
 from math import ceil
-from random import randint
+from random import randint, shuffle
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -267,7 +270,7 @@ def test_mnist():
 # Train - Main
 ######################
 
-def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptions) -> None:
+def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptions) -> None:
     """
 
     :param ma_options:
@@ -295,12 +298,16 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
     ops_to_skip = train_options.frozen_modules
 
-    (x, y), class_map = (th.zeros(1), th.tensor(1)), {}
+    img_pipeline = tr.Compose([
+        tr.ToTensor(),
+        custom_tr.MinMaxNorm()
+    ])
 
+    dataset = None
     nn_models = None
 
     if train_options.data_set == "mnist":
-        (x, y), class_map = load_mnist()
+        dataset = MNISTDataset(img_pipeline)
 
         nn_models = MNISTModelWrapper(ma_options.window_size,
                                       rl_option.hidden_size,
@@ -308,7 +315,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                                       rl_option.hidden_size_linear)
 
     elif train_options.data_set == "resisc45":
-        (x, y), class_map = load_resisc45()
+        dataset = RESISC45Dataset(img_pipeline)
 
         nn_models = RESISC45ModelsWrapper(ma_options.window_size,
                                           rl_option.hidden_size,
@@ -328,8 +335,6 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                         ma_options.nb_action,
                         obs_img, trans_img)
 
-    criterion = nn.CrossEntropyLoss(reduction='none')
-
     cuda = rl_option.cuda
     device_str = "cpu"
 
@@ -343,15 +348,19 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
     # for RL agent models parameters
     optim = th.optim.Adam(nn_models.parameters(), lr=train_options.learning_rate)
 
-    limit_train = int(0.85 * x.size(0))
-    limit_eval = int(x.size(0))
+    idx = list(range(len(dataset)))
+    shuffle(idx)
+    idx_train = idx[:int(0.85 * len(idx))]
+    idx_test = idx[int(0.85 * len(idx)):]
 
-    x_train, y_train = x[:limit_train, :, :, :], y[:limit_train]
-    x_valid, y_valid = x[limit_train:limit_eval, :, :, :], y[limit_train:limit_eval]
-    x_test, y_test = x[limit_eval:, :, :, :], y[limit_eval:]
+    train_dataset = Subset(dataset, idx_train)
+    test_dataset = Subset(dataset, idx_test)
 
-    batch_size = train_options.batch_size
-    nb_batch = ceil(x_train.size(0) / batch_size)
+    train_dataloader = DataLoader(train_dataset, batch_size=train_options.batch_size,
+                                  shuffle=False, num_workers=8, drop_last=False)
+
+    test_dataloader = DataLoader(test_dataset, batch_size=train_options.batch_size,
+                                 shuffle=False, num_workers=8, drop_last=False)
 
     loss_v = []
     prec_epoch = []
@@ -366,32 +375,27 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
         conf_meter = ConfusionMeter(ma_options.nb_class)
 
-        tqdm_bar = tqdm(range(nb_batch))
-        for i in tqdm_bar:
-            # Get real batch indexes
-            i_min = i * batch_size
-            i_max = (i + 1) * batch_size
-            i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
+        i = 0
+        tqdm_bar = tqdm(train_dataloader)
+        for x_train, y_train in tqdm_bar:
+            x_train, y_train = x_train.to(th.device(device_str)),\
+                               y_train.to(th.device(device_str))
 
-            # Select batch images & class
-            x, y = x_train[i_min:i_max, :, :].to(th.device(device_str)),\
-                   y_train[i_min:i_max].to(th.device(device_str))
-
-            retry_pred, retry_prob = episode_retry(marl_m, x, rl_option.nb_step,
+            retry_pred, retry_prob = episode_retry(marl_m, x_train, rl_option.nb_step,
                                                    train_options.retry_number,
                                                    ma_options.nb_class, device_str)
 
             # Class one hot encoding
             y_eye = th.eye(ma_options.nb_class,
-                           device=th.device(device_str))[y.unsqueeze(0)]
+                           device=th.device(device_str))[y_train.unsqueeze(0)]
 
             # Mean on all agents
             # then pass to class proba (softmax)
-            retry_pred = F.softmax(retry_pred, dim=-1)
+            retry_pred = fun.softmax(retry_pred, dim=-1)
 
             # Update confusion meter
             # mean between trials
-            conf_meter.add(retry_pred.detach().mean(dim=0), y)
+            conf_meter.add(retry_pred.detach().mean(dim=0), y_train)
 
             # L2 Loss - Classification error / reward
             # reward = -error(y_true, y_step_pred).mean(class_dim)
@@ -411,7 +415,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
             loss.backward()
 
             # Erase gradient - test
-            nn_models.erase_grad(ops_to_skip)
+            #nn_models.erase_grad(ops_to_skip)
 
             # Update weights
             optim.step()
@@ -424,7 +428,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
             # verify some parameters are un-optimized - test
             param_list = nn_models.get_params(ops_to_skip)
-            mean_param_list_str = ", ".join([f'{p.mean():.4f}' for p in param_list])
+            mean_param_list_str = ", ".join([f'{p.norm():.4f}' for p in param_list])
 
             tqdm_bar.set_description(f"Epoch {e} - Train, "
                                      f"loss = {sum_loss / (i + 1):.4f}, "
@@ -432,12 +436,15 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                                      f"train_rec = {recs.mean():.4f}, "
                                      f"frozen_params = [{mean_param_list_str}]")
 
+            i += 1
+
         precs, recs = prec_rec(conf_meter)
 
-        precs_str = format_metric(precs, class_map)
-        recs_str = format_metric(recs, class_map)
+        precs_str = format_metric(precs, dataset.class_to_idx)
+        recs_str = format_metric(recs, dataset.class_to_idx)
 
-        sum_loss /= nb_batch
+        sum_loss /= ceil(len(train_dataloader) / train_dataloader.batch_size)
+
         elapsed_time = datetime.datetime.now() - train_ep_st
         logs_file.write(f"#############################################\n"
                         f"Epoch {e} - Train - Loss = {sum_loss:.4f}\n"
@@ -448,28 +455,22 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
                         f"{elapsed_time.seconds % 60}s\n")
         logs_file.flush()
 
-        nb_batch_valid = ceil(x_valid.size(0) / batch_size)
-
         nn_models.eval()
         conf_meter.reset()
 
         train_ep_st = datetime.datetime.now()
 
         with th.no_grad():
-            tqdm_bar = tqdm(range(nb_batch_valid))
-            for i in tqdm_bar:
-                i_min = i * batch_size
-                i_max = (i + 1) * batch_size
-                i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
+            tqdm_bar = tqdm(test_dataloader)
+            for x_test, y_test in tqdm_bar:
+                x_test, y_test = x_test.to(th.device(device_str)),\
+                                 y_test.to(th.device(device_str))
 
-                x, y = x_valid[i_min:i_max, :, :].to(th.device(device_str)),\
-                       y_valid[i_min:i_max].to(th.device(device_str))
+                preds, _ = episode(marl_m, x_test, rl_option.nb_step)
 
-                preds, _ = episode(marl_m, x, rl_option.nb_step)
+                preds = fun.softmax(preds, dim=-1)
 
-                preds = F.softmax(preds, dim=-1)
-
-                conf_meter.add(preds.detach(), y)
+                conf_meter.add(preds.detach(), y_test)
 
                 # Compute score
                 precs, recs = prec_rec(conf_meter)
@@ -481,8 +482,8 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
         # Compute score
         precs, recs = prec_rec(conf_meter)
 
-        precs_str = format_metric(precs, class_map)
-        recs_str = format_metric(recs, class_map)
+        precs_str = format_metric(precs, dataset.class_to_idx)
+        recs_str = format_metric(recs, dataset.class_to_idx)
 
         elapsed_time = datetime.datetime.now() - train_ep_st
         logs_file.write(f"#############################################\n"
@@ -516,7 +517,7 @@ def train_mnist(ma_options: MAOptions, rl_option: RLOptions, train_options: Trai
 
     visualize_steps(marl_m, x_test[randint(0, x_test.size(0) - 1)],
                     rl_option.nb_step, ma_options.window_size,
-                    output_dir, ma_options.nb_class, device_str, class_map)
+                    output_dir, ma_options.nb_class, device_str, dataset.class_to_idx)
 
     logs_file.close()
 
@@ -693,7 +694,7 @@ def main() -> None:
         if exists(args.output_dir) and not isdir(args.output_dir):
             raise Exception(f"\"{args.output_dir}\" is not a directory.")
 
-        train_mnist(ma_options, rl_options, train_options)
+        train(ma_options, rl_options, train_options)
 
     # Test main
     elif args.prgm == "main" and args.main_choice == "test":

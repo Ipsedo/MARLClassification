@@ -1,26 +1,39 @@
-import torch as th
-from torch.utils.data import TensorDataset
+from torchvision.datasets import ImageFolder
 
-from typing import Mapping, Any
+from PIL import Image
 
-from .loader import load_mnist, load_resisc45, DATASET_CHOICES
+from os.path import exists, isdir
+
+from typing import Any
 
 
-class ImgDataset(TensorDataset):
-    def __init__(self, dataset: str) -> None:
-        assert dataset in DATASET_CHOICES, f"Dataset choice not recognized ! Choose between {DATASET_CHOICES}"
+DATASET_CHOICES = ["mnist", "resisc45"]
 
-        if dataset == "mnist":
-            (x, y), class_map = load_mnist()
-        elif dataset == "resisc45":
-            (x, y), class_map = load_resisc45()
-        else:
-            (x, y), class_map = (th.rand(1, 3, 256, 256), th.zeros(1, 1)), {0: 0}
 
-        super().__init__(x, y)
+def my_pil_loader(path: str) -> Image.Image:
+    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
+    with open(path, 'rb') as f:
+        img = Image.open(f)
+        return img.convert('RGB')
 
-        self.__class_map = class_map
-    
-    @property
-    def class_map(self) -> Mapping[Any, int]:
-        return self.__class_map
+
+class MNISTDataset(ImageFolder):
+    def __init__(self, img_transform: Any) -> None:
+        mnist_root_path = "./res/downloaded/mnist_png/all_png"
+
+        assert exists(mnist_root_path) and isdir(mnist_root_path),\
+            f"{mnist_root_path} does not exist or is not a directory"
+
+        super().__init__(mnist_root_path, transform=img_transform,
+                         target_transform=None, loader=my_pil_loader, is_valid_file=None)
+
+
+class RESISC45Dataset(ImageFolder):
+    def __init__(self, img_transform: Any) -> None:
+        resisc_root_path = "./res/downloaded/NWPU-RESISC45"
+
+        assert exists(resisc_root_path) and isdir(resisc_root_path),\
+            f"{resisc_root_path} does not exist or is not a directory"
+
+        super().__init__(resisc_root_path, transform=img_transform,
+                         target_transform=None, loader=my_pil_loader, is_valid_file=None)

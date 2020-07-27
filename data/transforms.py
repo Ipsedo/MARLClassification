@@ -26,13 +26,15 @@ class NormalNorm(ImgTransform):
         self.__mean = th.tensor([mean] * 3) if isinstance(mean, float) else mean
         self.__std = th.tensor([std] * 3) if isinstance(std, float) else std
 
-    def __call__(self, img_data: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, th.Tensor]:
-        x, y = img_data
+    def __call__(self, x: th.Tensor) -> th.Tensor:
 
         mean = self.__mean if self.__user_defined_mean else x.view(3, -1).mean(dim=-1)
         std = self.__std if self.__user_defined_std else x.view(3, -1).std(dim=-1)
 
-        return (x - mean) / std, y
+        mean = mean.view(3, 1, 1)
+        std = std.view(3, 1, 1)
+
+        return (x - mean) / std
 
     def __repr__(self):
         return self.__class__.__name__ + f"(mean = {str(self.__mean)}, std = {str(self.__std)})"
@@ -48,13 +50,14 @@ class MinMaxNorm(ImgTransform):
         self.__min = th.tensor([min_value] * 3) if isinstance(min_value, float) else min_value
         self.__max = th.tensor([max_value] * 3) if isinstance(max_value, float) else max_value
 
-    def __call__(self, img_data: Tuple[th.Tensor, th.Tensor]) -> Tuple[th.Tensor, th.Tensor]:
-        x, y = img_data
-
+    def __call__(self, x: th.Tensor) -> th.Tensor:
         max_value = self.__max if self.__user_defined_max else x.view(3, -1).max(dim=-1)[0]
         min_value = self.__min if self.__user_defined_min else x.view(3, -1).min(dim=-1)[0]
 
-        return (x - min_value) / (max_value - min_value), y
+        min_value = min_value.view(3, 1, 1)
+        max_value = max_value.view(3, 1, 1)
+
+        return (x - min_value) / (max_value - min_value)
 
     def __repr__(self):
         return self.__class__.__name__ + f"(min_value = {self.__min}, max_value = {self.__max})"

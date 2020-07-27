@@ -5,9 +5,24 @@ if ! [[ -d "./downloaded" ]]; then
 fi
 cd downloaded
 
-# Download mnist
-if ! [[ -f "./mnist.pkl.gz" ]]; then
-    wget http://deeplearning.net/data/mnist/mnist.pkl.gz
+# Download mnist PNGs
+if ! [[ -f "./mnistzip.zip" ]]; then
+    echo "Download MNIST png from Kaggle"
+    kaggle datasets download -d playlist/mnistzip
 fi
 
-cd ..
+if ! [[ -d "./mnist_png" ]]; then
+    echo "Extract mnistzip.zip"
+    unzip mnistzip.zip
+fi
+
+cd mnist_png
+if ! [[ -d "./all_png" ]]; then
+    echo "Create all_png folder"
+    mkdir all_png
+    echo "Copy train img to all_png folder"
+    cp -r train/* all_png
+    echo "Copy eval img to all_png folder"
+    cp -r valid/* all_png
+fi
+cd ../..
