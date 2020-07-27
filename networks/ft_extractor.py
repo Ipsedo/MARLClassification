@@ -55,6 +55,7 @@ class MNISTCnn(nn.Module):
         )
 
     def forward(self, o_t):
+        o_t = o_t[:, 0, None, :, :] # grey scale
         out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
         return self.seq_lin(out)
@@ -124,21 +125,18 @@ class RESISC45CnnSmall(nn.Module):
 
         self.seq_conv = nn.Sequential(
             nn.Conv2d(3, 7, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=1e-1),
             nn.Conv2d(7, 12, kernel_size=3, padding=1),
-            nn.ReLU(),
+            nn.LeakyReLU(negative_slope=1e-1),
             nn.MaxPool2d(2, 2),
             nn.Conv2d(12, 24, kernel_size=3, padding=1),
-            nn.ReLU()
+            nn.LeakyReLU(negative_slope=1e-1)
         )
 
         out_size = 24 * (f // 2) ** 2
-        hidden_size = 1024
 
         self.lin = nn.Sequential(
-            nn.Linear(out_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, n)
+            nn.Linear(out_size, n)
         )
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
