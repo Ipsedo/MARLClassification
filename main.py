@@ -4,7 +4,7 @@ from environment.agent import MultiAgent
 from environment.core import episode, detailed_episode, episode_retry
 
 from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrapper
-from networks.ft_extractor import TestCNN
+from networks.ft_extractor import TestCNN, TestRESISC45
 
 from data.dataset import MNISTDataset, RESISC45Dataset, DATASET_CHOICES
 from data.loader import load_mnist
@@ -16,7 +16,7 @@ from utils import RLOptions, MAOptions, TrainOptions, TestOptions,\
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as fun
-from torch.utils.data import Subset, DataLoader
+from torch.utils.data import Subset, DataLoader, IterableDataset, Dataset, TensorDataset
 import torchvision.transforms as tr
 
 from torchnet.meter import ConfusionMeter
@@ -200,69 +200,66 @@ def test_core_step():
 # CNN test
 ######################
 
-def test_mnist():
+def test_cnn():
     """
     TODO
 
     :return:
     :rtype:
     """
-    (x_train, y_train), (x_valid, y_valid), (x_test, y_test) = load_mnist()
 
-    m = TestCNN(10)
+    img_pipeline = tr.Compose([
+        tr.ToTensor(),
+        custom_tr.MinMaxNorm()
+    ])
+    dataset = RESISC45Dataset(img_transform=img_pipeline)
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+
+    m = TestRESISC45()
     mse = nn.MSELoss()
 
     m.cuda()
     mse.cuda()
 
-    optim = th.optim.SGD(m.parameters(), lr=1e-2)
+    optim = th.optim.Adam(m.parameters(), lr=1e-4)
 
-    batch_size = 64
     nb_epoch = 10
 
-    nb_batch = ceil(x_train.size(0) / batch_size)
-
+    i = 0
     for e in range(nb_epoch):
         sum_loss = 0
 
         m.train()
 
-        for i in tqdm(range(nb_batch)):
-            i_min = i * batch_size
-            i_max = (i + 1) * batch_size
-            i_max = i_max if i_max < x_train.size(0) else x_train.size(0)
-            x, y = x_train[i_min:i_max, :, :].cuda(), y_train[i_min:i_max].cuda()
+        conf_meter = ConfusionMeter(45)
+        th.autograd.set_detect_anomaly(True)
+
+        tqdm_bar = tqdm(dataloader)
+        for x, y in tqdm_bar:
+            x, y = x.cuda(), y.cuda()
 
             pred = m(x)
 
-            loss = mse(pred, th.eye(10)[y].cuda())
+            y = y.view(-1, 1).repeat(1, 16 * 16).view(-1)
+            conf_meter.add(pred.detach(), y)
+            precs, recs = prec_rec(conf_meter)
+
+            losses = th.pow(pred - th.eye(45)[y].cuda(), 2.).mean(dim=-1)
 
             optim.zero_grad()
-            loss.backward()
+
+            losses.mean().backward(retain_graph=True)
 
             #print("CNN_el = %d, grad_norm = %f" % (m.seq_lin[0].weight.grad.nelement(), m.seq_lin[0].weight.grad.norm()))
 
+            sum_loss += losses.detach()[0].item()
+
+            i += 1
+
+            tqdm_bar.set_description(f"Epoch {e}, loss = {sum_loss / i:.4f}, prec = {precs.mean():.4f}, rec = {recs.mean():.4f}")
+
             optim.step()
 
-            sum_loss += loss.item()
-        print("Epoch %d, loss = %f" % (e, sum_loss / nb_batch))
-
-        with th.no_grad():
-            nb_batch_valid = ceil(x_valid.size(0) / batch_size)
-            nb_correct = 0
-            for i in tqdm(range(nb_batch_valid)):
-                i_min = i * batch_size
-                i_max = (i + 1) * batch_size
-                i_max = i_max if i_max < x_valid.size(0) else x_valid.size(0)
-
-                x, y = x_valid[i_min:i_max, :, :].cuda(), y_valid[i_min:i_max].cuda()
-
-                pred = m(x)
-
-                nb_correct += (pred.argmax(dim=1) == y).sum().item()
-
-            nb_correct /= x_valid.size(0)
-            print("Epoch %d, accuracy = %f" % (e, nb_correct))
     return m.seq_conv
 
 
@@ -357,10 +354,10 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
     test_dataset = Subset(dataset, idx_test)
 
     train_dataloader = DataLoader(train_dataset, batch_size=train_options.batch_size,
-                                  shuffle=False, num_workers=8, drop_last=False)
+                                  shuffle=True, num_workers=8, drop_last=False)
 
     test_dataloader = DataLoader(test_dataset, batch_size=train_options.batch_size,
-                                 shuffle=False, num_workers=8, drop_last=False)
+                                 shuffle=True, num_workers=8, drop_last=False)
 
     loss_v = []
     prec_epoch = []
@@ -381,6 +378,8 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
             x_train, y_train = x_train.to(th.device(device_str)),\
                                y_train.to(th.device(device_str))
 
+            # pred = [Nr, Nb, Nc]
+            # prob = [Nr, Nb]
             retry_pred, retry_prob = episode_retry(marl_m, x_train, rl_option.nb_step,
                                                    train_options.retry_number,
                                                    ma_options.nb_class, device_str)
@@ -392,14 +391,15 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
             # Mean on all agents
             # then pass to class proba (softmax)
             retry_pred = fun.softmax(retry_pred, dim=-1)
+            retry_pred_2 = fun.softmax(retry_pred.mean(dim=0), dim=-1)
 
             # Update confusion meter
             # mean between trials
-            conf_meter.add(retry_pred.detach().mean(dim=0), y_train)
+            conf_meter.add(retry_pred_2.detach(), y_train)
 
             # L2 Loss - Classification error / reward
             # reward = -error(y_true, y_step_pred).mean(class_dim)
-            r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
+            r = -th.pow(y_eye - retry_pred, 2.).sum(dim=-1)
 
             # Compute loss
             losses = retry_prob * r.detach() + r
@@ -428,7 +428,7 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
 
             # verify some parameters are un-optimized - test
             param_list = nn_models.get_params(ops_to_skip)
-            mean_param_list_str = ", ".join([f'{p.norm():.4f}' for p in param_list])
+            mean_param_list_str = ", ".join([f'{p.grad.norm():.0e}' for p in param_list])
 
             tqdm_bar.set_description(f"Epoch {e} - Train, "
                                      f"loss = {sum_loss / (i + 1):.4f}, "
@@ -709,8 +709,8 @@ def main() -> None:
         test(ma_options, rl_options, test_options)
 
     # CNN test main
-    elif args.prgm == "aux" and args.mode == "cnn":
-        print(test_mnist())
+    elif args.prgm == "aux" and args.aux_choice == "cnn":
+        print(test_cnn())
         pass
     else:
         parser.error(f"Unrecognized mode : \"{args.mode}\" type == {type(args.mode)}.")
