@@ -124,27 +124,60 @@ class RESISC45CnnSmall(nn.Module):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 7, kernel_size=3, padding=1),
-            nn.LeakyReLU(negative_slope=1e-1),
-            nn.Conv2d(7, 12, kernel_size=3, padding=1),
-            nn.LeakyReLU(negative_slope=1e-1),
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(12, 24, kernel_size=3, padding=1),
-            nn.LeakyReLU(negative_slope=1e-1)
+            nn.Conv2d(3, 9, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(9, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
         )
 
-        out_size = 24 * (f // 2) ** 2
+        # out_size == 2048
+        out_size = 32 * (f // 2) ** 2
 
-        self.lin = nn.Sequential(
+        self.seq_lin = nn.Sequential(
             nn.Linear(out_size, n)
         )
+
+        for m in self.seq_lin:
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
-        out = self.lin(out)
+        out = self.seq_lin(out)
         return out
 
+
+class TestRESISC45(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.seq_conv = nn.Sequential(
+            nn.Conv2d(3, 9, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(9, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=5, padding=2, stride=2),
+            nn.ReLU()
+        )
+
+        out_size = 32 * (16 // 2) ** 2
+
+        self.seq_lin = nn.Sequential(
+            nn.Linear(out_size, 4096),
+            nn.LeakyReLU(),
+            nn.Linear(4096, 45),
+            nn.Softmax(dim=-1)
+        )
+
+    def forward(self, x: th.Tensor):
+        out = th.cat(th.cat(x.split(16, dim=-1)).split(16, dim=-2))
+        out = self.seq_conv(out)
+        out = out.flatten(1, -1)
+        out = self.seq_lin(out)
+        return out.view(-1, 45)
 
 ############################
 # State to features stuff
