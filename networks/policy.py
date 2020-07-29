@@ -16,5 +16,9 @@ class Policy(nn.Module):
             nn.Softmax(dim=-1)
         )
 
+        for m in self.seq_lin:
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+
     def forward(self, h_caret_t_next):
         return self.seq_lin(h_caret_t_next)

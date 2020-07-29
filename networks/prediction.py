@@ -17,5 +17,9 @@ class Prediction(nn.Module):
             nn.Linear(hidden_size, self.__nb_class)
         )
 
+        for m in self.seq_lin:
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+
     def forward(self, c_t):
         return self.seq_lin(c_t)
