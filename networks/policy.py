@@ -6,6 +6,7 @@ class Policy(nn.Module):
     π_θ3 : A * R^n
     R^n : pas sûr, voir reccurents.ActionUnit
     """
+
     def __init__(self, nb_action, n: int, hidden_size: int):
         super().__init__()
 
