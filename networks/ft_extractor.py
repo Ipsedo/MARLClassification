@@ -128,16 +128,19 @@ class RESISC45CnnSmall(nn.Module):
             nn.ReLU(),
             nn.Conv2d(9, 16, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(16, 32, kernel_size=5, padding=2),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2)
         )
 
         # out_size == 2048
         out_size = 32 * (f // 2) ** 2
+        hidden_size = 1024
 
         self.seq_lin = nn.Sequential(
-            nn.Linear(out_size, n)
+            nn.Linear(out_size, hidden_size),
+            nn.LeakyReLU(negative_slope=1e-2),
+            nn.Linear(hidden_size, n)
         )
 
         for m in self.seq_lin:
