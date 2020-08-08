@@ -60,7 +60,6 @@ class NormalNorm(ImgTransform):
 class UserMinMaxNorm(ImgTransform):
     def __init__(self, min_value: Tuple[float, float, float],
                  max_value: Tuple[float, float, float]):
-
         self.__min = th.tensor(min_value)
         self.__max = th.tensor(max_value)
 
