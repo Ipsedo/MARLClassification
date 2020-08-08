@@ -10,7 +10,7 @@ from data.dataset import MNISTDataset, RESISC45Dataset, DATASET_CHOICES
 from data.loader import load_mnist
 import data.transforms as custom_tr
 
-from utils import RLOptions, MAOptions, TrainOptions, TestOptions,\
+from utils import RLOptions, MAOptions, TrainOptions, TestOptions, \
     visualize_steps, prec_rec, format_metric, SetAppendAction
 
 import torch as th
@@ -250,13 +250,17 @@ def test_cnn():
 
             losses.mean().backward(retain_graph=True)
 
-            #print("CNN_el = %d, grad_norm = %f" % (m.seq_lin[0].weight.grad.nelement(), m.seq_lin[0].weight.grad.norm()))
+            # print("CNN_el = %d, grad_norm = %f" % (m.seq_lin[0].weight.grad.nelement(), m.seq_lin[0].weight.grad.norm()))
 
             sum_loss += losses.detach()[0].item()
 
             i += 1
 
-            tqdm_bar.set_description(f"Epoch {e}, loss = {sum_loss / i:.4f}, prec = {precs.mean():.4f}, rec = {recs.mean():.4f}")
+            tqdm_bar.set_description(
+                f"Epoch {e}, loss = {sum_loss / i:.4f}, "
+                f"prec = {precs.mean():.4f}, "
+                f"rec = {recs.mean():.4f}"
+            )
 
             optim.step()
 
@@ -375,7 +379,7 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         i = 0
         tqdm_bar = tqdm(train_dataloader)
         for x_train, y_train in tqdm_bar:
-            x_train, y_train = x_train.to(th.device(device_str)),\
+            x_train, y_train = x_train.to(th.device(device_str)), \
                                y_train.to(th.device(device_str))
 
             # pred = [Nr, Nb, Nc]
@@ -415,7 +419,7 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
             loss.backward()
 
             # Erase gradient - test
-            #nn_models.erase_grad(ops_to_skip)
+            # nn_models.erase_grad(ops_to_skip)
 
             # Update weights
             optim.step()
@@ -430,11 +434,13 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
             param_list = nn_models.get_params(ops_to_skip)
             mean_param_list_str = ", ".join([f'{p.grad.norm():.0e}' for p in param_list])
 
-            tqdm_bar.set_description(f"Epoch {e} - Train, "
-                                     f"loss = {sum_loss / (i + 1):.4f}, "
-                                     f"train_prec = {precs.mean():.4f}, "
-                                     f"train_rec = {recs.mean():.4f}, "
-                                     f"frozen_params = [{mean_param_list_str}]")
+            tqdm_bar.set_description(
+                f"Epoch {e} - Train, "
+                f"loss = {sum_loss / (i + 1):.4f}, "
+                f"train_prec = {precs.mean():.4f}, "
+                f"train_rec = {recs.mean():.4f}, "
+                f"frozen_params = [{mean_param_list_str}]"
+            )
 
             i += 1
 
@@ -446,13 +452,15 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         sum_loss /= len(train_dataloader)
 
         elapsed_time = datetime.datetime.now() - train_ep_st
-        logs_file.write(f"#############################################\n"
-                        f"Epoch {e} - Train - Loss = {sum_loss:.4f}\n"
-                        f"train_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
-                        f"train_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
-                        f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
-                        f"{elapsed_time.seconds // 60 % 60}min "
-                        f"{elapsed_time.seconds % 60}s\n")
+        logs_file.write(
+            f"#############################################\n"
+            f"Epoch {e} - Train - Loss = {sum_loss:.4f}\n"
+            f"train_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
+            f"train_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
+            f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
+            f"{elapsed_time.seconds // 60 % 60}min "
+            f"{elapsed_time.seconds % 60}s\n"
+        )
         logs_file.flush()
 
         nn_models.eval()
@@ -463,7 +471,7 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         with th.no_grad():
             tqdm_bar = tqdm(test_dataloader)
             for x_test, y_test in tqdm_bar:
-                x_test, y_test = x_test.to(th.device(device_str)),\
+                x_test, y_test = x_test.to(th.device(device_str)), \
                                  y_test.to(th.device(device_str))
 
                 preds, _ = episode(marl_m, x_test, rl_option.nb_step)
@@ -475,9 +483,11 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
                 # Compute score
                 precs, recs = prec_rec(conf_meter)
 
-                tqdm_bar.set_description(f"Epoch {e} - Eval, "
-                                         f"eval_prec = {precs.mean():.4f}, "
-                                         f"eval_rec = {recs.mean():.4f}")
+                tqdm_bar.set_description(
+                    f"Epoch {e} - Eval, "
+                    f"eval_prec = {precs.mean():.4f}, "
+                    f"eval_rec = {recs.mean():.4f}"
+                )
 
         # Compute score
         precs, recs = prec_rec(conf_meter)
@@ -486,13 +496,15 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         recs_str = format_metric(recs, dataset.class_to_idx)
 
         elapsed_time = datetime.datetime.now() - train_ep_st
-        logs_file.write(f"#############################################\n"
-                        f"Epoch {e} - Eval\n"
-                        f"eval_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
-                        f"eval_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
-                        f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
-                        f"{elapsed_time.seconds // 60 % 60}min "
-                        f"{elapsed_time.seconds % 60}s\n\n")
+        logs_file.write(
+            f"#############################################\n"
+            f"Epoch {e} - Eval\n"
+            f"eval_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
+            f"eval_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
+            f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
+            f"{elapsed_time.seconds // 60 % 60}min "
+            f"{elapsed_time.seconds % 60}s\n\n"
+        )
         logs_file.flush()
 
         prec_epoch.append(precs.mean())
