@@ -17,9 +17,9 @@ from tqdm import tqdm
 def load_resisc45() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
     resisc45_root_path = './res/downloaded/NWPU-RESISC45'
 
-    assert exists(resisc45_root_path),\
+    assert exists(resisc45_root_path), \
         "You must download RESISC45 dataset via download_resisc45_helper.sh script"
-    assert isdir(resisc45_root_path),\
+    assert isdir(resisc45_root_path), \
         f"\"{resisc45_root_path}\" is not a directory"
 
     resisc45_class_map = {
