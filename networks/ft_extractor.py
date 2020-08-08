@@ -1,7 +1,6 @@
 import torch.nn as nn
 import torch as th
 
-from math import pow
 
 ############################
 # Features extraction stuff
@@ -37,6 +36,7 @@ class MNISTCnn(nn.Module):
     """
     b_θ5 : R^f*f -> R^n
     """
+
     def __init__(self, f: int, n: int) -> None:
         super().__init__()
 
@@ -55,7 +55,7 @@ class MNISTCnn(nn.Module):
         )
 
     def forward(self, o_t):
-        o_t = o_t[:, 0, None, :, :] # grey scale
+        o_t = o_t[:, 0, None, :, :]  # grey scale
         out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
         return self.seq_lin(out)
@@ -65,6 +65,7 @@ class CNN_MNIST_2(nn.Module):
     """
     b_θ5 : R^f*f -> R^n
     """
+
     def __init__(self, f: int, n: int) -> None:
         super().__init__()
 
@@ -91,6 +92,7 @@ class RESISC45Cnn(nn.Module):
     """
     for 5000*5000px img
     """
+
     def __init__(self, f: int = 128, n: int = 1024) -> None:
         super().__init__()
 
@@ -182,6 +184,7 @@ class TestRESISC45(nn.Module):
         out = self.seq_lin(out)
         return out.view(-1, 45)
 
+
 ############################
 # State to features stuff
 ############################
@@ -189,6 +192,7 @@ class StateToFeatures(nn.Module):
     """
     λ_θ7 : R^d -> R^n
     """
+
     def __init__(self, d: int, n: int) -> None:
         super().__init__()
 
@@ -201,4 +205,3 @@ class StateToFeatures(nn.Module):
 
     def forward(self, p_t):
         return self.seq_lin(p_t)
-
