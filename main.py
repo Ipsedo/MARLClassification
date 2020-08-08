@@ -297,7 +297,7 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
 
     img_pipeline = tr.Compose([
         tr.ToTensor(),
-        custom_tr.MinMaxNorm()
+        custom_tr.NormalNorm()
     ])
 
     dataset = None
@@ -443,7 +443,7 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         precs_str = format_metric(precs, dataset.class_to_idx)
         recs_str = format_metric(recs, dataset.class_to_idx)
 
-        sum_loss /= ceil(len(train_dataloader) / train_dataloader.batch_size)
+        sum_loss /= len(train_dataloader)
 
         elapsed_time = datetime.datetime.now() - train_ep_st
         logs_file.write(f"#############################################\n"
