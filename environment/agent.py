@@ -130,7 +130,7 @@ class MultiAgent:
 
         # Feature space
         # CNN need (N, C, W, H) not (N1, ..., N18, C, W, H)
-        b_t = self.__networks(self.__networks.map_obs, o_t.flatten(0, -4))\
+        b_t = self.__networks(self.__networks.map_obs, o_t.flatten(0, -4)) \
             .view(len(self), self.__batch_size, self.__n)
 
         # Get messages
@@ -187,12 +187,12 @@ class MultiAgent:
         # Create next action mask
         actions_mask = th.arange(0, action_scores.size(-1),
                                  device=th.device(self.__device_str))
-        actions_mask = actions_mask.view(-1, 1)\
-            .repeat(1, actions.size(-1))\
+        actions_mask = actions_mask.view(-1, 1) \
+            .repeat(1, actions.size(-1)) \
             .view(1, 1, action_scores.size(-1), actions.size(-1))
         actions_mask = actions_mask == policy_actions.view(*policy_actions.size(), 1, 1)
 
-        a_t_next = actions.masked_select(actions_mask)\
+        a_t_next = actions.masked_select(actions_mask) \
             .view(self.__nb_agents, self.__batch_size, actions.size(-1))
 
         # Append log probability
@@ -226,7 +226,7 @@ class MultiAgent:
 
         # mean on agent at last step
         return self.__networks(self.__networks.predict,
-                               self.__c[-1].squeeze(0)).mean(dim=0),\
+                               self.__c[-1].squeeze(0)).mean(dim=0), \
                self.__action_probas[-1].log().mean(dim=0)
 
     @property
@@ -256,15 +256,14 @@ class MultiAgent:
 
     def params_to_json(self, out_json_path: str) -> None:
         with open(out_json_path, mode="w") as f_json:
-
             json_raw_txt = \
                 "{\n" \
-                "    \"nb_agent\": " + str(self.__nb_agents) + ",\n" \
-                "    \"hidden_size\": " + str(self.__n) + ",\n" \
-                "    \"window_size\": " + str(self.__f) + ",\n" \
-                "    \"hidden_size_msg\": " + str(self.__n_m) + ",\n" \
-                "    \"size\": " + str(self.__size) + ",\n" \
-                "    \"nb_action\": " + str(self.__nb_action) + "\n" \
+                f"    \"nb_agent\": {str(self.__nb_agents)},\n" \
+                f"    \"hidden_size\":  {str(self.__n)},\n" \
+                f"    \"window_size\": {str(self.__f)},\n" \
+                f"    \"hidden_size_msg\": {str(self.__n_m)},\n" \
+                f"    \"size\": {str(self.__size)},\n" \
+                f"    \"nb_action\": {str(self.__nb_action)}\n" \
                 "}\n"
 
             f_json.write(json_raw_txt)
@@ -293,4 +292,3 @@ class MultiAgent:
             except Exception as e:
                 print(f"Exception during loading MultiAgent from file !\nRaised Exception :")
                 raise e
-
