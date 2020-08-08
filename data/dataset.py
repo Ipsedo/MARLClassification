@@ -6,7 +6,6 @@ from os.path import exists, isdir
 
 from typing import Any
 
-
 DATASET_CHOICES = ["mnist", "resisc45"]
 
 
@@ -21,7 +20,7 @@ class MNISTDataset(ImageFolder):
     def __init__(self, img_transform: Any) -> None:
         mnist_root_path = "./res/downloaded/mnist_png/all_png"
 
-        assert exists(mnist_root_path) and isdir(mnist_root_path),\
+        assert exists(mnist_root_path) and isdir(mnist_root_path), \
             f"{mnist_root_path} does not exist or is not a directory"
 
         super().__init__(mnist_root_path, transform=img_transform,
@@ -33,7 +32,7 @@ class RESISC45Dataset(ImageFolder):
     def __init__(self, img_transform: Any) -> None:
         resisc_root_path = "./res/downloaded/NWPU-RESISC45"
 
-        assert exists(resisc_root_path) and isdir(resisc_root_path),\
+        assert exists(resisc_root_path) and isdir(resisc_root_path), \
             f"{resisc_root_path} does not exist or is not a directory"
 
         super().__init__(resisc_root_path, transform=img_transform,
