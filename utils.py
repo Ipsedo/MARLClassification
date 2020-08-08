@@ -79,8 +79,8 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
 
     preds, _, pos = detailed_episode(agents, one_img.unsqueeze(0),
                                      max_it, device_str, nb_class)
-
-    one_img = one_img.permute(1, 2, 0)
+    preds, pos = preds.cpu(), pos.cpu()
+    one_img = one_img.permute(1, 2, 0).cpu()
 
     h, w, c = one_img.size()
 
