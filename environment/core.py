@@ -7,7 +7,6 @@ from typing import Tuple
 def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
         Tuple[th.Tensor, th.Tensor]:
     """
-    TODO
 
     :param agents:
     :type agents:
@@ -15,12 +14,6 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
     :type img_batch:
     :param max_it:
     :type max_it:
-    :param cuda:
-    :type cuda:
-    :param eps:
-    :type eps:
-    :param nb_class:
-    :type nb_class:
     :return:
     :rtype:
     """
@@ -36,9 +29,9 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
 
 
 def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
-                     device_str: str, nb_class: int) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+                     device_str: str, nb_class: int) -> \
+        Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """
-    TODO
 
     :param agents:
     :type agents:
@@ -46,8 +39,8 @@ def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     :type img_batch:
     :param max_it:
     :type max_it:
-    :param cuda:
-    :type cuda:
+    :param device_str:
+    :type device_str:
     :param nb_class:
     :type nb_class:
     :return:
@@ -84,6 +77,23 @@ def episode_retry(agents: MultiAgent, img_batch: th.Tensor,
                   max_it: int, max_retry: int, nb_class: int,
                   device_str: str) -> \
         Tuple[th.Tensor, th.Tensor]:
+    """
+
+    :param agents:
+    :type agents:
+    :param img_batch:
+    :type img_batch:
+    :param max_it:
+    :type max_it:
+    :param max_retry:
+    :type max_retry:
+    :param nb_class:
+    :type nb_class:
+    :param device_str:
+    :type device_str:
+    :return:
+    :rtype:
+    """
 
     img_batch = img_batch.to(th.device(device_str))
 
@@ -91,7 +101,7 @@ def episode_retry(agents: MultiAgent, img_batch: th.Tensor,
                           device=th.device(device_str))
 
     retry_prob = th.zeros(max_retry, img_batch.size(0),
-                           device=th.device(device_str))
+                          device=th.device(device_str))
 
     for r in range(max_retry):
         pred, prob = episode(agents, img_batch, max_it)
