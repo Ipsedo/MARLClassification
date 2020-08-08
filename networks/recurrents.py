@@ -5,6 +5,7 @@ class BeliefUnit(nn.Module):
     """
     f_θ1 : R^2n * R^3n -> R^2n
     """
+
     def __init__(self, n: int) -> None:
         super().__init__()
 
@@ -41,6 +42,7 @@ class ActionUnit(nn.Module):
     Supposition : R^2n * R^3n -> R^2n
     R^2n : pas sûr
     """
+
     def __init__(self, n: int) -> None:
         super().__init__()
 
