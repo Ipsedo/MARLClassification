@@ -14,8 +14,6 @@ from typing import Tuple, Mapping, Any
 from tqdm import tqdm
 
 
-
-
 def load_resisc45() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
     resisc45_root_path = './res/downloaded/NWPU-RESISC45'
 
