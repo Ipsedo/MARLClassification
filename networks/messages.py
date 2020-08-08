@@ -9,6 +9,7 @@ class MessageSender(nn.Module):
     """
     m_θ4 : R^n -> R^n_m
     """
+
     def __init__(self, n: int, n_m: int, hidden_size: int) -> None:
         super().__init__()
         self.__n = n
@@ -33,6 +34,7 @@ class MessageReceiver(nn.Module):
     """
     d_θ6 : R^n_m -> R^n
     """
+
     def __init__(self, n_m: int, n: int) -> None:
         super().__init__()
         self.__n = n
