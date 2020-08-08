@@ -39,4 +39,3 @@ def load_mnist() -> Tuple[Tuple[th.Tensor, th.Tensor], Mapping[Any, int]]:
     y = th.cat([y_train, y_valid, y_test])
 
     return (x, y), {i: i for i in range(10)}
-
