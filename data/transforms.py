@@ -10,7 +10,10 @@ from abc import ABCMeta, abstractmethod
 class ImgTransform(metaclass=ABCMeta):
     @abstractmethod
     def __call__(self, img_data: th.Tensor) -> th.Tensor:
-        raise NotImplementedError(self.__class__.__name__ + ".__call__ method is not implemented, must be overridden !")
+        raise NotImplementedError(
+            self.__class__.__name__ +
+            ".__call__ method is not implemented, must be overridden !"
+        )
 
     def __repr__(self):
         return self.__class__.__name__ + "()"
@@ -32,7 +35,8 @@ class UserNormalNorm(ImgTransform):
         return (x - self.__mean) / self.__std
 
     def __repr__(self):
-        return self.__class__.__name__ + f"(mean = {str(self.__mean)}, std = {str(self.__std)})"
+        return self.__class__.__name__ + \
+               f"(mean = {str(self.__mean)}, std = {str(self.__std)})"
 
 
 class ChannelNormalNorm(ImgTransform):
@@ -64,7 +68,8 @@ class UserMinMaxNorm(ImgTransform):
         return (x - self.__min) / (self.__max - self.__min)
 
     def __repr__(self):
-        return self.__class__.__name__ + f"(min_value = {self.__min}, max_value = {self.__max})"
+        return self.__class__.__name__ + \
+               f"(min_value = {self.__min}, max_value = {self.__max})"
 
 
 class MinMaxNorm(ImgTransform):

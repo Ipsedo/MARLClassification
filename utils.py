@@ -16,35 +16,43 @@ from collections import Counter
 
 import typing as typ
 
-MAOptions = typ.NamedTuple("MAOption",
-                           [("nb_agent", int),
-                            ("dim", int),
-                            ("window_size", int),
-                            ("img_size", int),
-                            ("nb_class", int),
-                            ("nb_action", int)])
+MAOptions = typ.NamedTuple(
+    "MAOption",
+    [("nb_agent", int),
+     ("dim", int),
+     ("window_size", int),
+     ("img_size", int),
+     ("nb_class", int),
+     ("nb_action", int)]
+)
 
-RLOptions = typ.NamedTuple("RLOptions",
-                           [("nb_step", int),
-                            ("hidden_size", int),
-                            ("hidden_size_linear", int),
-                            ("hidden_size_msg", int),
-                            ("cuda", bool)])
+RLOptions = typ.NamedTuple(
+    "RLOptions",
+    [("nb_step", int),
+     ("hidden_size", int),
+     ("hidden_size_linear", int),
+     ("hidden_size_msg", int),
+     ("cuda", bool)]
+)
 
-TrainOptions = typ.NamedTuple("TrainOptions",
-                              [("nb_epoch", int),
-                               ("learning_rate", float),
-                               ("retry_number", int),
-                               ("batch_size", int),
-                               ("output_model_path", str),
-                               ("frozen_modules", typ.List[str]),
-                               ("data_set", str)])
+TrainOptions = typ.NamedTuple(
+    "TrainOptions",
+    [("nb_epoch", int),
+     ("learning_rate", float),
+     ("retry_number", int),
+     ("batch_size", int),
+     ("output_model_path", str),
+     ("frozen_modules", typ.List[str]),
+     ("data_set", str)]
+)
 
-TestOptions = typ.NamedTuple("TestOptions",
-                             [("json_path", str),
-                              ("state_dict_path", str),
-                              ("output_img_path", str),
-                              ("nb_test_img", int)])
+TestOptions = typ.NamedTuple(
+    "TestOptions",
+    [("json_path", str),
+     ("state_dict_path", str),
+     ("output_img_path", str),
+     ("nb_test_img", int)]
+)
 
 
 def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
@@ -100,12 +108,12 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
         for i in range(len(agents)):
             # Color
             curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                     pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :3] = \
+            pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :3] = \
                 one_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                        pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :]
+                pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :]
             # Alpha
             curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                     pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, 3] = 1
+            pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, 3] = 1
 
         plt.figure()
         plt.imshow(curr_img, cmap=color_map)

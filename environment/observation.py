@@ -15,8 +15,10 @@ def obs_img(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     :rtype:
     """
 
-    assert len(img.size()) == 4, f"images.size() == (N, C, W, H), actual = {img.size()}"
-    assert len(pos.size()) == 3, f"Position size must be (nb_agents, batch_size, data_dim), actual = {pos.size()}"
+    assert len(img.size()) == 4,\
+        f"images.size() == (N, C, W, H), actual = {img.size()}"
+    assert len(pos.size()) == 3,\
+        f"Position size must be (nb_agents, batch_size, data_dim), actual = {pos.size()}"
 
     nb_a, b_pos, d = pos.size()
     b_img, c, h, w = img.size()
@@ -31,10 +33,12 @@ def obs_img(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     pos_max = pos_min + f
 
     values_x = th.arange(0, w, device=pos.device)
-    mask_x = (pos_min[:, :, 0, None] <= values_x.view(1, 1, w)) & (values_x.view(1, 1, w) < pos_max[:, :, 0, None])
+    mask_x = (pos_min[:, :, 0, None] <= values_x.view(1, 1, w)) &\
+             (values_x.view(1, 1, w) < pos_max[:, :, 0, None])
 
     values_y = th.arange(0, h, device=pos.device)
-    mask_y = (pos_min[:, :, 1, None] <= values_y.view(1, 1, h)) & (values_y.view(1, 1, h) < pos_max[:, :, 1, None])
+    mask_y = (pos_min[:, :, 1, None] <= values_y.view(1, 1, h)) &\
+             (values_y.view(1, 1, h) < pos_max[:, :, 1, None])
 
     mask = mask_x.unsqueeze(-2) & mask_y.unsqueeze(-1)
 

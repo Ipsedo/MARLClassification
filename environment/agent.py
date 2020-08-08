@@ -225,7 +225,8 @@ class MultiAgent:
         # chemin par agent équiprobable -> moyenne des probas
 
         # mean on agent at last step
-        return self.__networks(self.__networks.predict, self.__c[-1].squeeze(0)).mean(dim=0),\
+        return self.__networks(self.__networks.predict,
+                               self.__c[-1].squeeze(0)).mean(dim=0),\
                self.__action_probas[-1].log().mean(dim=0)
 
     @property
@@ -256,14 +257,15 @@ class MultiAgent:
     def params_to_json(self, out_json_path: str) -> None:
         with open(out_json_path, mode="w") as f_json:
 
-            json_raw_txt = "{\n" \
-                           "    \"nb_agent\": " + str(self.__nb_agents) + ",\n" \
-                           "    \"hidden_size\": " + str(self.__n) + ",\n" \
-                           "    \"window_size\": " + str(self.__f) + ",\n" \
-                           "    \"hidden_size_msg\": " + str(self.__n_m) + ",\n" \
-                           "    \"size\": " + str(self.__size) + ",\n" \
-                           "    \"nb_action\": " + str(self.__nb_action) + "\n" \
-                           "}\n"
+            json_raw_txt = \
+                "{\n" \
+                "    \"nb_agent\": " + str(self.__nb_agents) + ",\n" \
+                "    \"hidden_size\": " + str(self.__n) + ",\n" \
+                "    \"window_size\": " + str(self.__f) + ",\n" \
+                "    \"hidden_size_msg\": " + str(self.__n_m) + ",\n" \
+                "    \"size\": " + str(self.__size) + ",\n" \
+                "    \"nb_action\": " + str(self.__nb_action) + "\n" \
+                "}\n"
 
             f_json.write(json_raw_txt)
             f_json.close()

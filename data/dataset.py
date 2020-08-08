@@ -25,7 +25,8 @@ class MNISTDataset(ImageFolder):
             f"{mnist_root_path} does not exist or is not a directory"
 
         super().__init__(mnist_root_path, transform=img_transform,
-                         target_transform=None, loader=my_pil_loader, is_valid_file=None)
+                         target_transform=None, loader=my_pil_loader,
+                         is_valid_file=None)
 
 
 class RESISC45Dataset(ImageFolder):
@@ -36,4 +37,5 @@ class RESISC45Dataset(ImageFolder):
             f"{resisc_root_path} does not exist or is not a directory"
 
         super().__init__(resisc_root_path, transform=img_transform,
-                         target_transform=None, loader=my_pil_loader, is_valid_file=None)
+                         target_transform=None, loader=my_pil_loader,
+                         is_valid_file=None)
