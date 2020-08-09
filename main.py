@@ -455,8 +455,8 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         logs_file.write(
             f"#############################################\n"
             f"Epoch {e} - Train - Loss = {sum_loss:.4f}\n"
-            f"train_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
-            f"train_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
+            f"train_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}%\n"
+            f"train_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}%\n"
             f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
             f"{elapsed_time.seconds // 60 % 60}min "
             f"{elapsed_time.seconds % 60}s\n"
@@ -499,8 +499,8 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         logs_file.write(
             f"#############################################\n"
             f"Epoch {e} - Eval\n"
-            f"eval_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}\n"
-            f"eval_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}\n"
+            f"eval_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}%\n"
+            f"eval_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}%\n"
             f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
             f"{elapsed_time.seconds // 60 % 60}min "
             f"{elapsed_time.seconds % 60}s\n\n"
