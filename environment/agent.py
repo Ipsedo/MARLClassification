@@ -163,7 +163,7 @@ class MultiAgent:
         # Evaluate message
         self.msg.append(
             self.__networks(self.__networks.evaluate_msg,
-                            self.__h[self.__t + 1].squeeze(0)))
+                            self.__h[self.__t + 1]))
 
         # Action unit LSTM
         h_caret_t_next, c_caret_t_next = \
@@ -183,7 +183,7 @@ class MultiAgent:
 
         # Get action probabilities
         action_scores = self.__networks(self.__networks.policy,
-                                        self.__h_caret[self.__t + 1].squeeze(0))
+                                        self.__h_caret[self.__t + 1])
 
         # Greedy policy
         prob, policy_actions = action_scores.max(dim=-1)
@@ -211,26 +211,15 @@ class MultiAgent:
 
     def predict(self) -> Tuple[th.Tensor, th.Tensor]:
         """
-        TODO
+        return prediction for the current episode
 
-        :return: tuple <prediction, proba>
+        prediction : th.Tensor with size == (batch_size, nb_class)
+        action probabilities : th.Tensor with size == (batch_size,)
+
+        :return: tuple <predictions, action_probabilities>
         """
 
-        # Pour proba -> big pb stabilité numérique (explosion / disparition gradient)
-        #
-        # Idée 1
-        # prob [0; 1]         -> prod on step -> prod on agent
-        # log prob [-inf, 0]  -> sum          -> sum            : le plus censé
-        #
-        # Idée 2
-        # chemin par step (5 step pour un agent par exemple) :
-        #   pas un trirage indépendant ie pas de p(p_5, p_4, ..., p_0) - LSTM / Recurrent
-        #   plus p(p_5 | p_4 | ... | p_0) <-> p(A /\ B) -> flemme donc on prend le dernier ie p_5
-        # chemin par agent équiprobable -> moyenne des probas
-
-        # mean on agent at last step
-        return self.__networks(self.__networks.predict,
-                               self.__c[-1].squeeze(0)).mean(dim=0), \
+        return self.__networks(self.__networks.predict, self.__c[-1]).mean(dim=0), \
                self.__action_probas[-1].log().mean(dim=0)
 
     @property
@@ -266,18 +255,13 @@ class MultiAgent:
 
         with open(models_wrapper_json_file, "r") as f_json:
             j_obj = json.load(f_json)
-
             try:
-                n = j_obj["hidden_size"]
-                f = j_obj["window_size"]
-                n_m = j_obj["hidden_size_msg"]
-                n_l = j_obj["hidden_size_linear"]
-                nb_action = j_obj["action_dim"]
-
-                obs = obs
-                trans = trans
-
-                return cls(nb_agent, model_wrapper, n, f, n_m, n_l, nb_action, obs, trans)
+                return cls(
+                    nb_agent, model_wrapper,
+                    j_obj["hidden_size"], j_obj["window_size"],
+                    j_obj["hidden_size_msg"], j_obj["hidden_size_linear"],
+                    j_obj["action_dim"], obs, trans
+                )
             except Exception as e:
                 print(f"Exception during loading MultiAgent from file !\nRaised Exception :")
                 raise e
