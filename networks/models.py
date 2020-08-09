@@ -120,12 +120,16 @@ class ModelsWrapper(nn.Module):
         args_d = json.load(json_f)
         json_f.close()
 
-        return cls(
-            args_d["dataset"],
-            args_d["window_size"], args_d["hidden_size"], args_d["hidden_size_msg"],
-            args_d["state_dim"], args_d["action_dim"],
-            args_d["class_number"], args_d["hidden_size_linear"]
-        )
+        try:
+            return cls(
+                args_d["dataset"],
+                args_d["window_size"], args_d["hidden_size"], args_d["hidden_size_msg"],
+                args_d["state_dim"], args_d["action_dim"],
+                args_d["class_number"], args_d["hidden_size_linear"]
+            )
+        except Exception as e:
+            print(f"Error while parsing {json_path} and creating {cls.__name__}")
+            raise e
 
 
 #####################
