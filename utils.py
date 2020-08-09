@@ -52,7 +52,8 @@ TestOptions = typ.NamedTuple(
      ("state_dict_path", str),
      ("image_path", str),
      ("output_img_path", str),
-     ("nb_test_img", int)]
+     ("nb_test_img", int),
+     ("batch_size", int),]
 )
 
 

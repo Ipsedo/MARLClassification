@@ -1,3 +1,5 @@
+from abc import ABC
+
 from networks.ft_extractor import MNISTCnn, RESISC45Cnn, RESISC45CnnSmall, StateToFeatures
 from networks.messages import MessageReceiver, MessageSender
 from networks.recurrents import BeliefUnit, ActionUnit
@@ -19,7 +21,7 @@ from typing import List
 #####################
 # Base class test
 #####################
-class ModelsWrapper(nn.Module):
+class ModelsWrapper(nn.Module, ABC):
     map_obs: str = "b_theta_5"
     map_pos: str = "lambda_theta_7"
 
@@ -90,6 +92,10 @@ class ModelsWrapper(nn.Module):
     @property
     def nb_class(self) -> int:
         return self.__nb_class
+
+    @property
+    def f(self) -> int:
+        return self.__f
 
     def get_params(self, ops: List[str]) -> List[th.Tensor]:
         return [p for op in ops for p in self._networks_dict[op].parameters()]

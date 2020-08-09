@@ -7,7 +7,6 @@ from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrap
 from networks.ft_extractor import TestCNN, TestRESISC45
 
 from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, DATASET_CHOICES
-from data.loader import load_mnist
 import data.transforms as custom_tr
 
 from utils import RLOptions, MAOptions, TrainOptions, TestOptions, \
@@ -574,6 +573,14 @@ def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions
     assert exists(state_dict_path), f"State dict path \"{state_dict_path}\" does not exist"
     assert isfile(state_dict_path), f"\"{state_dict_path}\" is not a file"
 
+    if exists(output_img_path) and isdir(output_img_path):
+        print(f"File in {output_img_path} will be overwrite")
+    elif exists(output_img_path) and not isdir(output_img_path):
+        raise Exception(f"\"{output_img_path}\" is not a directory")
+    else:
+        print(f"Create \"{output_img_path}\"")
+        mkdir(output_img_path)
+
     img_pipeline = tr.Compose([
         tr.ToTensor(),
         custom_tr.NormalNorm()
@@ -581,12 +588,18 @@ def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions
 
     img_dataset = ImageFolder(image_path, transform=img_pipeline)
 
+    idx = list(range(len(img_dataset)))
+    shuffle(idx)
+    idx_test = idx[int(0.85 * len(idx)):]
+
+    test_dataset = Subset(img_dataset, idx_test)
+
     nn_models = ModelsWrapper.from_json(json_path)
     nn_models.load_state_dict(th.load(state_dict_path))
     marl_m = MultiAgent.load_from(json_path, ma_options.nb_agent, nn_models, obs_img, trans_img)
 
     data_loader = DataLoader(
-        img_dataset, batch_size=32,
+        test_dataset, batch_size=test_options.batch_size,
         shuffle=True, num_workers=8, drop_last=False
     )
 
@@ -622,6 +635,37 @@ def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions
     print(f"Precision mean = {precs.mean()}")
     print(f"Recall : {recs_str}")
     print(f"Recall mean : {recs.mean()}")
+
+    img_ori_pipeline = tr.Compose([
+        tr.ToTensor()
+    ])
+
+    img_dataset_ori = ImageFolder(image_path, transform=img_ori_pipeline)
+    test_dataset_ori = Subset(img_dataset_ori, idx_test)
+
+    rand_idx = list(range(len(test_dataset_ori)))
+    shuffle(rand_idx)
+    rand_idx = rand_idx[:nb_test_img]
+
+    idx_to_class = {img_dataset.class_to_idx[k]: k for k in img_dataset.class_to_idx}
+
+    for i in tqdm(rand_idx):
+        x, y = test_dataset[i]
+        x_ori, y_ori = test_dataset_ori[i]
+
+        x, x_ori = x.to(th.device(device_str)), x_ori.to(th.device(device_str))
+
+        curr_img_path = join(output_img_path, f"img_{i}_{idx_to_class[y]}")
+
+        if not exists(curr_img_path):
+            mkdir(curr_img_path)
+
+        visualize_steps(
+            marl_m, x, x_ori, steps, nn_models.f,
+            curr_img_path,
+            nn_models.nb_class, device_str,
+            img_dataset_ori.class_to_idx
+        )
 
 
 #######################
@@ -679,7 +723,7 @@ def main() -> None:
 
     # Algorithm arguments
     main_parser.add_argument("-a", "--agents", type=int, default=3, dest="agents",
-                              help="Number of agents")
+                             help="Number of agents")
 
     # data option
     main_parser.add_argument("--dataset", type=str, choices=DATASET_CHOICES, default="mnist",
@@ -692,6 +736,8 @@ def main() -> None:
                              help="Image side size, assume all image are squared")
 
     # RL Options
+    main_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size",
+                             help="Image batch size for training and evaluation")
     main_parser.add_argument("--step", type=int, default=7,
                              help="Step number of RL episode")
     main_parser.add_argument("--cuda", action="store_true", dest="cuda",
@@ -725,8 +771,6 @@ def main() -> None:
                                    "Created if needed.")
     train_parser.add_argument("--lr", "--learning-rate", type=float, default=1e-3, dest="learning_rate",
                               help="")
-    train_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size",
-                              help="Image batch size for training and evaluation")
     train_parser.add_argument("--nb-epoch", type=int, default=10, dest="nb_epoch",
                               help="Number of training epochs")
     train_parser.add_argument("--nr", "--number-retry", type=int, default=7, dest="number_retry",
@@ -750,7 +794,7 @@ def main() -> None:
                              help="networks.models.ModelsWrapper PyTorch state dict file")
     test_parser.add_argument("-o", "--output-image-dir", type=str, required=True, dest="output_image_dir",
                              help="The directory where the model outputs will be saved. Created if needed")
-    test_parser.add_argument("--nb-test-img", type=str, default=10, dest="nb_test_img",
+    test_parser.add_argument("--nb-test-img", type=int, default=10, dest="nb_test_img",
                              help="The number of test image to infer and output")
 
     ##################
@@ -821,7 +865,8 @@ def main() -> None:
         test_options = TestOptions(
             args.json_path, args.state_dict,
             args.image_path,
-            args.output_image_dir, args.nb_test_img
+            args.output_image_dir, args.nb_test_img,
+            args.batch_size
         )
 
         test(ma_options, rl_options, test_options)
