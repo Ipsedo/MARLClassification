@@ -3,7 +3,7 @@ from abc import ABC
 from networks.ft_extractor import \
     MNISTCnn, RESISC45CnnSmall, StateToFeatures
 from networks.messages import MessageReceiver, MessageSender
-from networks.recurrents import BeliefUnit, ActionUnit
+from networks.recurrents import LSTMCellWrapper
 from networks.policy import Policy
 from networks.prediction import Prediction
 
@@ -58,8 +58,8 @@ class ModelsWrapper(nn.Module, ABC):
             self.map_pos: StateToFeatures(d, n),
             self.decode_msg: MessageReceiver(n_m, n),
             self.evaluate_msg: MessageSender(n, n_m, hidden_size),
-            self.belief_unit: BeliefUnit(n),
-            self.action_unit: ActionUnit(n),
+            self.belief_unit: LSTMCellWrapper(n),
+            self.action_unit: LSTMCellWrapper(n),
             self.policy: Policy(nb_action, n, hidden_size),
             self.predict: Prediction(n, nb_class, hidden_size)
         })
@@ -100,8 +100,10 @@ class ModelsWrapper(nn.Module, ABC):
         return self.__f
 
     def get_params(self, ops: List[str]) -> List[th.Tensor]:
-        return [p for op in ops
-                for p in self._networks_dict[op].parameters()]
+        return [
+            p for op in ops
+            for p in self._networks_dict[op].parameters()
+        ]
 
     def json_args(self, out_json_path: str) -> None:
         json_f = open(out_json_path, "w")
