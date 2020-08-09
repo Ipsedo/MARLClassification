@@ -121,7 +121,7 @@ def visualize_steps(
             curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
             pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, 3] = 1
 
-        plt.figure()
+        fig = plt.figure()
         plt.imshow(curr_img, cmap=color_map)
         prediction = preds[t][img_idx].argmax(dim=-1).item()
         pred_proba = th.nn.functional.softmax(preds[t], dim=-1)\
@@ -130,6 +130,7 @@ def visualize_steps(
                   f"{idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)")
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
+        plt.close(fig)
 
 
 def prec_rec(conf_meter: ConfusionMeter) \
