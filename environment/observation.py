@@ -18,15 +18,18 @@ def obs_img(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     assert len(img.size()) == 4, \
         f"images.size() == (N, C, W, H), actual = {img.size()}"
     assert len(pos.size()) == 3, \
-        f"Position size must be (nb_agents, batch_size, data_dim), actual = {pos.size()}"
+        f"Position size must be (nb_agents, batch_size, data_dim), " \
+        f"actual = {pos.size()}"
 
     nb_a, b_pos, d = pos.size()
     b_img, c, h, w = img.size()
 
     assert (pos[:, :, 0] + f < w).all() and (pos[:, :, 0] >= 0).all(), \
-        "Unbound obervation in first dim (pos = {}, f = {}, img_size = {}!".format(pos[:, 0], f, w)
+        "Unbound obervation in first dim (pos = {}, f = {}, " \
+        "img_size = {}!".format(pos[:, 0], f, w)
     assert (pos[:, :, 1] + f < h).all() and (pos[:, :, 1] >= 0).all(), \
-        "Unbound obervation in snd dim (pos = {}, f = {}, img_size = {}!".format(pos[:, 1], f, h)
+        "Unbound obervation in snd dim (pos = {}, f = {}, " \
+        "img_size = {}!".format(pos[:, 1], f, h)
 
     # pos.size == (nb_ag, batch_size, 2)
     pos_min = pos
@@ -42,4 +45,5 @@ def obs_img(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
 
     mask = mask_x.unsqueeze(-2) & mask_y.unsqueeze(-1)
 
-    return img.unsqueeze(0).masked_select(mask.unsqueeze(-3)).view(nb_a, b_img, c, f, f)
+    return img.unsqueeze(0).masked_select(mask.unsqueeze(-3)) \
+        .view(nb_a, b_img, c, f, f)

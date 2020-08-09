@@ -53,14 +53,16 @@ TestOptions = typ.NamedTuple(
      ("image_path", str),
      ("output_img_path", str),
      ("nb_test_img", int),
-     ("batch_size", int),]
+     ("batch_size", int), ]
 )
 
 
-def visualize_steps(agents: MultiAgent, img: th.Tensor, img_ori: th.Tensor,
-                    max_it: int, f: int, output_dir: str,
-                    nb_class: int, device_str: str,
-                    class_map: typ.Mapping[typ.Any, int]) -> None:
+def visualize_steps(
+        agents: MultiAgent, img: th.Tensor, img_ori: th.Tensor,
+        max_it: int, f: int, output_dir: str,
+        nb_class: int, device_str: str,
+        class_map: typ.Mapping[typ.Any, int]
+) -> None:
     """
 
     :param agents:
@@ -122,30 +124,40 @@ def visualize_steps(agents: MultiAgent, img: th.Tensor, img_ori: th.Tensor,
         plt.figure()
         plt.imshow(curr_img, cmap=color_map)
         prediction = preds[t][img_idx].argmax(dim=-1).item()
-        pred_proba = th.nn.functional.softmax(preds[t], dim=-1)[img_idx][prediction].item()
-        plt.title(f"Step = {t}, step_pred_class = {idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)")
+        pred_proba = th.nn.functional.softmax(preds[t], dim=-1) \
+            [img_idx][prediction].item()
+        plt.title(f"Step = {t}, step_pred_class = "
+                  f"{idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)")
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
 
 
-def prec_rec(conf_meter: ConfusionMeter) -> typ.Tuple[np.ndarray, np.ndarray]:
+def prec_rec(conf_meter: ConfusionMeter) \
+        -> typ.Tuple[np.ndarray, np.ndarray]:
     conf_mat = conf_meter.value()
 
     precs_sum = [conf_mat[:, i].sum() for i in range(conf_mat.shape[1])]
-    precs = np.array([conf_mat[i, i] / precs_sum[i] if precs_sum[i] != 0. else 0.
-                      for i in range(conf_mat.shape[1])])
+    precs = np.array(
+        [conf_mat[i, i] / precs_sum[i] if precs_sum[i] != 0. else 0.
+         for i in range(conf_mat.shape[1])]
+    )
 
     recs_sum = [conf_mat[i, :].sum() for i in range(conf_mat.shape[1])]
-    recs = np.array([(conf_mat[i, i] / recs_sum[i] if recs_sum[i] != 0. else 0.)
-                     for i in range(conf_mat.shape[0])])
+    recs = np.array(
+        [(conf_mat[i, i] / recs_sum[i] if recs_sum[i] != 0. else 0.)
+         for i in range(conf_mat.shape[0])]
+    )
 
     return precs, recs
 
 
-def format_metric(metric: np.ndarray, class_map: typ.Mapping[typ.Any, int]) -> str:
+def format_metric(metric: np.ndarray,
+                  class_map: typ.Mapping[typ.Any, int]) -> str:
     idx_to_class = {class_map[k]: k for k in class_map}
-    return ", ".join([f'\"{idx_to_class[curr_cls]}\" : {metric[curr_cls] * 100.:.1f}%'
-                      for curr_cls in range(metric.shape[0])])
+    return ", ".join(
+        [f'\"{idx_to_class[curr_cls]}\" : {metric[curr_cls] * 100.:.1f}%'
+         for curr_cls in range(metric.shape[0])]
+    )
 
 
 class SetAppendAction(Action):
@@ -155,8 +167,16 @@ class SetAppendAction(Action):
         unique_values = set(values)
 
         if len(unique_values) != len(values):
-            error_msg = f"duplicates value(s) found for \"{self.option_strings[-1]}\": " \
-                        f"{[item for item, count in Counter(values).items() if count > 1]}"
+            dupl_values = [
+                item
+                for item, count in Counter(values).items()
+                if count > 1
+            ]
+
+            error_msg = f"duplicates value(s) found for " \
+                        f"\"{self.option_strings[-1]}\": " \
+                        f"{dupl_values}"
+
             parser.error(error_msg)
             exit(1)
 

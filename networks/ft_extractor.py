@@ -44,9 +44,11 @@ class MNISTCnn(nn.Module):
         self.__n = n
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=3, padding=1, padding_mode='zeros'),
+            nn.Conv2d(1, 8, kernel_size=3,
+                      padding=1, padding_mode='zeros'),
             nn.ReLU(),
-            nn.Conv2d(8, 16, kernel_size=3, padding=1, padding_mode='zeros'),
+            nn.Conv2d(8, 16, kernel_size=3,
+                      padding=1, padding_mode='zeros'),
             nn.ReLU()
         )
 
@@ -97,13 +99,16 @@ class RESISC45Cnn(nn.Module):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 12, kernel_size=5, padding=2),
+            nn.Conv2d(3, 12, kernel_size=5,
+                      padding=2),
             nn.MaxPool2d(2, 2),
             nn.ReLU(),
-            nn.Conv2d(12, 24, kernel_size=5, padding=2),
+            nn.Conv2d(12, 24, kernel_size=5,
+                      padding=2),
             nn.MaxPool2d(2, 2),
             nn.ReLU(),
-            nn.Conv2d(24, 32, kernel_size=5, stride=2, padding=2),
+            nn.Conv2d(24, 32, kernel_size=5,
+                      stride=2, padding=2),
             nn.MaxPool2d(2, 2),
             nn.ReLU()
         )

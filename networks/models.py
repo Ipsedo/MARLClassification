@@ -1,6 +1,7 @@
 from abc import ABC
 
-from networks.ft_extractor import MNISTCnn, RESISC45Cnn, RESISC45CnnSmall, StateToFeatures
+from networks.ft_extractor import \
+    MNISTCnn, RESISC45Cnn, RESISC45CnnSmall, StateToFeatures
 from networks.messages import MessageReceiver, MessageSender
 from networks.recurrents import BeliefUnit, ActionUnit
 from networks.policy import Policy
@@ -40,7 +41,8 @@ class ModelsWrapper(nn.Module, ABC):
                  hidden_size: int) -> None:
         super().__init__()
 
-        assert dataset in DATASET_CHOICES, f"\"{dataset}\" not in {DATASET_CHOICES}"
+        assert dataset in DATASET_CHOICES, \
+            f"\"{dataset}\" not in {DATASET_CHOICES}"
 
         # TODO trouver moyen plus propre que ce branchement
         map_obs_module = None
@@ -98,7 +100,8 @@ class ModelsWrapper(nn.Module, ABC):
         return self.__f
 
     def get_params(self, ops: List[str]) -> List[th.Tensor]:
-        return [p for op in ops for p in self._networks_dict[op].parameters()]
+        return [p for op in ops
+                for p in self._networks_dict[op].parameters()]
 
     def json_args(self, out_json_path: str) -> None:
         json_f = open(out_json_path, "w")
@@ -120,7 +123,8 @@ class ModelsWrapper(nn.Module, ABC):
 
     @classmethod
     def from_json(cls, json_path: str) -> 'ModelsWrapper':
-        assert exists(json_path) and isfile(json_path), f"\"{json_path}\" does not exist or is not a file"
+        assert exists(json_path) and isfile(json_path), \
+            f"\"{json_path}\" does not exist or is not a file"
 
         json_f = open(json_path, "r")
         args_d = json.load(json_f)
@@ -128,13 +132,14 @@ class ModelsWrapper(nn.Module, ABC):
 
         try:
             return cls(
-                args_d["dataset"],
-                args_d["window_size"], args_d["hidden_size"], args_d["hidden_size_msg"],
+                args_d["dataset"], args_d["window_size"],
+                args_d["hidden_size"], args_d["hidden_size_msg"],
                 args_d["state_dim"], args_d["action_dim"],
                 args_d["class_number"], args_d["hidden_size_linear"]
             )
         except Exception as e:
-            print(f"Error while parsing {json_path} and creating {cls.__name__}")
+            print(f"Error while parsing {json_path} "
+                  f"and creating {cls.__name__}")
             raise e
 
 

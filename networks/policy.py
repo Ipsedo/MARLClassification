@@ -7,7 +7,8 @@ class Policy(nn.Module):
     R^n : pas sûr, voir reccurents.ActionUnit
     """
 
-    def __init__(self, nb_action, n: int, hidden_size: int):
+    def __init__(self, nb_action, n: int,
+                 hidden_size: int) -> None:
         super().__init__()
 
         self.seq_lin = nn.Sequential(

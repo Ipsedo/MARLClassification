@@ -7,10 +7,12 @@ import json
 
 
 class MultiAgent:
-    def __init__(self, nb_agents: int, model_wrapper: ModelsWrapper,
-                 n: int, f: int, n_m: int, n_l: int, nb_action: int,
-                 obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
-                 trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> None:
+    def __init__(
+            self, nb_agents: int, model_wrapper: ModelsWrapper,
+            n: int, f: int, n_m: int, n_l: int, nb_action: int,
+            obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
+            trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]
+    ) -> None:
         """
 
         :param nb_agents:
@@ -111,7 +113,8 @@ class MultiAgent:
 
         self.__action_probas = [
             th.ones(self.__nb_agents, batch_size,
-                    device=th.device(self.__device_str)) / self.__nb_action
+                    device=th.device(self.__device_str))
+            / self.__nb_action
         ]
 
         self.pos = th.randint(img_size - self.__f,
@@ -134,17 +137,21 @@ class MultiAgent:
 
         # Feature space
         # CNN need (N, C, W, H) not (N1, ..., N18, C, W, H)
-        b_t = self.__networks(self.__networks.map_obs, o_t.flatten(0, -4)) \
+        b_t = self.__networks(self.__networks.map_obs,
+                              o_t.flatten(0, -4)) \
             .view(len(self), self.__batch_size, self.__n)
 
         # Get messages
-        d_bar_t_tmp = self.__networks(self.__networks.decode_msg, self.msg[self.__t])
+        d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
+                                      self.msg[self.__t])
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
-        d_bar_t = ((d_bar_t_mean * self.__nb_agents) - d_bar_t_tmp) / (self.__nb_agents - 1)
+        d_bar_t = ((d_bar_t_mean * self.__nb_agents) - d_bar_t_tmp) \
+                  / (self.__nb_agents - 1)
 
         # Map pos in feature space
-        lambda_t = self.__networks(self.__networks.map_pos, self.pos.to(th.float))
+        lambda_t = self.__networks(self.__networks.map_pos,
+                                   self.pos.to(th.float))
 
         # LSTMs input
         u_t = th.cat((b_t, d_bar_t, lambda_t), dim=2)
@@ -194,7 +201,8 @@ class MultiAgent:
         actions_mask = actions_mask.view(-1, 1) \
             .repeat(1, actions.size(-1)) \
             .view(1, 1, action_scores.size(-1), actions.size(-1))
-        actions_mask = actions_mask == policy_actions.view(*policy_actions.size(), 1, 1)
+        actions_mask = actions_mask == policy_actions.view(
+            *policy_actions.size(), 1, 1)
 
         a_t_next = actions.masked_select(actions_mask) \
             .view(self.__nb_agents, self.__batch_size, actions.size(-1))
@@ -219,7 +227,8 @@ class MultiAgent:
         :return: tuple <predictions, action_probabilities>
         """
 
-        return self.__networks(self.__networks.predict, self.__c[-1]).mean(dim=0), \
+        return self.__networks(self.__networks.predict,
+                               self.__c[-1]).mean(dim=0), \
                self.__action_probas[-1].log().mean(dim=0)
 
     @property
@@ -248,10 +257,12 @@ class MultiAgent:
         return self.__nb_agents
 
     @classmethod
-    def load_from(cls, models_wrapper_json_file: str, nb_agent: int,
-                  model_wrapper: ModelsWrapper,
-                  obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
-                  trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> 'MultiAgent':
+    def load_from(
+            cls, models_wrapper_json_file: str, nb_agent: int,
+            model_wrapper: ModelsWrapper,
+            obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
+            trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]
+    ) -> 'MultiAgent':
 
         with open(models_wrapper_json_file, "r") as f_json:
             j_obj = json.load(f_json)
@@ -263,5 +274,6 @@ class MultiAgent:
                     j_obj["action_dim"], obs, trans
                 )
             except Exception as e:
-                print(f"Exception during loading MultiAgent from file !\nRaised Exception :")
+                print(f"Exception during loading MultiAgent "
+                      f"from file !\nRaised Exception :")
                 raise e

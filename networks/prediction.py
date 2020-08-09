@@ -6,7 +6,8 @@ class Prediction(nn.Module):
     q_θ8 : R^n -> R^M
     """
 
-    def __init__(self, n: int, nb_class: int, hidden_size: int) -> None:
+    def __init__(self, n: int, nb_class: int,
+                 hidden_size: int) -> None:
         super().__init__()
 
         self.__n = n

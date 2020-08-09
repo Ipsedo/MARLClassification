@@ -4,8 +4,11 @@ from .agent import MultiAgent
 from typing import Tuple
 
 
-def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
-        Tuple[th.Tensor, th.Tensor]:
+def episode(
+        agents: MultiAgent,
+        img_batch: th.Tensor,
+        max_it: int
+) -> Tuple[th.Tensor, th.Tensor]:
     """
 
     :param agents:
@@ -28,9 +31,10 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
     return q, probas
 
 
-def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
-                     device_str: str, nb_class: int) -> \
-        Tuple[th.Tensor, th.Tensor, th.Tensor]:
+def detailed_episode(
+        agents: MultiAgent, img_batch: th.Tensor,
+        max_it: int, device_str: str, nb_class: int
+) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """
 
     :param agents:
@@ -73,10 +77,11 @@ def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     return step_preds, step_probas, step_pos
 
 
-def episode_retry(agents: MultiAgent, img_batch: th.Tensor,
-                  max_it: int, max_retry: int, nb_class: int,
-                  device_str: str) -> \
-        Tuple[th.Tensor, th.Tensor]:
+def episode_retry(
+        agents: MultiAgent, img_batch: th.Tensor,
+        max_it: int, max_retry: int, nb_class: int,
+        device_str: str
+) -> Tuple[th.Tensor, th.Tensor]:
     """
 
     :param agents:

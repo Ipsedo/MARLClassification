@@ -1,12 +1,14 @@
 from environment.observation import obs_img
 from environment.transition import trans_img
 from environment.agent import MultiAgent
-from environment.core import episode, detailed_episode, episode_retry
+from environment.core import episode, episode_retry
 
-from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrapper
+from networks.models import ModelsWrapper, MNISTModelWrapper, \
+    RESISC45ModelsWrapper
 from networks.ft_extractor import TestCNN, TestRESISC45
 
-from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, DATASET_CHOICES
+from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, \
+    DATASET_CHOICES
 import data.transforms as custom_tr
 
 from utils import RLOptions, MAOptions, TrainOptions, TestOptions, \
@@ -15,24 +17,21 @@ from utils import RLOptions, MAOptions, TrainOptions, TestOptions, \
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as fun
-from torch.utils.data import Subset, DataLoader, IterableDataset, Dataset, TensorDataset
+from torch.utils.data import Subset, DataLoader
 import torchvision.transforms as tr
 
 from torchnet.meter import ConfusionMeter
 
-from math import ceil
 from random import randint, shuffle
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import datetime
 
-from os import mkdir, makedirs, listdir
-from os.path import join, exists, isdir, isfile, splitext
+from os import mkdir, makedirs
+from os.path import join, exists, isdir, isfile
 
 import sys
-
-import json
 
 import argparse
 
@@ -112,28 +111,32 @@ def test_agent_step():
     action_size = 2
     batch_size = 1
 
-    m = MNISTModelWrapper(f, n, n_m)
+    m = MNISTModelWrapper(f, n, n_m, 64)
 
-    marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, obs_img, trans_img)
+    marl_m = MultiAgent(
+        3, m, n, f, n_m,
+        img_size, action_size,
+        obs_img, trans_img
+    )
 
     m.cuda()
     marl_m.cuda()
 
     img = th.rand(batch_size, 28, 28, device=th.device("cuda"))
 
-    marl_m.new_episode(batch_size)
+    marl_m.new_episode(batch_size, 28)
 
     print("First step")
     print(marl_m.pos)
     print(marl_m.msg[0])
 
-    marl_m.step(img, 0.5)
+    marl_m.step(img)
 
     print("Second step")
     print(marl_m.pos)
     print(marl_m.msg[1])
 
-    marl_m.step(img, 0.5)
+    marl_m.step(img)
 
     print("Third step")
     print(marl_m.pos)
@@ -158,9 +161,13 @@ def test_core_step():
 
     batch_size = 2
 
-    m = MNISTModelWrapper(f, n, n_m)
+    m = MNISTModelWrapper(f, n, n_m, 64)
     m.cuda()
-    marl_m = MultiAgent(3, m, n, f, n_m, img_size, action_size, obs_img, trans_img)
+    marl_m = MultiAgent(
+        3, m, n, f, n_m,
+        img_size, action_size,
+        obs_img, trans_img
+    )
     marl_m.cuda()
 
     img = th.rand(batch_size, 28, 28)
@@ -272,7 +279,11 @@ def test_cnn():
 # Train - Main
 ######################
 
-def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptions) -> None:
+def train(
+        ma_options: MAOptions,
+        rl_option: RLOptions,
+        train_options: TrainOptions
+) -> None:
     """
 
     :param ma_options:
@@ -290,8 +301,10 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
     model_dir = "models"
     if not exists(join(output_dir, model_dir)):
         mkdir(join(output_dir, model_dir))
-    if exists(join(output_dir, model_dir)) and not isdir(join(output_dir, model_dir)):
-        raise Exception(f"\"{join(output_dir, model_dir)}\" is not a directory.")
+    if exists(join(output_dir, model_dir)) \
+            and not isdir(join(output_dir, model_dir)):
+        raise Exception(f"\"{join(output_dir, model_dir)}\""
+                        f"is not a directory.")
 
     logs_file = open(join(output_dir, "train.log"), "w")
     args_str = " ".join([a for a in sys.argv])
@@ -311,18 +324,22 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
     if train_options.data_set == "mnist":
         dataset = MNISTDataset(img_pipeline)
 
-        nn_models = MNISTModelWrapper(ma_options.window_size,
-                                      rl_option.hidden_size,
-                                      rl_option.hidden_size_msg,
-                                      rl_option.hidden_size_linear)
+        nn_models = MNISTModelWrapper(
+            ma_options.window_size,
+            rl_option.hidden_size,
+            rl_option.hidden_size_msg,
+            rl_option.hidden_size_linear
+        )
 
     elif train_options.data_set == "resisc45":
         dataset = RESISC45Dataset(img_pipeline)
 
-        nn_models = RESISC45ModelsWrapper(ma_options.window_size,
-                                          rl_option.hidden_size,
-                                          rl_option.hidden_size_msg,
-                                          rl_option.hidden_size_linear)
+        nn_models = RESISC45ModelsWrapper(
+            ma_options.window_size,
+            rl_option.hidden_size,
+            rl_option.hidden_size_msg,
+            rl_option.hidden_size_linear
+        )
 
     else:
         print(f"Unrecognized data set \"{train_options.data_set}\"")
@@ -346,7 +363,8 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         device_str = "cuda"
 
     # for RL agent models parameters
-    optim = th.optim.Adam(nn_models.parameters(), lr=train_options.learning_rate)
+    optim = th.optim.Adam(nn_models.parameters(),
+                          lr=train_options.learning_rate)
 
     idx = list(range(len(dataset)))
     shuffle(idx)
@@ -356,11 +374,15 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
     train_dataset = Subset(dataset, idx_train)
     test_dataset = Subset(dataset, idx_test)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=train_options.batch_size,
-                                  shuffle=True, num_workers=8, drop_last=False)
+    train_dataloader = DataLoader(
+        train_dataset, batch_size=train_options.batch_size,
+        shuffle=True, num_workers=8, drop_last=False
+    )
 
-    test_dataloader = DataLoader(test_dataset, batch_size=train_options.batch_size,
-                                 shuffle=True, num_workers=8, drop_last=False)
+    test_dataloader = DataLoader(
+        test_dataset, batch_size=train_options.batch_size,
+        shuffle=True, num_workers=8, drop_last=False
+    )
 
     loss_v = []
     prec_epoch = []
@@ -383,13 +405,17 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
 
             # pred = [Nr, Nb, Nc]
             # prob = [Nr, Nb]
-            retry_pred, retry_prob = episode_retry(marl_m, x_train, rl_option.nb_step,
-                                                   train_options.retry_number,
-                                                   ma_options.nb_class, device_str)
+            retry_pred, retry_prob = episode_retry(
+                marl_m, x_train, rl_option.nb_step,
+                train_options.retry_number,
+                ma_options.nb_class, device_str
+            )
 
             # Class one hot encoding
-            y_eye = th.eye(ma_options.nb_class,
-                           device=th.device(device_str))[y_train.unsqueeze(0)]
+            y_eye = th.eye(
+                ma_options.nb_class,
+                device=th.device(device_str)
+            )[y_train.unsqueeze(0)]
 
             # Mean on all agents
             # then pass to class proba (softmax)
@@ -431,7 +457,9 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
 
             # verify some parameters are un-optimized - test
             param_list = nn_models.get_params(ops_to_skip)
-            mean_param_list_str = ", ".join([f'{p.grad.norm():.0e}' for p in param_list])
+            mean_param_list_str = ", ".join(
+                [f'{p.grad.norm():.0e}' for p in param_list]
+            )
 
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
@@ -510,9 +538,15 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         recall_epoch.append(recs.mean())
         loss_v.append(sum_loss)
 
-        nn_models.json_args(join(output_dir, model_dir, f"marl_epoch_{e}.json"))
-        th.save(nn_models.state_dict(), join(output_dir, model_dir, f"nn_models_epoch_{e}.pt"))
-        th.save(optim.state_dict(), join(output_dir, model_dir, f"optim_epoch_{e}.pt"))
+        nn_models.json_args(
+            join(output_dir,
+                 model_dir,
+                 f"marl_epoch_{e}.json")
+        )
+        th.save(nn_models.state_dict(),
+                join(output_dir, model_dir, f"nn_models_epoch_{e}.pt"))
+        th.save(optim.state_dict(),
+                join(output_dir, model_dir, f"optim_epoch_{e}.pt"))
 
     plt.figure()
     plt.plot(prec_epoch, "b", label="precision - mean (eval)")
@@ -547,9 +581,11 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
 
     test_idx = randint(0, len(test_dataloader_ori))
 
-    visualize_steps(marl_m, test_dataloader[test_idx][0], test_dataloader_ori[test_idx][0],
+    visualize_steps(marl_m, test_dataloader[test_idx][0],
+                    test_dataloader_ori[test_idx][0],
                     rl_option.nb_step, ma_options.window_size,
-                    output_dir, ma_options.nb_class, device_str, dataset.class_to_idx)
+                    output_dir, ma_options.nb_class, device_str,
+                    dataset.class_to_idx)
 
     logs_file.close()
 
@@ -558,7 +594,9 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
 # Test - Main
 #######################
 
-def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions) -> None:
+def test(ma_options: MAOptions,
+         rl_options: RLOptions,
+         test_options: TestOptions) -> None:
     steps = rl_options.nb_step
 
     json_path = test_options.json_path
@@ -567,11 +605,15 @@ def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions
     output_img_path = test_options.output_img_path
     nb_test_img = test_options.nb_test_img
 
-    assert exists(json_path), f"JSON path \"{json_path}\" does not exist"
-    assert isfile(json_path), f"\"{json_path}\" is not a file"
+    assert exists(json_path), \
+        f"JSON path \"{json_path}\" does not exist"
+    assert isfile(json_path), \
+        f"\"{json_path}\" is not a file"
 
-    assert exists(state_dict_path), f"State dict path \"{state_dict_path}\" does not exist"
-    assert isfile(state_dict_path), f"\"{state_dict_path}\" is not a file"
+    assert exists(state_dict_path), \
+        f"State dict path \"{state_dict_path}\" does not exist"
+    assert isfile(state_dict_path), \
+        f"\"{state_dict_path}\" is not a file"
 
     if exists(output_img_path) and isdir(output_img_path):
         print(f"File in {output_img_path} will be overwrite")
@@ -596,7 +638,10 @@ def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions
 
     nn_models = ModelsWrapper.from_json(json_path)
     nn_models.load_state_dict(th.load(state_dict_path))
-    marl_m = MultiAgent.load_from(json_path, ma_options.nb_agent, nn_models, obs_img, trans_img)
+    marl_m = MultiAgent.load_from(
+        json_path, ma_options.nb_agent,
+        nn_models, obs_img, trans_img
+    )
 
     data_loader = DataLoader(
         test_dataset, batch_size=test_options.batch_size,
@@ -647,13 +692,15 @@ def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions
     shuffle(rand_idx)
     rand_idx = rand_idx[:nb_test_img]
 
-    idx_to_class = {img_dataset.class_to_idx[k]: k for k in img_dataset.class_to_idx}
+    idx_to_class = {img_dataset.class_to_idx[k]: k
+                    for k in img_dataset.class_to_idx}
 
     for i in tqdm(rand_idx):
         x, y = test_dataset[i]
         x_ori, y_ori = test_dataset_ori[i]
 
-        x, x_ori = x.to(th.device(device_str)), x_ori.to(th.device(device_str))
+        x, x_ori = x.to(th.device(device_str)), \
+                   x_ori.to(th.device(device_str))
 
         curr_img_path = join(output_img_path, f"img_{i}_{idx_to_class[y]}")
 
@@ -713,89 +760,143 @@ def main() -> None:
     ##################
     # Unit test args
     ##################
-    unit_test_choices = ["transition", "observation", "agent-step", "core-step"]
-    unit_test_parser.add_argument("-t", "--test-id", type=str, choices=unit_test_choices,
-                                  default=unit_test_choices[0], dest="test_id")
+    unit_test_choices = [
+        "transition", "observation",
+        "agent-step", "core-step"
+    ]
+    unit_test_parser.add_argument(
+        "-t", "--test-id", type=str, choices=unit_test_choices,
+        default=unit_test_choices[0], dest="test_id"
+    )
 
     ##################
     # Main args
     ##################
 
     # Algorithm arguments
-    main_parser.add_argument("-a", "--agents", type=int, default=3, dest="agents",
-                             help="Number of agents")
+    main_parser.add_argument(
+        "-a", "--agents", type=int, default=3, dest="agents",
+        help="Number of agents"
+    )
 
     # data option
-    main_parser.add_argument("--dataset", type=str, choices=DATASET_CHOICES, default="mnist",
-                             dest="dataset", help="Choose the training data set")
+    main_parser.add_argument(
+        "--dataset", type=str, choices=DATASET_CHOICES, default="mnist",
+        dest="dataset", help="Choose the training data set"
+    )
 
     # Image / data set arguments
-    main_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class",
-                             help="Image dataset number of class")
-    main_parser.add_argument("--img-size", type=int, default=28, dest="img_size",
-                             help="Image side size, assume all image are squared")
+    main_parser.add_argument(
+        "--nb-class", type=int, default=10, dest="nb_class",
+        help="Image dataset number of class"
+    )
+    main_parser.add_argument(
+        "--img-size", type=int, default=28, dest="img_size",
+        help="Image side size, assume all image are squared"
+    )
 
     # RL Options
-    main_parser.add_argument("--batch-size", type=int, default=8, dest="batch_size",
-                             help="Image batch size for training and evaluation")
-    main_parser.add_argument("--step", type=int, default=7,
-                             help="Step number of RL episode")
-    main_parser.add_argument("--cuda", action="store_true", dest="cuda",
-                             help="Train NNs with CUDA")
+    main_parser.add_argument(
+        "--batch-size", type=int, default=8, dest="batch_size",
+        help="Image batch size for training and evaluation"
+    )
+    main_parser.add_argument(
+        "--step", type=int, default=7,
+        help="Step number of RL episode"
+    )
+    main_parser.add_argument(
+        "--cuda", action="store_true", dest="cuda",
+        help="Train NNs with CUDA"
+    )
 
     ##################
     # Train args
     ##################
 
     # Data options
-    train_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action",
-                              help="Number of discrete actions")
+    train_parser.add_argument(
+        "--nb-action", type=int, default=4, dest="nb_action",
+        help="Number of discrete actions"
+    )
 
     # Algorithm arguments
-    train_parser.add_argument("-d", "--dim", type=int, default=2,
-                              help="State dimension (eg. 2 -> move on a plan)")
-    train_parser.add_argument("--f", type=int, default=7,
-                              help="Window size")
+    train_parser.add_argument(
+        "-d", "--dim", type=int, default=2,
+        help="State dimension (eg. 2 -> move on a plan)"
+    )
+    train_parser.add_argument(
+        "--f", type=int, default=7,
+        help="Window size"
+    )
 
     # RL Options
-    train_parser.add_argument("--n", type=int, default=8,
-                              help="Hidden size for NNs")
-    train_parser.add_argument("--nm", type=int, default=2, dest="n_m",
-                              help="Message size for NNs")
-    train_parser.add_argument("--nl", type=int, default=64, dest="n_l",
-                              help="Network internal hidden size for linear projections")
+    train_parser.add_argument(
+        "--n", type=int, default=8,
+        help="Hidden size for NNs"
+    )
+    train_parser.add_argument(
+        "--nm", type=int, default=2, dest="n_m",
+        help="Message size for NNs"
+    )
+    train_parser.add_argument(
+        "--nl", type=int, default=64, dest="n_l",
+        help="Network internal hidden size for linear projections"
+    )
 
     # Training arguments
-    train_parser.add_argument("-o", "--output-dir", type=str, required=True, dest="output_dir",
-                              help="The output dir containing res and models per epoch. "
-                                   "Created if needed.")
-    train_parser.add_argument("--lr", "--learning-rate", type=float, default=1e-3, dest="learning_rate",
-                              help="")
-    train_parser.add_argument("--nb-epoch", type=int, default=10, dest="nb_epoch",
-                              help="Number of training epochs")
-    train_parser.add_argument("--nr", "--number-retry", type=int, default=7, dest="number_retry",
-                              help="Number of retry to estimate expectation.")
-    train_parser.add_argument("--freeze", type=str, default=[], nargs="+",
-                              dest="frozen_modules", action=SetAppendAction,
-                              choices=[ModelsWrapper.map_obs, ModelsWrapper.map_pos,
-                                       ModelsWrapper.evaluate_msg, ModelsWrapper.decode_msg,
-                                       ModelsWrapper.belief_unit, ModelsWrapper.action_unit,
-                                       ModelsWrapper.predict, ModelsWrapper.policy],
-                              help="Choose module(s) to be frozen during training")
+    train_parser.add_argument(
+        "-o", "--output-dir", type=str, required=True, dest="output_dir",
+        help="The output dir containing res and models per epoch. "
+             "Created if needed."
+    )
+    train_parser.add_argument(
+        "--lr", "--learning-rate", type=float, default=1e-3,
+        dest="learning_rate",
+        help=""
+    )
+    train_parser.add_argument(
+        "--nb-epoch", type=int, default=10, dest="nb_epoch",
+        help="Number of training epochs"
+    )
+    train_parser.add_argument(
+        "--nr", "--number-retry", type=int, default=7, dest="number_retry",
+        help="Number of retry to estimate expectation."
+    )
+    train_parser.add_argument(
+        "--freeze", type=str, default=[], nargs="+",
+        dest="frozen_modules", action=SetAppendAction,
+        choices=[ModelsWrapper.map_obs, ModelsWrapper.map_pos,
+                 ModelsWrapper.evaluate_msg, ModelsWrapper.decode_msg,
+                 ModelsWrapper.belief_unit, ModelsWrapper.action_unit,
+                 ModelsWrapper.predict, ModelsWrapper.policy],
+        help="Choose module(s) to be frozen during training"
+    )
 
     ##################
     # Infer args
     ##################
-    test_parser.add_argument("-i", "--image-path", type=str, required=True, dest="image_path",
-                             help="Input image path for inference")
-    test_parser.add_argument("--json-path", type=str, required=True, dest="json_path",
-                             help="JSON multi agent metadata path")
-    test_parser.add_argument("--state-dict", type=str, required=True, dest="state_dict",
-                             help="networks.models.ModelsWrapper PyTorch state dict file")
-    test_parser.add_argument("-o", "--output-image-dir", type=str, required=True, dest="output_image_dir",
-                             help="The directory where the model outputs will be saved. Created if needed")
-    test_parser.add_argument("--nb-test-img", type=int, default=10, dest="nb_test_img",
-                             help="The number of test image to infer and output")
+    test_parser.add_argument(
+        "-i", "--image-path", type=str, required=True, dest="image_path",
+        help="Input image path for inference"
+    )
+    test_parser.add_argument(
+        "--json-path", type=str, required=True, dest="json_path",
+        help="JSON multi agent metadata path"
+    )
+    test_parser.add_argument(
+        "--state-dict", type=str, required=True, dest="state_dict",
+        help="networks.models.ModelsWrapper PyTorch state dict file"
+    )
+    test_parser.add_argument(
+        "-o", "--output-image-dir", type=str, required=True,
+        dest="output_image_dir",
+        help="The directory where the model outputs will be saved. "
+             "Created if needed"
+    )
+    test_parser.add_argument(
+        "--nb-test-img", type=int, default=10, dest="nb_test_img",
+        help="The number of test image to infer and output"
+    )
 
     ##################
     # CNN test args
@@ -876,7 +977,8 @@ def main() -> None:
         print(test_cnn())
         pass
     else:
-        parser.error(f"Unrecognized mode : \"{args.mode}\" type == {type(args.mode)}.")
+        parser.error(
+            f"Unrecognized mode : \"{args.mode}\" type == {type(args.mode)}.")
 
 
 if __name__ == "__main__":
