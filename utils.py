@@ -50,12 +50,13 @@ TestOptions = typ.NamedTuple(
     "TestOptions",
     [("json_path", str),
      ("state_dict_path", str),
+     ("image_path", str),
      ("output_img_path", str),
      ("nb_test_img", int)]
 )
 
 
-def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
+def visualize_steps(agents: MultiAgent, img: th.Tensor, img_ori: th.Tensor,
                     max_it: int, f: int, output_dir: str,
                     nb_class: int, device_str: str,
                     class_map: typ.Mapping[typ.Any, int]) -> None:
@@ -63,8 +64,10 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
 
     :param agents:
     :type agents:
-    :param one_img:
-    :type one_img:
+    :param img:
+    :type img:
+    :param img_ori:
+    :type img_ori:
     :param max_it:
     :type max_it:
     :param f:
@@ -85,21 +88,21 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
 
     color_map = None
 
-    preds, _, pos = detailed_episode(agents, one_img.unsqueeze(0),
+    preds, _, pos = detailed_episode(agents, img.unsqueeze(0),
                                      max_it, device_str, nb_class)
     preds, pos = preds.cpu(), pos.cpu()
-    one_img = one_img.permute(1, 2, 0).cpu()
+    img_ori = img_ori.permute(1, 2, 0).cpu()
 
-    h, w, c = one_img.size()
+    h, w, c = img_ori.size()
 
     if c == 1:
         # grey scale case
-        one_img = one_img.repeat(1, 1, 3)
+        img_ori = img_ori.repeat(1, 1, 3)
 
     img_idx = 0
 
     plt.figure()
-    plt.imshow(one_img, cmap=color_map)
+    plt.imshow(img_ori, cmap=color_map)
     plt.savefig(join(output_dir, f"pred_original.png"))
 
     curr_img = th.zeros(h, w, 4)
@@ -109,7 +112,7 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
             # Color
             curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
             pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :3] = \
-                one_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
+                img_ori[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
                 pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :]
             # Alpha
             curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
@@ -117,8 +120,8 @@ def visualize_steps(agents: MultiAgent, one_img: th.Tensor,
 
         plt.figure()
         plt.imshow(curr_img, cmap=color_map)
-        prediction = preds[t].mean(dim=0)[img_idx].argmax(dim=-1)
-        pred_proba = th.nn.functional.softmax(preds[t].mean(dim=0), dim=-1)[img_idx][prediction]
+        prediction = preds[t][img_idx].argmax(dim=-1).item()
+        pred_proba = th.nn.functional.softmax(preds[t], dim=-1)[img_idx][prediction].item()
         plt.title(f"Step = {t}, step_pred_class = {idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)")
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))

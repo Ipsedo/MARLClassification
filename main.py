@@ -6,7 +6,7 @@ from environment.core import episode, detailed_episode, episode_retry
 from networks.models import ModelsWrapper, MNISTModelWrapper, RESISC45ModelsWrapper
 from networks.ft_extractor import TestCNN, TestRESISC45
 
-from data.dataset import MNISTDataset, RESISC45Dataset, DATASET_CHOICES
+from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, DATASET_CHOICES
 from data.loader import load_mnist
 import data.transforms as custom_tr
 
@@ -28,10 +28,12 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import datetime
 
-from os import mkdir, makedirs
-from os.path import join, exists, isdir
+from os import mkdir, makedirs, listdir
+from os.path import join, exists, isdir, isfile, splitext
 
 import sys
+
+import json
 
 import argparse
 
@@ -327,14 +329,12 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         print(f"Unrecognized data set \"{train_options.data_set}\"")
         exit(1)
 
-    marl_m = MultiAgent(ma_options.nb_agent,
-                        nn_models,
-                        rl_option.hidden_size,
-                        ma_options.window_size,
-                        rl_option.hidden_size_msg,
-                        ma_options.img_size,
-                        ma_options.nb_action,
-                        obs_img, trans_img)
+    marl_m = MultiAgent(
+        ma_options.nb_agent, nn_models, rl_option.hidden_size,
+        ma_options.window_size, rl_option.hidden_size_msg,
+        rl_option.hidden_size_linear, ma_options.nb_action,
+        obs_img, trans_img
+    )
 
     cuda = rl_option.cuda
     device_str = "cpu"
@@ -511,7 +511,7 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
         recall_epoch.append(recs.mean())
         loss_v.append(sum_loss)
 
-        marl_m.params_to_json(join(output_dir, model_dir, f"marl_epoch_{e}.json"))
+        nn_models.json_args(join(output_dir, model_dir, f"marl_epoch_{e}.json"))
         th.save(nn_models.state_dict(), join(output_dir, model_dir, f"nn_models_epoch_{e}.pt"))
         th.save(optim.state_dict(), join(output_dir, model_dir, f"optim_epoch_{e}.pt"))
 
@@ -527,7 +527,28 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
     plt.legend()
     plt.savefig(join(output_dir, "train_graph.png"))
 
-    visualize_steps(marl_m, x_test[randint(0, x_test.size(0) - 1)],
+    empty_pipe = tr.Compose([
+        tr.ToTensor()
+    ])
+
+    dataset_tmp = None
+
+    if train_options.data_set == "mnist":
+        dataset_tmp = MNISTDataset(empty_pipe)
+
+    elif train_options.data_set == "resisc45":
+        dataset_tmp = RESISC45Dataset(empty_pipe)
+
+    else:
+        print(f"Unrecognized data set \"{train_options.data_set}\"")
+        exit(1)
+
+    test_dataloader_ori = Subset(dataset_tmp, idx_test)
+    test_dataloader = Subset(dataset, idx_test)
+
+    test_idx = randint(0, len(test_dataloader_ori))
+
+    visualize_steps(marl_m, test_dataloader[test_idx][0], test_dataloader_ori[test_idx][0],
                     rl_option.nb_step, ma_options.window_size,
                     output_dir, ma_options.nb_class, device_str, dataset.class_to_idx)
 
@@ -539,7 +560,68 @@ def train(ma_options: MAOptions, rl_option: RLOptions, train_options: TrainOptio
 #######################
 
 def test(ma_options: MAOptions, rl_options: RLOptions, test_options: TestOptions) -> None:
-    pass
+    steps = rl_options.nb_step
+
+    json_path = test_options.json_path
+    state_dict_path = test_options.state_dict_path
+    image_path = test_options.image_path
+    output_img_path = test_options.output_img_path
+    nb_test_img = test_options.nb_test_img
+
+    assert exists(json_path), f"JSON path \"{json_path}\" does not exist"
+    assert isfile(json_path), f"\"{json_path}\" is not a file"
+
+    assert exists(state_dict_path), f"State dict path \"{state_dict_path}\" does not exist"
+    assert isfile(state_dict_path), f"\"{state_dict_path}\" is not a file"
+
+    img_pipeline = tr.Compose([
+        tr.ToTensor(),
+        custom_tr.NormalNorm()
+    ])
+
+    img_dataset = ImageFolder(image_path, transform=img_pipeline)
+
+    nn_models = ModelsWrapper.from_json(json_path)
+    nn_models.load_state_dict(th.load(state_dict_path))
+    marl_m = MultiAgent.load_from(json_path, ma_options.nb_agent, nn_models, obs_img, trans_img)
+
+    data_loader = DataLoader(
+        img_dataset, batch_size=32,
+        shuffle=True, num_workers=8, drop_last=False
+    )
+
+    cuda = rl_options.cuda
+    device_str = "cpu"
+
+    # Pass pytorch stuff to GPU
+    # for agents hidden tensors (belief etc.)
+    if cuda:
+        nn_models.cuda()
+        marl_m.cuda()
+        device_str = "cuda"
+
+    conf_meter = ConfusionMeter(nn_models.nb_class)
+
+    for x, y in tqdm(data_loader):
+        x, y = x.to(th.device(device_str)), y.to(th.device(device_str))
+
+        preds, probas = episode(marl_m, x, steps)
+
+        preds = fun.softmax(preds, dim=-1)
+
+        conf_meter.add(preds.detach(), y)
+
+    print(conf_meter.value())
+
+    precs, recs = prec_rec(conf_meter)
+
+    precs_str = format_metric(precs, img_dataset.class_to_idx)
+    recs_str = format_metric(recs, img_dataset.class_to_idx)
+
+    print(f"Precision : {precs_str}")
+    print(f"Precision mean = {precs.mean()}")
+    print(f"Recall : {recs_str}")
+    print(f"Recall mean : {recs.mean()}")
 
 
 #######################
@@ -597,28 +679,21 @@ def main() -> None:
 
     # Algorithm arguments
     main_parser.add_argument("-a", "--agents", type=int, default=3, dest="agents",
-                             help="Number of agents")
-    main_parser.add_argument("-d", "--dim", type=int, default=2,
-                             help="State dimension (eg. 2 -> move on a plan)")
-    main_parser.add_argument("--f", type=int, default=7)
+                              help="Number of agents")
+
+    # data option
+    main_parser.add_argument("--dataset", type=str, choices=DATASET_CHOICES, default="mnist",
+                             dest="dataset", help="Choose the training data set")
 
     # Image / data set arguments
     main_parser.add_argument("--nb-class", type=int, default=10, dest="nb_class",
                              help="Image dataset number of class")
-    main_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action",
-                             help="Number of discrete actions")
     main_parser.add_argument("--img-size", type=int, default=28, dest="img_size",
                              help="Image side size, assume all image are squared")
 
     # RL Options
     main_parser.add_argument("--step", type=int, default=7,
                              help="Step number of RL episode")
-    main_parser.add_argument("--n", type=int, default=8,
-                             help="Hidden size for NNs")
-    main_parser.add_argument("--nm", type=int, default=2, dest="n_m",
-                             help="Message size for NNs")
-    main_parser.add_argument("--nl", type=int, default=64, dest="n_l",
-                             help="Network internal hidden size for linear projections")
     main_parser.add_argument("--cuda", action="store_true", dest="cuda",
                              help="Train NNs with CUDA")
 
@@ -626,9 +701,25 @@ def main() -> None:
     # Train args
     ##################
 
+    # Data options
+    train_parser.add_argument("--nb-action", type=int, default=4, dest="nb_action",
+                              help="Number of discrete actions")
+
+    # Algorithm arguments
+    train_parser.add_argument("-d", "--dim", type=int, default=2,
+                              help="State dimension (eg. 2 -> move on a plan)")
+    train_parser.add_argument("--f", type=int, default=7,
+                              help="Window size")
+
+    # RL Options
+    train_parser.add_argument("--n", type=int, default=8,
+                              help="Hidden size for NNs")
+    train_parser.add_argument("--nm", type=int, default=2, dest="n_m",
+                              help="Message size for NNs")
+    train_parser.add_argument("--nl", type=int, default=64, dest="n_l",
+                              help="Network internal hidden size for linear projections")
+
     # Training arguments
-    train_parser.add_argument("--dataset", type=str, choices=DATASET_CHOICES, default="mnist",
-                              dest="dataset", help="Choose the training data set")
     train_parser.add_argument("-o", "--output-dir", type=str, required=True, dest="output_dir",
                               help="The output dir containing res and models per epoch. "
                                    "Created if needed.")
@@ -651,8 +742,8 @@ def main() -> None:
     ##################
     # Infer args
     ##################
-    test_parser.add_argument("-i", "--images", type=str, required=True, nargs="+", dest="images",
-                             help="Input images for inference")
+    test_parser.add_argument("-i", "--image-path", type=str, required=True, dest="image_path",
+                             help="Input image path for inference")
     test_parser.add_argument("--json-path", type=str, required=True, dest="json_path",
                              help="JSON multi agent metadata path")
     test_parser.add_argument("--state-dict", type=str, required=True, dest="state_dict",
@@ -691,15 +782,22 @@ def main() -> None:
     # Train main
     elif args.prgm == "main" and args.main_choice == "train":
         # Create Options
-        rl_options = RLOptions(args.step, args.n, args.n_l, args.n_m, args.cuda)
+        rl_options = RLOptions(
+            args.step, args.n,
+            args.n_l, args.n_m, args.cuda
+        )
 
-        ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
-                               args.nb_class, args.nb_action)
+        ma_options = MAOptions(
+            args.agents, args.dim, args.f, args.img_size,
+            args.nb_class, args.nb_action
+        )
 
-        train_options = TrainOptions(args.nb_epoch, args.learning_rate,
-                                     args.number_retry,
-                                     args.batch_size, args.output_dir,
-                                     args.frozen_modules, args.dataset)
+        train_options = TrainOptions(
+            args.nb_epoch, args.learning_rate,
+            args.number_retry,
+            args.batch_size, args.output_dir,
+            args.frozen_modules, args.dataset
+        )
 
         if not exists(args.output_dir):
             makedirs(args.output_dir)
@@ -709,14 +807,22 @@ def main() -> None:
         train(ma_options, rl_options, train_options)
 
     # Test main
-    elif args.prgm == "main" and args.main_choice == "test":
-        rl_options = RLOptions(args.step, args.n, args.n_l, args.n_m, args.cuda)
+    elif args.prgm == "main" and args.main_choice == "infer":
+        rl_options = RLOptions(
+            args.step, -1,
+            -1, -1, args.cuda
+        )
 
-        ma_options = MAOptions(args.agents, args.dim, args.f, args.img_size,
-                               args.nb_class, args.nb_action)
+        ma_options = MAOptions(
+            args.agents, -1, -1, args.img_size,
+            -1, -1
+        )
 
-        test_options = TestOptions(args.json_path, args.state_dict,
-                                   args.output_image_dir, args.nb_img_test)
+        test_options = TestOptions(
+            args.json_path, args.state_dict,
+            args.image_path,
+            args.output_image_dir, args.nb_test_img
+        )
 
         test(ma_options, rl_options, test_options)
 

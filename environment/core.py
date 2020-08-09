@@ -18,7 +18,7 @@ def episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int) -> \
     :rtype:
     """
 
-    agents.new_episode(img_batch.size(0))
+    agents.new_episode(img_batch.size(0), img_batch.size(-1))
 
     for t in range(max_it):
         agents.step(img_batch)
@@ -47,7 +47,7 @@ def detailed_episode(agents: MultiAgent, img_batch: th.Tensor, max_it: int,
     :rtype:
     """
 
-    agents.new_episode(img_batch.size(0))
+    agents.new_episode(img_batch.size(0), img_batch.size(-1))
 
     img_batch = img_batch.to(th.device(device_str))
 

@@ -8,8 +8,7 @@ import json
 
 class MultiAgent:
     def __init__(self, nb_agents: int, model_wrapper: ModelsWrapper,
-                 n: int, f: int, n_m: int,
-                 size: int, nb_action: int,
+                 n: int, f: int, n_m: int, n_l: int, nb_action: int,
                  obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
                  trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> None:
         """
@@ -24,8 +23,8 @@ class MultiAgent:
         :type f:
         :param n_m:
         :type n_m:
-        :param size:
-        :type size:
+        :param n_l:
+        :type n_l:
         :param nb_action:
         :type nb_action:
         :param obs:
@@ -40,8 +39,9 @@ class MultiAgent:
         self.__n = n
         self.__f = f
         self.__n_m = n_m
+        # only for re-loading ModelsWrapper
+        self.__n_l = n_l
 
-        self.__size = size
         self.__nb_action = nb_action
         self.__batch_size = None
 
@@ -71,11 +71,13 @@ class MultiAgent:
         self.__is_cuda = False
         self.__device_str = "cpu"
 
-    def new_episode(self, batch_size: int) -> None:
+    def new_episode(self, batch_size: int, img_size: int) -> None:
         """
 
         :param batch_size:
         :type batch_size:
+        :param img_size:
+        :type img_size:
         :return:
         :rtype:
         """
@@ -112,7 +114,7 @@ class MultiAgent:
                     device=th.device(self.__device_str)) / self.__nb_action
         ]
 
-        self.pos = th.randint(self.__size - self.__f,
+        self.pos = th.randint(img_size - self.__f,
                               (self.__nb_agents, batch_size, 2),
                               device=th.device(self.__device_str))
 
@@ -124,6 +126,8 @@ class MultiAgent:
         :return:
         :rtype:
         """
+
+        size = img.size(-1)
 
         # Observation
         o_t = self.__obs(img, self.pos, self.__f)
@@ -201,7 +205,7 @@ class MultiAgent:
         # Apply action / Upgrade agent state
         self.pos = self.__trans(self.pos.to(th.float),
                                 a_t_next, self.__f,
-                                self.__size).to(th.long)
+                                size).to(th.long)
 
         self.__t += 1
 
@@ -254,41 +258,26 @@ class MultiAgent:
         """
         return self.__nb_agents
 
-    def params_to_json(self, out_json_path: str) -> None:
-        with open(out_json_path, mode="w") as f_json:
-            json_raw_txt = \
-                "{\n" \
-                f"    \"nb_agent\": {str(self.__nb_agents)},\n" \
-                f"    \"hidden_size\":  {str(self.__n)},\n" \
-                f"    \"window_size\": {str(self.__f)},\n" \
-                f"    \"hidden_size_msg\": {str(self.__n_m)},\n" \
-                f"    \"size\": {str(self.__size)},\n" \
-                f"    \"nb_action\": {str(self.__nb_action)}\n" \
-                "}\n"
-
-            f_json.write(json_raw_txt)
-            f_json.close()
-
     @classmethod
-    def load_from(cls, json_file: str, model_wrapper: ModelsWrapper,
+    def load_from(cls, models_wrapper_json_file: str, nb_agent: int,
+                  model_wrapper: ModelsWrapper,
                   obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
                   trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]) -> 'MultiAgent':
 
-        with open(json_file, "r") as f_json:
+        with open(models_wrapper_json_file, "r") as f_json:
             j_obj = json.load(f_json)
 
             try:
-                nb_agents = j_obj["nb_agent"]
                 n = j_obj["hidden_size"]
                 f = j_obj["window_size"]
                 n_m = j_obj["hidden_size_msg"]
-                size = j_obj["size"]
-                nb_action = j_obj["nb_action"]
+                n_l = j_obj["hidden_size_linear"]
+                nb_action = j_obj["action_dim"]
 
                 obs = obs
                 trans = trans
 
-                return cls(nb_agents, model_wrapper, n, f, n_m, size, nb_action, obs, trans)
+                return cls(nb_agent, model_wrapper, n, f, n_m, n_l, nb_action, obs, trans)
             except Exception as e:
                 print(f"Exception during loading MultiAgent from file !\nRaised Exception :")
                 raise e
