@@ -1,6 +1,6 @@
 import torch as th
 
-from typing import Tuple, Optional, Union, Callable
+from typing import Tuple
 
 from abc import ABCMeta, abstractmethod
 

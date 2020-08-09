@@ -1,7 +1,7 @@
 from abc import ABC
 
 from networks.ft_extractor import \
-    MNISTCnn, RESISC45Cnn, RESISC45CnnSmall, StateToFeatures
+    MNISTCnn, RESISC45CnnSmall, StateToFeatures
 from networks.messages import MessageReceiver, MessageSender
 from networks.recurrents import BeliefUnit, ActionUnit
 from networks.policy import Policy

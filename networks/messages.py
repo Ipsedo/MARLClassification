@@ -1,8 +1,4 @@
-import torch as th
 import torch.nn as nn
-from torch import device
-
-from typing import Optional, Union
 
 
 class MessageSender(nn.Module):
