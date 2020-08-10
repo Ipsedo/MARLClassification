@@ -9,7 +9,7 @@ import json
 class MultiAgent:
     def __init__(
             self, nb_agents: int, model_wrapper: ModelsWrapper,
-            n: int, f: int, n_m: int, n_l: int, nb_action: int,
+            n: int, f: int, n_m: int, nb_action: int,
             obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
             trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]
     ) -> None:
@@ -41,8 +41,6 @@ class MultiAgent:
         self.__n = n
         self.__f = f
         self.__n_m = n_m
-        # only for re-loading ModelsWrapper
-        self.__n_l = n_l
 
         self.__nb_action = nb_action
         self.__batch_size = None
@@ -248,7 +246,7 @@ class MultiAgent:
         self.__is_cuda = False
         self.__device_str = "cpu"
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
 
         :return:
@@ -270,8 +268,8 @@ class MultiAgent:
                 return cls(
                     nb_agent, model_wrapper,
                     j_obj["hidden_size"], j_obj["window_size"],
-                    j_obj["hidden_size_msg"], j_obj["hidden_size_linear"],
-                    j_obj["action_dim"], obs, trans
+                    j_obj["hidden_size_msg"], j_obj["action_dim"],
+                    obs, trans
                 )
             except Exception as e:
                 print(f"Exception during loading MultiAgent "

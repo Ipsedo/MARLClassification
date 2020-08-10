@@ -117,7 +117,7 @@ def test_agent_step():
 
     marl_m = MultiAgent(
         3, m, n, f, n_m,
-        img_size, action_size,
+        action_size,
         obs_img, trans_img
     )
 
@@ -167,7 +167,7 @@ def test_core_step():
     m.cuda()
     marl_m = MultiAgent(
         3, m, n, f, n_m,
-        img_size, action_size,
+        action_size,
         obs_img, trans_img
     )
     marl_m.cuda()
@@ -350,8 +350,7 @@ def train(
     marl_m = MultiAgent(
         ma_options.nb_agent, nn_models, rl_option.hidden_size,
         ma_options.window_size, rl_option.hidden_size_msg,
-        rl_option.hidden_size_linear, ma_options.nb_action,
-        obs_img, trans_img
+        ma_options.nb_action, obs_img, trans_img
     )
 
     cuda = rl_option.cuda
