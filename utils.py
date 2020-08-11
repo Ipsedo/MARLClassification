@@ -32,6 +32,7 @@ RLOptions = typ.NamedTuple(
      ("hidden_size", int),
      ("hidden_size_linear", int),
      ("hidden_size_msg", int),
+     ("hidden_size_state", int),
      ("cuda", bool)]
 )
 
