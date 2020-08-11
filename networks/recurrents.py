@@ -8,12 +8,10 @@ class LSTMCellWrapper(nn.Module):
     # Supposition : R^2n * R^3n -> R^2n
     # R^2n : pas sûr
 
-    def __init__(self, n: int) -> None:
+    def __init__(self, input_size: int, n: int) -> None:
         super().__init__()
 
-        self.__n = n
-
-        self.lstm = nn.LSTMCell(self.__n * 3, self.__n)
+        self.lstm = nn.LSTMCell(input_size, n)
 
     def forward(self, h, c, u):
         """
