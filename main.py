@@ -563,11 +563,11 @@ def main() -> None:
 
     # RL Options
     train_parser.add_argument(
-        "--n", type=int, default=8,
+        "--n", type=int, default=64,
         help="Hidden size for NNs"
     )
     train_parser.add_argument(
-        "--nm", type=int, default=2, dest="n_m",
+        "--nm", type=int, default=16, dest="n_m",
         help="Message size for NNs"
     )
     train_parser.add_argument(
@@ -575,7 +575,7 @@ def main() -> None:
         help="State hidden size"
     )
     train_parser.add_argument(
-        "--nl", type=int, default=64, dest="n_l",
+        "--nl", type=int, default=128, dest="n_l",
         help="Network internal hidden size for linear projections"
     )
 
@@ -705,7 +705,9 @@ def main() -> None:
 
     else:
         main_parser.error(
-            f"Unrecognized mode : \"{args.mode}\" type == {type(args.mode)}.")
+            f"Unrecognized mode : \"{args.mode}\""
+            f"type == {type(args.mode)}."
+        )
 
 
 if __name__ == "__main__":
