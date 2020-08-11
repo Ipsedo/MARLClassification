@@ -140,8 +140,9 @@ class MultiAgent:
             .view(len(self), self.__batch_size, self.__n)
 
         # Get messages
-        d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
-                                      self.msg[self.__t])
+        #d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
+        #                              self.msg[self.__t])
+        d_bar_t_tmp = self.msg[self.__t]
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
         d_bar_t = ((d_bar_t_mean * self.__nb_agents) - d_bar_t_tmp) \
@@ -222,12 +223,15 @@ class MultiAgent:
         prediction : th.Tensor with size == (batch_size, nb_class)
         action probabilities : th.Tensor with size == (batch_size,)
 
+        prediction : mean on agents
+        probas : sum of log proba between agents
+
         :return: tuple <predictions, action_probabilities>
         """
 
         return self.__networks(self.__networks.predict,
                                self.__c[-1]).mean(dim=0), \
-               self.__action_probas[-1].log().mean(dim=0)
+               self.__action_probas[-1].log().sum(dim=0)
 
     @property
     def is_cuda(self) -> bool:

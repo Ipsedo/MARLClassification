@@ -330,7 +330,8 @@ def train(
             ma_options.window_size,
             rl_option.hidden_size,
             rl_option.hidden_size_msg,
-            rl_option.hidden_size_linear
+            rl_option.hidden_size_linear,
+            rl_option.hidden_size_state
         )
 
     elif train_options.data_set == "resisc45":
@@ -340,7 +341,8 @@ def train(
             ma_options.window_size,
             rl_option.hidden_size,
             rl_option.hidden_size_msg,
-            rl_option.hidden_size_linear
+            rl_option.hidden_size_linear,
+            rl_option.hidden_size_state
         )
 
     else:
@@ -363,8 +365,10 @@ def train(
         marl_m.cuda()
         device_str = "cuda"
 
+    module_to_train = ModelsWrapper.module_list\
+        .difference(train_options.frozen_modules)
     # for RL agent models parameters
-    optim = th.optim.Adam(nn_models.parameters(),
+    optim = th.optim.Adam(nn_models.get_params(list(module_to_train)),
                           lr=train_options.learning_rate)
 
     idx = list(range(len(dataset)))
@@ -418,18 +422,19 @@ def train(
                 device=th.device(device_str)
             )[y_train.unsqueeze(0)]
 
-            # Mean on all agents
-            # then pass to class proba (softmax)
+            # pass to class proba (softmax)
             retry_pred = fun.softmax(retry_pred, dim=-1)
-            retry_pred_2 = fun.softmax(retry_pred.mean(dim=0), dim=-1)
 
             # Update confusion meter
             # mean between trials
-            conf_meter.add(retry_pred_2.detach(), y_train)
+            conf_meter.add(
+                fun.softmax(retry_pred.detach().mean(dim=0), dim=-1),
+                y_train
+            )
 
             # L2 Loss - Classification error / reward
             # reward = -error(y_true, y_step_pred).mean(class_dim)
-            r = -th.pow(y_eye - retry_pred, 2.).sum(dim=-1)
+            r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
 
             # Compute loss
             losses = retry_prob * r.detach() + r
@@ -444,9 +449,6 @@ def train(
             # Backward on compute graph
             loss.backward()
 
-            # Erase gradient - test
-            # nn_models.erase_grad(ops_to_skip)
-
             # Update weights
             optim.step()
 
@@ -459,7 +461,7 @@ def train(
             # verify some parameters are un-optimized - test
             param_list = nn_models.get_params(ops_to_skip)
             mean_param_list_str = ", ".join(
-                [f'{p.grad.norm():.0e}' for p in param_list]
+                [f'{p.norm():.0e}' for p in param_list]
             )
 
             tqdm_bar.set_description(
@@ -840,6 +842,10 @@ def main() -> None:
         help="Message size for NNs"
     )
     train_parser.add_argument(
+        "--nd", type=int, default=4, dest="n_d",
+        help="State hidden size"
+    )
+    train_parser.add_argument(
         "--nl", type=int, default=64, dest="n_l",
         help="Network internal hidden size for linear projections"
     )
@@ -867,7 +873,7 @@ def main() -> None:
         "--freeze", type=str, default=[], nargs="+",
         dest="frozen_modules", action=SetAppendAction,
         choices=[ModelsWrapper.map_obs, ModelsWrapper.map_pos,
-                 ModelsWrapper.evaluate_msg, ModelsWrapper.decode_msg,
+                 ModelsWrapper.evaluate_msg, #ModelsWrapper.decode_msg,
                  ModelsWrapper.belief_unit, ModelsWrapper.action_unit,
                  ModelsWrapper.predict, ModelsWrapper.policy],
         help="Choose module(s) to be frozen during training"
@@ -930,7 +936,8 @@ def main() -> None:
         # Create Options
         rl_options = RLOptions(
             args.step, args.n,
-            args.n_l, args.n_m, args.cuda
+            args.n_l, args.n_m, args.n_d,
+            args.cuda
         )
 
         ma_options = MAOptions(
@@ -956,7 +963,7 @@ def main() -> None:
     elif args.prgm == "main" and args.main_choice == "infer":
         rl_options = RLOptions(
             args.step, -1,
-            -1, -1, args.cuda
+            -1, -1, -1, args.cuda
         )
 
         ma_options = MAOptions(
