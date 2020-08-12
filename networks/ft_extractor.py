@@ -1,6 +1,16 @@
 import torch.nn as nn
 import torch as th
 
+from abc import ABC, abstractmethod
+
+
+class CNNHelper(ABC):
+
+    @property
+    @abstractmethod
+    def out_size(self) -> int:
+        return -1
+
 
 ############################
 # Features extraction stuff
@@ -32,16 +42,15 @@ class TestCNN(nn.Module):
         return self.seq_lin(out)
 
 
-class MNISTCnn(nn.Module):
+class MNISTCnn(nn.Module, CNNHelper):
     """
     b_θ5 : R^f*f -> R^n
     """
 
-    def __init__(self, f: int, n: int) -> None:
+    def __init__(self, f: int) -> None:
         super().__init__()
 
         self.__f = f
-        self.__n = n
 
         self.seq_conv = nn.Sequential(
             nn.Conv2d(1, 8, kernel_size=3,
@@ -52,82 +61,60 @@ class MNISTCnn(nn.Module):
             nn.ReLU()
         )
 
-        self.seq_lin = nn.Sequential(
-            nn.Linear(16 * (f ** 2), self.__n)
-        )
+        self.__out_size = 16 * f ** 2
 
     def forward(self, o_t):
         o_t = o_t[:, 0, None, :, :]  # grey scale
         out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
-        return self.seq_lin(out)
+        return out
 
-
-class CNN_MNIST_2(nn.Module):
-    """
-    b_θ5 : R^f*f -> R^n
-    """
-
-    def __init__(self, f: int, n: int) -> None:
-        super().__init__()
-
-        self.__f = f
-        self.__n = n
-
-        self.seq_conv = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=3),
-        )
-
-        self.seq_lin = nn.Sequential(
-            nn.Linear(8 * ((f - 2) ** 2), self.__n)
-        )
-
-    def forward(self, o_t):
-        out = self.seq_conv(o_t)
-        out = out.flatten(1, -1)
-        return self.seq_lin(out)
+    @property
+    def out_size(self) -> int:
+        return self.__out_size
 
 
 # RESISC-45 Stuff
 
-class RESISC45Cnn(nn.Module):
+class RESISC45Cnn(nn.Module, CNNHelper):
     """
     for 5000*5000px img
     """
 
-    def __init__(self, f: int = 128, n: int = 1024) -> None:
+    def __init__(self, f: int = 32) -> None:
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 12, kernel_size=5,
-                      padding=2),
-            nn.MaxPool2d(2, 2),
+            nn.Conv2d(3, 7, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(12, 24, kernel_size=5,
-                      padding=2),
-            nn.MaxPool2d(2, 2),
+            nn.Conv2d(7, 12, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(24, 32, kernel_size=5,
-                      stride=2, padding=2),
             nn.MaxPool2d(2, 2),
-            nn.ReLU()
+            nn.Conv2d(12, 22, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.Conv2d(22, 32, kernel_size=5, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
         )
 
-        self.lin = nn.Linear(32 * (f // 2 // 2 // 2 // 2) ** 2, n)
+        self.__out_size = 32 * (f // 4) ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
-        out = self.lin(out)
         return out
 
+    @property
+    def out_size(self) -> int:
+        return self.__out_size
 
-class RESISC45CnnSmall(nn.Module):
+
+class RESISC45CnnSmall(nn.Module, CNNHelper):
     """
         for 256*256px img
         """
 
-    def __init__(self, f: int, n: int) -> None:
+    def __init__(self, f: int) -> None:
         super().__init__()
 
         self.seq_conv = nn.Sequential(
@@ -138,21 +125,16 @@ class RESISC45CnnSmall(nn.Module):
         )
 
         # out_size == 2048
-        out_size = 16 * f ** 2
-
-        self.seq_lin = nn.Sequential(
-            nn.Linear(out_size, n)
-        )
-
-        for m in self.seq_lin:
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
+        self.__out_size = 16 * f ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
         out = out.flatten(1, -1)
-        out = self.seq_lin(out)
         return out
+
+    @property
+    def out_size(self) -> int:
+        return self.__out_size
 
 
 class TestRESISC45(nn.Module):
@@ -192,14 +174,14 @@ class StateToFeatures(nn.Module):
     λ_θ7 : R^d -> R^n
     """
 
-    def __init__(self, d: int, n: int) -> None:
+    def __init__(self, d: int, n_d: int) -> None:
         super().__init__()
 
         self.__d = d
-        self.__n = n
+        self.__n_d = n_d
 
         self.seq_lin = nn.Sequential(
-            nn.Linear(self.__d, self.__n)
+            nn.Linear(self.__d, self.__n_d)
         )
 
     def forward(self, p_t):
