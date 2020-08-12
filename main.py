@@ -491,7 +491,6 @@ def main() -> None:
         "for image classification - Main"
     )
 
-    # prgm subparsers creation
     # main subparser
     choice_main_subparser = main_parser.add_subparsers()
     choice_main_subparser.dest = "main_choice"
