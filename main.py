@@ -680,7 +680,7 @@ def main() -> None:
         train(ma_options, rl_options, train_options)
 
     # Test main
-    elif args.prgm == "main" and args.main_choice == "infer":
+    elif args.main_choice == "infer":
         rl_options = RLOptions(
             args.step, -1,
             -1, -1, -1,
