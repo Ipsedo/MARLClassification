@@ -1,7 +1,7 @@
 from abc import ABC
 
 from networks.ft_extractor import \
-    MNISTCnn, RESISC45CnnSmall, StateToFeatures
+    MNISTCnn, RESISC45Cnn, StateToFeatures
 from networks.messages import MessageReceiver, MessageSender
 from networks.recurrents import LSTMCellWrapper
 from networks.policy import Policy
@@ -55,9 +55,9 @@ class ModelsWrapper(nn.Module, ABC):
         # TODO trouver moyen plus propre que ce branchement
         map_obs_module = None
         if dataset == "mnist":
-            map_obs_module = MNISTCnn(f, n)
+            map_obs_module = MNISTCnn(f)
         elif dataset == "resisc45":
-            map_obs_module = RESISC45CnnSmall(f, n)
+            map_obs_module = RESISC45Cnn(f)
         else:
             raise Exception(f"Unvalid dataset \"{dataset}\"")
 
@@ -66,8 +66,10 @@ class ModelsWrapper(nn.Module, ABC):
             self.map_pos: StateToFeatures(d, n_d),
             #self.decode_msg: MessageReceiver(n_m, n),
             self.evaluate_msg: MessageSender(n, n_m, hidden_size),
-            self.belief_unit: LSTMCellWrapper(n + n_d + n_m, n),
-            self.action_unit: LSTMCellWrapper(n + n_d + n_m, n),
+            self.belief_unit: LSTMCellWrapper(
+                map_obs_module.out_size + n_d + n_m, n),
+            self.action_unit: LSTMCellWrapper(
+                map_obs_module.out_size + n_d + n_m, n),
             self.policy: Policy(nb_action, n, hidden_size),
             self.predict: Prediction(n, nb_class, hidden_size)
         })
