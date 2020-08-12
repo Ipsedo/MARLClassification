@@ -3,14 +3,13 @@ from environment.transition import trans_img
 from environment.agent import MultiAgent
 from environment.core import episode, episode_retry
 
-from networks.models import ModelsWrapper, MNISTModelWrapper, \
-    RESISC45ModelsWrapper
+from networks.models import ModelsWrapper
 
 from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, \
-    DATASET_CHOICES
+    my_pil_loader
 import data.transforms as custom_tr
 
-from utils import RLOptions, MAOptions, TrainOptions, TestOptions, \
+from utils import MainOptions, TrainOptions, TestOptions, InferOptions, \
     visualize_steps, prec_rec, format_metric, SetAppendAction
 
 import torch as th
@@ -26,6 +25,10 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import datetime
 
+import json
+
+from typing import List
+
 from os import mkdir, makedirs
 from os.path import join, exists, isdir, isfile
 
@@ -39,23 +42,20 @@ import argparse
 ######################
 
 def train(
-        ma_options: MAOptions,
-        rl_option: RLOptions,
+        main_options: MainOptions,
         train_options: TrainOptions
 ) -> None:
     """
 
-    :param ma_options:
-    :type ma_options:
-    :param rl_option:
-    :type rl_option:
+    :param main_options:
+    :type main_options:
     :param train_options:
     :type train_options:
     :return:
     :rtype:
     """
 
-    output_dir = train_options.output_model_path
+    output_dir = train_options.output_dir
 
     model_dir = "models"
     if not exists(join(output_dir, model_dir)):
@@ -77,42 +77,40 @@ def train(
         custom_tr.NormalNorm()
     ])
 
-    dataset = None
-    nn_models = None
+    dataset_constructor = RESISC45Dataset \
+        if train_options.ft_extr_str.startswith("resisc")\
+        else MNISTDataset
 
-    if train_options.data_set == "mnist":
-        dataset = MNISTDataset(img_pipeline)
-
-        nn_models = MNISTModelWrapper(
-            ma_options.window_size,
-            rl_option.hidden_size,
-            rl_option.hidden_size_msg,
-            rl_option.hidden_size_linear,
-            rl_option.hidden_size_state
-        )
-
-    elif train_options.data_set == "resisc45":
-        dataset = RESISC45Dataset(img_pipeline)
-
-        nn_models = RESISC45ModelsWrapper(
-            ma_options.window_size,
-            rl_option.hidden_size,
-            rl_option.hidden_size_msg,
-            rl_option.hidden_size_linear,
-            rl_option.hidden_size_state
-        )
-
-    else:
-        print(f"Unrecognized data set \"{train_options.data_set}\"")
-        exit(1)
-
-    marl_m = MultiAgent(
-        ma_options.nb_agent, nn_models, rl_option.hidden_size,
-        ma_options.window_size, rl_option.hidden_size_msg,
-        ma_options.nb_action, obs_img, trans_img
+    nn_models = ModelsWrapper(
+        train_options.ft_extr_str,
+        train_options.window_size,
+        train_options.hidden_size,
+        train_options.hidden_size_msg,
+        train_options.hidden_size_state,
+        train_options.dim,
+        train_options.nb_action,
+        train_options.nb_class,
+        train_options.hidden_size_linear
     )
 
-    cuda = rl_option.cuda
+    dataset = dataset_constructor(img_pipeline)
+
+    class2idx_f = open(join(output_dir, "class2idx.json"), "w")
+    json.dump(dataset.class_to_idx, class2idx_f)
+    class2idx_f.close()
+
+    marl_m = MultiAgent(
+        main_options.nb_agent,
+        nn_models,
+        train_options.hidden_size,
+        train_options.window_size,
+        train_options.hidden_size_msg,
+        train_options.nb_action,
+        obs_img,
+        trans_img
+    )
+
+    cuda = main_options.cuda
     device_str = "cpu"
 
     # Pass pytorch stuff to GPU
@@ -157,7 +155,7 @@ def train(
 
         nn_models.train()
 
-        conf_meter = ConfusionMeter(ma_options.nb_class)
+        conf_meter = ConfusionMeter(train_options.nb_class)
 
         i = 0
         tqdm_bar = tqdm(train_dataloader)
@@ -168,14 +166,14 @@ def train(
             # pred = [Nr, Nb, Nc]
             # prob = [Nr, Nb]
             retry_pred, retry_prob = episode_retry(
-                marl_m, x_train, rl_option.nb_step,
+                marl_m, x_train, main_options.step,
                 train_options.retry_number,
-                ma_options.nb_class, device_str
+                train_options.nb_class, device_str
             )
 
             # Class one hot encoding
             y_eye = th.eye(
-                ma_options.nb_class,
+                train_options.nb_class,
                 device=th.device(device_str)
             )[y_train.unsqueeze(0)]
 
@@ -261,7 +259,7 @@ def train(
                 x_test, y_test = x_test.to(th.device(device_str)), \
                                  y_test.to(th.device(device_str))
 
-                preds, _ = episode(marl_m, x_test, rl_option.nb_step)
+                preds, _ = episode(marl_m, x_test, main_options.step)
 
                 preds = fun.softmax(preds, dim=-1)
 
@@ -313,9 +311,9 @@ def train(
     plt.plot(recall_epoch, "r", label="recall - mean (eval)")
     plt.plot(loss_v, "g", label="criterion value")
     plt.xlabel("Epoch")
-    plt.title(f"MARL Classification f={ma_options.window_size}, "
-              f"n={rl_option.hidden_size}, n_m={rl_option.hidden_size_msg}, "
-              f"d={ma_options.dim}, T={rl_option.nb_step}")
+    plt.title(f"MARL Classification f={train_options.window_size}, "
+              f"n={train_options.hidden_size}, n_m={train_options.hidden_size_msg}, "
+              f"d={train_options.dim}, T={main_options.step}")
 
     plt.legend()
     plt.savefig(join(output_dir, "train_graph.png"))
@@ -324,17 +322,7 @@ def train(
         tr.ToTensor()
     ])
 
-    dataset_tmp = None
-
-    if train_options.data_set == "mnist":
-        dataset_tmp = MNISTDataset(empty_pipe)
-
-    elif train_options.data_set == "resisc45":
-        dataset_tmp = RESISC45Dataset(empty_pipe)
-
-    else:
-        print(f"Unrecognized data set \"{train_options.data_set}\"")
-        exit(1)
+    dataset_tmp = dataset_constructor(empty_pipe)
 
     test_dataloader_ori = Subset(dataset_tmp, idx_test)
     test_dataloader = Subset(dataset, idx_test)
@@ -343,8 +331,8 @@ def train(
 
     visualize_steps(marl_m, test_dataloader[test_idx][0],
                     test_dataloader_ori[test_idx][0],
-                    rl_option.nb_step, ma_options.window_size,
-                    output_dir, ma_options.nb_class, device_str,
+                    main_options.step, train_options.window_size,
+                    output_dir, train_options.nb_class, device_str,
                     dataset.class_to_idx)
 
     logs_file.close()
@@ -354,16 +342,14 @@ def train(
 # Test - Main
 #######################
 
-def test(ma_options: MAOptions,
-         rl_options: RLOptions,
+def test(main_options: MainOptions,
          test_options: TestOptions) -> None:
-    steps = rl_options.nb_step
+    steps = main_options.step
 
     json_path = test_options.json_path
     state_dict_path = test_options.state_dict_path
-    image_path = test_options.image_path
-    output_img_path = test_options.output_img_path
-    nb_test_img = test_options.nb_test_img
+    image_root = test_options.image_root
+    output_dir = test_options.output_dir
 
     assert exists(json_path), \
         f"JSON path \"{json_path}\" does not exist"
@@ -375,20 +361,20 @@ def test(ma_options: MAOptions,
     assert isfile(state_dict_path), \
         f"\"{state_dict_path}\" is not a file"
 
-    if exists(output_img_path) and isdir(output_img_path):
-        print(f"File in {output_img_path} will be overwrite")
-    elif exists(output_img_path) and not isdir(output_img_path):
-        raise Exception(f"\"{output_img_path}\" is not a directory")
+    if exists(output_dir) and isdir(output_dir):
+        print(f"File in {output_dir} will be overwrite")
+    elif exists(output_dir) and not isdir(output_dir):
+        raise Exception(f"\"{output_dir}\" is not a directory")
     else:
-        print(f"Create \"{output_img_path}\"")
-        mkdir(output_img_path)
+        print(f"Create \"{output_dir}\"")
+        mkdir(output_dir)
 
     img_pipeline = tr.Compose([
         tr.ToTensor(),
         custom_tr.NormalNorm()
     ])
 
-    img_dataset = ImageFolder(image_path, transform=img_pipeline)
+    img_dataset = ImageFolder(image_root, transform=img_pipeline)
 
     idx = list(range(len(img_dataset)))
     shuffle(idx)
@@ -399,7 +385,7 @@ def test(ma_options: MAOptions,
     nn_models = ModelsWrapper.from_json(json_path)
     nn_models.load_state_dict(th.load(state_dict_path))
     marl_m = MultiAgent.load_from(
-        json_path, ma_options.nb_agent,
+        json_path, main_options.nb_agent,
         nn_models, obs_img, trans_img
     )
 
@@ -408,7 +394,7 @@ def test(ma_options: MAOptions,
         shuffle=True, num_workers=8, drop_last=False
     )
 
-    cuda = rl_options.cuda
+    cuda = main_options.cuda
     device_str = "cpu"
 
     # Pass pytorch stuff to GPU
@@ -441,37 +427,74 @@ def test(ma_options: MAOptions,
     print(f"Recall : {recs_str}")
     print(f"Recall mean : {recs.mean()}")
 
+
+def infer(
+        main_options: MainOptions,
+        infer_options: InferOptions
+) -> None:
+
+    images_path = infer_options.images_path
+    output_dir = infer_options.output_dir
+
+    json_f = open(infer_options.class_to_idx_json, "r")
+    class_to_idx = json.load(json_f)
+    json_f.close()
+
+    nn_models = ModelsWrapper.from_json(infer_options.json_path)
+
+    marl_m = MultiAgent.load_from(
+        infer_options.json_path,
+        main_options.nb_agent,
+        nn_models,
+        obs_img,
+        trans_img
+    )
+
     img_ori_pipeline = tr.Compose([
         tr.ToTensor()
     ])
 
-    img_dataset_ori = ImageFolder(image_path, transform=img_ori_pipeline)
-    test_dataset_ori = Subset(img_dataset_ori, idx_test)
+    img_pipeline = tr.Compose([
+        tr.ToTensor(),
+        custom_tr.NormalNorm()
+    ])
 
-    rand_idx = list(range(len(test_dataset_ori)))
-    shuffle(rand_idx)
-    rand_idx = rand_idx[:nb_test_img]
+    cuda = main_options.cuda
+    device_str = "cpu"
 
-    idx_to_class = {img_dataset.class_to_idx[k]: k
-                    for k in img_dataset.class_to_idx}
+    # Pass pytorch stuff to GPU
+    # for agents hidden tensors (belief etc.)
+    if cuda:
+        nn_models.cuda()
+        marl_m.cuda()
+        device_str = "cuda"
 
-    for i in tqdm(rand_idx):
-        x, y = test_dataset[i]
-        x_ori, y_ori = test_dataset_ori[i]
+    for i, img_path in enumerate(tqdm(images_path)):
+        img = my_pil_loader(img_path)
+        x_ori = img_ori_pipeline(img)
+        x = img_pipeline(img)
 
-        x, x_ori = x.to(th.device(device_str)), \
-                   x_ori.to(th.device(device_str))
-
-        curr_img_path = join(output_img_path, f"img_{i}_{idx_to_class[y]}")
+        curr_img_path = join(output_dir, f"img_{i}")
 
         if not exists(curr_img_path):
             mkdir(curr_img_path)
 
+        info_f = open(join(curr_img_path, "info.txt"), "w")
+        info_f.writelines(
+            [f"{img_path}\n",
+             f"{infer_options.json_path}\n",
+             f"{infer_options.state_dict_path}\n"]
+        )
+        info_f.close()
+
         visualize_steps(
-            marl_m, x, x_ori, steps, nn_models.f,
+            marl_m, x, x_ori,
+            main_options.step,
+            nn_models.f,
             curr_img_path,
-            nn_models.nb_class, device_str,
-            img_dataset_ori.class_to_idx
+            nn_models.nb_class,
+            device_str,
+            class_to_idx
         )
 
 
@@ -498,7 +521,8 @@ def main() -> None:
 
     # main parsers
     train_parser = choice_main_subparser.add_parser("train")
-    test_parser = choice_main_subparser.add_parser("infer")
+    test_parser = choice_main_subparser.add_parser("test")
+    infer_parser = choice_main_subparser.add_parser("infer")
 
     ##################
     # Main args
@@ -510,27 +534,6 @@ def main() -> None:
         help="Number of agents"
     )
 
-    # data option
-    main_parser.add_argument(
-        "--dataset", type=str, choices=DATASET_CHOICES, default="mnist",
-        dest="dataset", help="Choose the training data set"
-    )
-
-    # Image / data set arguments
-    main_parser.add_argument(
-        "--nb-class", type=int, default=10, dest="nb_class",
-        help="Image dataset number of class"
-    )
-    main_parser.add_argument(
-        "--img-size", type=int, default=28, dest="img_size",
-        help="Image side size, assume all image are squared"
-    )
-
-    # RL Options
-    main_parser.add_argument(
-        "--batch-size", type=int, default=8, dest="batch_size",
-        help="Image batch size for training and evaluation"
-    )
     main_parser.add_argument(
         "--step", type=int, default=7,
         help="Step number of RL episode"
@@ -549,6 +552,14 @@ def main() -> None:
         "--nb-action", type=int, default=4, dest="nb_action",
         help="Number of discrete actions"
     )
+    train_parser.add_argument(
+        "--img-size", type=int, default=28, dest="img_size",
+        help="Image side size, assume all image are squared"
+    )
+    train_parser.add_argument(
+        "--nb-class", type=int, default=10, dest="nb_class",
+        help="Image dataset number of class"
+    )
 
     # Algorithm arguments
     train_parser.add_argument(
@@ -561,6 +572,15 @@ def main() -> None:
     )
 
     # RL Options
+    train_parser.add_argument(
+        "--ft-extr", type=str,
+        choices=[
+            ModelsWrapper.mnist,
+            ModelsWrapper.resisc,
+            ModelsWrapper.resisc_small],
+        default="mnist", dest="ft_extractor",
+        help="Choose features extractor (CNN)"
+    )
     train_parser.add_argument(
         "--n", type=int, default=64,
         help="Hidden size for NNs"
@@ -579,6 +599,10 @@ def main() -> None:
     )
 
     # Training arguments
+    train_parser.add_argument(
+        "--batch-size", type=int, default=8, dest="batch_size",
+        help="Image batch size for training and evaluation"
+    )
     train_parser.add_argument(
         "-o", "--output-dir", type=str, required=True, dest="output_dir",
         help="The output dir containing res and models per epoch. "
@@ -601,19 +625,30 @@ def main() -> None:
         "--freeze", type=str, default=[], nargs="+",
         dest="frozen_modules", action=SetAppendAction,
         choices=[
-            ModelsWrapper.map_obs, ModelsWrapper.map_pos,
-            ModelsWrapper.evaluate_msg,  # ModelsWrapper.decode_msg,
-            ModelsWrapper.belief_unit, ModelsWrapper.action_unit,
-            ModelsWrapper.predict, ModelsWrapper.policy],
+            ModelsWrapper.map_obs,
+            ModelsWrapper.map_pos,
+            ModelsWrapper.evaluate_msg,
+            ModelsWrapper.belief_unit,
+            ModelsWrapper.action_unit,
+            ModelsWrapper.predict,
+            ModelsWrapper.policy],
         help="Choose module(s) to be frozen during training"
     )
 
     ##################
-    # Infer args
+    # Test args
     ##################
     test_parser.add_argument(
-        "-i", "--image-path", type=str, required=True, dest="image_path",
+        "--batch-size", type=int, default=8, dest="batch_size",
+        help="Image batch size for training and evaluation"
+    )
+    test_parser.add_argument(
+        "--image-path", type=str, required=True, dest="image_path",
         help="Input image path for inference"
+    )
+    test_parser.add_argument(
+        "--img-size", type=int, default=28, dest="img_size",
+        help="Image side size, assume all image are squared"
     )
     test_parser.add_argument(
         "--json-path", type=str, required=True, dest="json_path",
@@ -624,14 +659,38 @@ def main() -> None:
         help="networks.models.ModelsWrapper PyTorch state dict file"
     )
     test_parser.add_argument(
+        "-o", "--output-dir", type=str, required=True,
+        dest="output_dir",
+        help="The directory where the model outputs will be saved. "
+             "Created if needed"
+    )
+
+    ##################
+    # Infer args
+    ##################
+    infer_parser.add_argument(
+        "--images", type=str, nargs="+",
+        required=True, dest="infer_images",
+        help="Path of images used for inference"
+    )
+    infer_parser.add_argument(
+        "--json-path", type=str, required=True, dest="json_path",
+        help="JSON multi agent metadata path"
+    )
+    infer_parser.add_argument(
+        "--state-dict", type=str, required=True, dest="state_dict",
+        help="networks.models.ModelsWrapper PyTorch state dict file"
+    )
+    infer_parser.add_argument(
+        "--class2idx-json", type=str, required=True,
+        dest="class_to_idx_json",
+        help="Class to index JSON file"
+    )
+    infer_parser.add_argument(
         "-o", "--output-image-dir", type=str, required=True,
         dest="output_image_dir",
         help="The directory where the model outputs will be saved. "
              "Created if needed"
-    )
-    test_parser.add_argument(
-        "--nb-test-img", type=int, default=10, dest="nb_test_img",
-        help="The number of test image to infer and output"
     )
 
     ###################################
@@ -643,32 +702,27 @@ def main() -> None:
     # Unit tests main
     if args.main_choice == "train":
         # Create Options
-        rl_options = RLOptions(
-            args.step,
+        main_options = MainOptions(
+            args.step, args.cuda, args.agents
+        )
+
+        train_options = TrainOptions(
             args.n,
             args.n_l,
             args.n_m,
             args.n_d,
-            args.cuda
-        )
-
-        ma_options = MAOptions(
-            args.agents,
             args.dim,
             args.f,
             args.img_size,
             args.nb_class,
-            args.nb_action
-        )
-
-        train_options = TrainOptions(
+            args.nb_action,
             args.nb_epoch,
             args.learning_rate,
             args.number_retry,
             args.batch_size,
             args.output_dir,
             args.frozen_modules,
-            args.dataset
+            args.ft_extractor
         )
 
         if not exists(args.output_dir):
@@ -676,31 +730,49 @@ def main() -> None:
         if exists(args.output_dir) and not isdir(args.output_dir):
             raise Exception(f"\"{args.output_dir}\" is not a directory.")
 
-        train(ma_options, rl_options, train_options)
+        train(main_options, train_options)
 
     # Test main
-    elif args.main_choice == "infer":
-        rl_options = RLOptions(
-            args.step, -1,
-            -1, -1, -1,
-            args.cuda
-        )
-
-        ma_options = MAOptions(
-            args.agents, -1, -1,
-            args.img_size, -1, -1
+    elif args.main_choice == "test":
+        main_options = MainOptions(
+            args.step, args.cuda, args.agents
         )
 
         test_options = TestOptions(
+            args.img_size,
+            args.batch_size,
             args.json_path,
             args.state_dict,
             args.image_path,
-            args.output_image_dir,
-            args.nb_test_img,
-            args.batch_size
+            args.output_dir
         )
 
-        test(ma_options, rl_options, test_options)
+        if not exists(args.output_dir):
+            makedirs(args.output_dir)
+        if exists(args.output_dir) and not isdir(args.output_dir):
+            raise Exception(f"\"{args.output_dir}\" is not a directory.")
+
+        test(main_options, test_options)
+
+    elif args.main_choice == "infer":
+        main_options = MainOptions(
+            args.step, args.cuda, args.agents
+        )
+
+        infer_options = InferOptions(
+            args.json_path,
+            args.state_dict,
+            args.infer_images,
+            args.output_image_dir,
+            args.class_to_idx_json
+        )
+
+        if not exists(args.output_image_dir):
+            makedirs(args.output_image_dir)
+        if exists(args.output_image_dir) and not isdir(args.output_image_dir):
+            raise Exception(f"\"{args.output_image_dir}\" is not a directory.")
+
+        infer(main_options, infer_options)
 
     else:
         main_parser.error(

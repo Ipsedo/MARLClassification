@@ -16,45 +16,51 @@ from collections import Counter
 
 import typing as typ
 
-MAOptions = typ.NamedTuple(
-    "MAOption",
-    [("nb_agent", int),
-     ("dim", int),
-     ("window_size", int),
-     ("img_size", int),
-     ("nb_class", int),
-     ("nb_action", int)]
-)
 
-RLOptions = typ.NamedTuple(
-    "RLOptions",
-    [("nb_step", int),
-     ("hidden_size", int),
-     ("hidden_size_linear", int),
-     ("hidden_size_msg", int),
-     ("hidden_size_state", int),
-     ("cuda", bool)]
+MainOptions = typ.NamedTuple(
+    "MainOptions",
+    [("step", int),
+     ("cuda", bool),
+     ("nb_agent", int)]
 )
 
 TrainOptions = typ.NamedTuple(
     "TrainOptions",
-    [("nb_epoch", int),
+    [("hidden_size", int),
+     ("hidden_size_linear", int),
+     ("hidden_size_msg", int),
+     ("hidden_size_state", int),
+     ("dim", int),
+     ("window_size", int),
+     ("img_size", int),
+     ("nb_class", int),
+     ("nb_action", int),
+     ("nb_epoch", int),
      ("learning_rate", float),
      ("retry_number", int),
      ("batch_size", int),
-     ("output_model_path", str),
+     ("output_dir", str),
      ("frozen_modules", typ.List[str]),
-     ("data_set", str)]
+     ("ft_extr_str", str)]
 )
 
 TestOptions = typ.NamedTuple(
     "TestOptions",
+    [("img_size", int),
+     ("batch_size", int),
+     ("json_path", str),
+     ("state_dict_path", str),
+     ("image_root", str),
+     ("output_dir", str)]
+)
+
+InferOptions = typ.NamedTuple(
+    "InferOptions",
     [("json_path", str),
      ("state_dict_path", str),
-     ("image_path", str),
-     ("output_img_path", str),
-     ("nb_test_img", int),
-     ("batch_size", int), ]
+     ("images_path", typ.List[str]),
+     ("output_dir", str),
+     ("class_to_idx_json", str)]
 )
 
 

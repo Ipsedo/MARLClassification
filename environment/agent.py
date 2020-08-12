@@ -272,7 +272,7 @@ class MultiAgent:
                 return cls(
                     nb_agent, model_wrapper,
                     j_obj["hidden_size"], j_obj["window_size"],
-                    j_obj["hidden_size_msg"], j_obj["action_dim"],
+                    j_obj["hidden_size_msg"], j_obj["nb_action"],
                     obs, trans
                 )
             except Exception as e:

@@ -1,7 +1,8 @@
 from abc import ABC
 
 from networks.ft_extractor import \
-    MNISTCnn, RESISC45Cnn, StateToFeatures
+    MNISTCnn, RESISC45Cnn, RESISC45CnnSmall, \
+    StateToFeatures, CNNFtExtract
 from networks.messages import MessageReceiver, MessageSender
 from networks.recurrents import LSTMCellWrapper
 from networks.policy import Policy
@@ -16,17 +17,17 @@ import json
 
 from os.path import exists, isfile
 
-from typing import List, Set
+from typing import List, Set, Dict, Callable
 
 
 #####################
 # Base class test
 #####################
 class ModelsWrapper(nn.Module, ABC):
+    # Modules
     map_obs: str = "b_theta_5"
     map_pos: str = "lambda_theta_7"
 
-    #decode_msg: str = "d_theta_6"
     evaluate_msg: str = "m_theta_4"
 
     belief_unit: str = "belief_unit"
@@ -37,34 +38,34 @@ class ModelsWrapper(nn.Module, ABC):
 
     module_list: Set[str] = {
         map_obs, map_pos,
-        #decode_msg,
         evaluate_msg,
         belief_unit, action_unit,
         policy, predict
     }
 
-    def __init__(self, dataset: str, f: int,
+    # Features extractors - CNN
+
+    mnist: str = "mnist"
+    resisc_small: str = "resisc45_small"
+    resisc: str = "resisc45"
+
+    ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
+        mnist: MNISTCnn,
+        resisc_small: RESISC45CnnSmall,
+        resisc: RESISC45Cnn
+    }
+
+    def __init__(self, ft_extr_str: str, f: int,
                  n: int, n_m: int, n_d: int, d: int,
                  nb_action: int, nb_class: int,
                  hidden_size: int) -> None:
         super().__init__()
 
-        assert dataset in DATASET_CHOICES, \
-            f"\"{dataset}\" not in {DATASET_CHOICES}"
-
-        # TODO trouver moyen plus propre que ce branchement
-        map_obs_module = None
-        if dataset == "mnist":
-            map_obs_module = MNISTCnn(f)
-        elif dataset == "resisc45":
-            map_obs_module = RESISC45Cnn(f)
-        else:
-            raise Exception(f"Unvalid dataset \"{dataset}\"")
+        map_obs_module = self.ft_extractors[ft_extr_str](f)
 
         self._networks_dict = nn.ModuleDict({
             self.map_obs: map_obs_module,
             self.map_pos: StateToFeatures(d, n_d),
-            #self.decode_msg: MessageReceiver(n_m, n),
             self.evaluate_msg: MessageSender(n, n_m, hidden_size),
             self.belief_unit: LSTMCellWrapper(
                 map_obs_module.out_size + n_d + n_m, n),
@@ -74,7 +75,7 @@ class ModelsWrapper(nn.Module, ABC):
             self.predict: Prediction(n, nb_class, hidden_size)
         })
 
-        self.__dataset = dataset
+        self.__ft_extr_str = ft_extr_str
 
         self.__f = f
         self.__n = n
@@ -107,13 +108,13 @@ class ModelsWrapper(nn.Module, ABC):
         json_f = open(out_json_path, "w")
 
         args_d = {
-            "dataset": self.__dataset,
+            "ft_extr_str": self.__ft_extr_str,
             "window_size": self.__f,
             "hidden_size": self.__n,
             "hidden_size_msg": self.__n_m,
             "hidden_size_state": self.__n_d,
             "state_dim": self.__d,
-            "action_dim": self.__nb_action,
+            "nb_action": self.__nb_action,
             "class_number": self.__nb_class,
             "hidden_size_linear": self.__n_l
         }
@@ -133,13 +134,13 @@ class ModelsWrapper(nn.Module, ABC):
 
         try:
             return cls(
-                args_d["dataset"],
+                args_d["ft_extr_str"],
                 args_d["window_size"],
                 args_d["hidden_size"],
                 args_d["hidden_size_msg"],
                 args_d["hidden_size_state"],
                 args_d["state_dim"],
-                args_d["action_dim"],
+                args_d["nb_action"],
                 args_d["class_number"],
                 args_d["hidden_size_linear"]
             )
@@ -147,19 +148,3 @@ class ModelsWrapper(nn.Module, ABC):
             print(f"Error while parsing {json_path} "
                   f"and creating {cls.__name__}")
             raise e
-
-
-#####################
-# MNIST version
-#####################
-class MNISTModelWrapper(ModelsWrapper):
-    def __init__(self, f: int, n: int, n_m: int, n_l: int, n_d: int) -> None:
-        super().__init__("mnist", f, n, n_m, n_d, 2, 4, 10, n_l)
-
-
-#####################
-# RESISC45 version
-#####################
-class RESISC45ModelsWrapper(ModelsWrapper):
-    def __init__(self, f: int, n: int, n_m: int, n_l: int, n_d: int) -> None:
-        super().__init__("resisc45", f, n, n_m, n_d, 2, 4, 45, n_l)

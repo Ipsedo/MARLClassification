@@ -4,7 +4,7 @@ import torch as th
 from abc import ABC, abstractmethod
 
 
-class CNNHelper(ABC):
+class CNNFtExtract(nn.Module, ABC):
 
     @property
     @abstractmethod
@@ -42,7 +42,7 @@ class TestCNN(nn.Module):
         return self.seq_lin(out)
 
 
-class MNISTCnn(nn.Module, CNNHelper):
+class MNISTCnn(CNNFtExtract):
     """
     b_θ5 : R^f*f -> R^n
     """
@@ -76,28 +76,25 @@ class MNISTCnn(nn.Module, CNNHelper):
 
 # RESISC-45 Stuff
 
-class RESISC45Cnn(nn.Module, CNNHelper):
+class RESISC45Cnn(CNNFtExtract):
     """
     for 5000*5000px img
     """
 
-    def __init__(self, f: int = 32) -> None:
+    def __init__(self, f: int = 16) -> None:
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 7, kernel_size=3, padding=1),
+            nn.Conv2d(3, 10, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(7, 12, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(12, 22, kernel_size=5, padding=2),
+            nn.Conv2d(10, 22, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.Conv2d(22, 32, kernel_size=5, padding=2),
             nn.ReLU(),
             nn.MaxPool2d(2, 2)
         )
 
-        self.__out_size = 32 * (f // 4) ** 2
+        self.__out_size = 32 * (f // 2) ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
@@ -109,7 +106,7 @@ class RESISC45Cnn(nn.Module, CNNHelper):
         return self.__out_size
 
 
-class RESISC45CnnSmall(nn.Module, CNNHelper):
+class RESISC45CnnSmall(CNNFtExtract):
     """
         for 256*256px img
         """
