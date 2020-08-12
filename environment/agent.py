@@ -137,7 +137,7 @@ class MultiAgent:
         # CNN need (N, C, W, H) not (N1, ..., N18, C, W, H)
         b_t = self.__networks(self.__networks.map_obs,
                               o_t.flatten(0, -4)) \
-            .view(len(self), self.__batch_size, self.__n)
+            .view(len(self), self.__batch_size, -1)
 
         # Get messages
         #d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
