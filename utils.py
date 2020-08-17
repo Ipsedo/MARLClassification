@@ -111,9 +111,11 @@ def visualize_steps(
 
     img_idx = 0
 
-    plt.figure()
+    fig = plt.figure()
     plt.imshow(img_ori, cmap=color_map)
+    plt.title("Original")
     plt.savefig(join(output_dir, f"pred_original.png"))
+    plt.close(fig)
 
     curr_img = th.zeros(h, w, 4)
     for t in range(max_it):
