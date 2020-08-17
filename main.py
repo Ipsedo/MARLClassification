@@ -54,7 +54,6 @@ def train(
     :return:
     :rtype:
     """
-
     output_dir = train_options.output_dir
 
     model_dir = "models"
@@ -136,12 +135,12 @@ def train(
 
     train_dataloader = DataLoader(
         train_dataset, batch_size=train_options.batch_size,
-        shuffle=True, num_workers=8, drop_last=False
+        shuffle=True, num_workers=3, drop_last=False
     )
 
     test_dataloader = DataLoader(
         test_dataset, batch_size=train_options.batch_size,
-        shuffle=True, num_workers=8, drop_last=False
+        shuffle=True, num_workers=3, drop_last=False
     )
 
     loss_v = []
