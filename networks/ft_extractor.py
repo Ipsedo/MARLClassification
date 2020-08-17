@@ -53,15 +53,15 @@ class MNISTCnn(CNNFtExtract):
         self.__f = f
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=3,
+            nn.Conv2d(1, 3, kernel_size=3,
                       padding=1, padding_mode='zeros'),
             nn.ReLU(),
-            nn.Conv2d(8, 16, kernel_size=3,
+            nn.Conv2d(3, 6, kernel_size=3,
                       padding=1, padding_mode='zeros'),
             nn.ReLU()
         )
 
-        self.__out_size = 16 * f ** 2
+        self.__out_size = 6 * f ** 2
 
     def forward(self, o_t):
         o_t = o_t[:, 0, None, :, :]  # grey scale
@@ -81,17 +81,17 @@ class RESISC45Cnn(CNNFtExtract):
     for 5000*5000px img
     """
 
-    def __init__(self, f: int = 16) -> None:
+    def __init__(self, f: int = 10) -> None:
         super().__init__()
 
         self.seq_conv = nn.Sequential(
             nn.Conv2d(3, 7, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(7, 16, kernel_size=5, padding=2),
+            nn.Conv2d(7, 13, kernel_size=3, padding=1),
             nn.ReLU()
         )
 
-        self.__out_size = 16 * f ** 2
+        self.__out_size = 13 * f ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
