@@ -1,9 +1,7 @@
-from abc import ABC
-
 from networks.ft_extractor import \
     MNISTCnn, RESISC45Cnn, RESISC45CnnSmall, \
     StateToFeatures, CNNFtExtract
-from networks.messages import MessageReceiver, MessageSender
+from networks.messages import MessageSender
 from networks.recurrents import LSTMCellWrapper
 from networks.policy import Policy
 from networks.prediction import Prediction
@@ -23,7 +21,7 @@ from typing import List, Set, Dict, Callable
 #####################
 # Base class test
 #####################
-class ModelsWrapper(nn.Module, ABC):
+class ModelsWrapper(nn.Module):
     # Modules
     map_obs: str = "b_theta_5"
     map_pos: str = "lambda_theta_7"

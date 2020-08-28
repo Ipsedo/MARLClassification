@@ -311,7 +311,8 @@ def train(
     plt.plot(loss_v, "g", label="criterion value")
     plt.xlabel("Epoch")
     plt.title(f"MARL Classification f={train_options.window_size}, "
-              f"n={train_options.hidden_size}, n_m={train_options.hidden_size_msg}, "
+              f"n={train_options.hidden_size}, "
+              f"n_m={train_options.hidden_size_msg}, "
               f"d={train_options.dim}, T={main_options.step}")
 
     plt.legend()

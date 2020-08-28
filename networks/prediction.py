@@ -15,7 +15,7 @@ class Prediction(nn.Module):
 
         self.seq_lin = nn.Sequential(
             nn.Linear(self.__n, hidden_size),
-            nn.ReLU(),
+            nn.CELU(),
             nn.Linear(hidden_size, self.__nb_class)
         )
 

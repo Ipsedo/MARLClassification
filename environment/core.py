@@ -55,14 +55,20 @@ def detailed_episode(
 
     img_batch = img_batch.to(th.device(device_str))
 
-    step_pos = th.zeros(max_it, *agents.pos.size(), dtype=th.long,
-                        device=th.device(device_str))
+    step_pos = th.zeros(
+        max_it, *agents.pos.size(), dtype=th.long,
+        device=th.device(device_str)
+    )
 
-    step_preds = th.zeros(max_it, img_batch.size(0), nb_class,
-                          device=th.device(device_str))
+    step_preds = th.zeros(
+        max_it, img_batch.size(0), nb_class,
+        device=th.device(device_str)
+    )
 
-    step_probas = th.zeros(max_it, img_batch.size(0),
-                           device=th.device(device_str))
+    step_probas = th.zeros(
+        max_it, img_batch.size(0),
+        device=th.device(device_str)
+    )
 
     for t in range(max_it):
         agents.step(img_batch)
@@ -102,11 +108,15 @@ def episode_retry(
 
     img_batch = img_batch.to(th.device(device_str))
 
-    retry_pred = th.zeros(max_retry, img_batch.size(0), nb_class,
-                          device=th.device(device_str))
+    retry_pred = th.zeros(
+        max_retry, img_batch.size(0), nb_class,
+        device=th.device(device_str)
+    )
 
-    retry_prob = th.zeros(max_retry, img_batch.size(0),
-                          device=th.device(device_str))
+    retry_prob = th.zeros(
+        max_retry, img_batch.size(0),
+        device=th.device(device_str)
+    )
 
     for r in range(max_retry):
         pred, prob = episode(agents, img_batch, max_it)

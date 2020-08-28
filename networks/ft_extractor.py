@@ -175,7 +175,8 @@ class StateToFeatures(nn.Module):
         self.__n_d = n_d
 
         self.seq_lin = nn.Sequential(
-            nn.Linear(self.__d, self.__n_d)
+            nn.Linear(self.__d, self.__n_d),
+            nn.CELU()
         )
 
     def forward(self, p_t):

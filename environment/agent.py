@@ -115,9 +115,11 @@ class MultiAgent:
             / self.__nb_action
         ]
 
-        self.pos = th.randint(img_size - self.__f,
-                              (self.__nb_agents, batch_size, 2),
-                              device=th.device(self.__device_str))
+        self.pos = th.randint(
+            img_size - self.__f,
+            (self.__nb_agents, batch_size, 2),
+            device=th.device(self.__device_str)
+        )
 
     def step(self, img: th.Tensor) -> None:
         """
@@ -135,12 +137,13 @@ class MultiAgent:
 
         # Feature space
         # CNN need (N, C, W, H) not (N1, ..., N18, C, W, H)
-        b_t = self.__networks(self.__networks.map_obs,
-                              o_t.flatten(0, -4)) \
-            .view(len(self), self.__batch_size, -1)
+        b_t = self.__networks(
+            self.__networks.map_obs,
+            o_t.flatten(0, -4)
+        ).view(len(self), self.__batch_size, -1)
 
         # Get messages
-        #d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
+        # d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
         #                              self.msg[self.__t])
         d_bar_t_tmp = self.msg[self.__t]
         # Mean on agent
@@ -149,70 +152,72 @@ class MultiAgent:
                   / (self.__nb_agents - 1)
 
         # Map pos in feature space
-        lambda_t = self.__networks(self.__networks.map_pos,
-                                   self.pos.to(th.float))
+        lambda_t = self.__networks(
+            self.__networks.map_pos,
+            self.pos.to(th.float)
+        )
 
         # LSTMs input
         u_t = th.cat((b_t, d_bar_t, lambda_t), dim=2)
 
         # Belief LSTM
-        h_t_next, c_t_next = \
-            self.__networks(self.__networks.belief_unit,
-                            self.__h[self.__t],
-                            self.__c[self.__t],
-                            u_t)
+        h_t_next, c_t_next = self.__networks(
+            self.__networks.belief_unit,
+            self.__h[self.__t],
+            self.__c[self.__t],
+            u_t
+        )
 
         # Append new h and c (t + 1 step)
         self.__h.append(h_t_next)
         self.__c.append(c_t_next)
 
         # Evaluate message
-        self.msg.append(
-            self.__networks(self.__networks.evaluate_msg,
-                            self.__h[self.__t + 1]))
+        self.msg.append(self.__networks(
+            self.__networks.evaluate_msg,
+            self.__h[self.__t + 1])
+        )
 
         # Action unit LSTM
-        h_caret_t_next, c_caret_t_next = \
-            self.__networks(self.__networks.action_unit,
-                            self.__h_caret[self.__t],
-                            self.__c_caret[self.__t],
-                            u_t)
+        h_caret_t_next, c_caret_t_next = self.__networks(
+            self.__networks.action_unit,
+            self.__h_caret[self.__t],
+            self.__c_caret[self.__t],
+            u_t
+        )
 
         # Append ĥ et ĉ (t + 1 step)
         self.__h_caret.append(h_caret_t_next)
         self.__c_caret.append(c_caret_t_next)
 
-        # Define possible actions
-        # TODO generic actions
-        actions = th.tensor([[1., 0.], [-1., 0.], [0., 1.], [0., -1.]],
-                            device=th.device(self.__device_str))
-
         # Get action probabilities
-        action_scores = self.__networks(self.__networks.policy,
-                                        self.__h_caret[self.__t + 1])
+        action_scores = self.__networks(
+            self.__networks.policy,
+            self.__h_caret[self.__t + 1]
+        )
+
+        # TODO generic actions
+        actions = th.tensor(
+            [[1., 0.], [-1., 0.], [0., 1.], [0., -1.]],
+            device=th.device(self.__device_str)
+        )
 
         # Greedy policy
         prob, policy_actions = action_scores.max(dim=-1)
-
-        # Create next action mask
-        actions_mask = th.arange(0, action_scores.size(-1),
-                                 device=th.device(self.__device_str))
-        actions_mask = actions_mask.view(-1, 1) \
-            .repeat(1, actions.size(-1)) \
-            .view(1, 1, action_scores.size(-1), actions.size(-1))
-        actions_mask = actions_mask == policy_actions.view(
-            *policy_actions.size(), 1, 1)
-
-        a_t_next = actions.masked_select(actions_mask) \
-            .view(self.__nb_agents, self.__batch_size, actions.size(-1))
+        a_t_next = actions[policy_actions.view(-1)] \
+            .view(self.__nb_agents,
+                  self.__batch_size,
+                  actions.size(-1))
 
         # Append log probability
         self.__action_probas.append(prob)
 
         # Apply action / Upgrade agent state
-        self.pos = self.__trans(self.pos.to(th.float),
-                                a_t_next, self.__f,
-                                size).to(th.long)
+        self.pos = self.__trans(
+            self.pos.to(th.float),
+            a_t_next, self.__f,
+            size
+        ).to(th.long)
 
         self.__t += 1
 

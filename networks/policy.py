@@ -13,7 +13,7 @@ class Policy(nn.Module):
 
         self.seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
-            nn.ReLU(),
+            nn.CELU(),
             nn.Linear(hidden_size, nb_action),
             nn.Softmax(dim=-1)
         )

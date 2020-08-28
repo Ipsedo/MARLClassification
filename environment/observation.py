@@ -15,21 +15,21 @@ def obs_img(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     :rtype:
     """
 
-    assert len(img.size()) == 4, \
-        f"images.size() == (N, C, W, H), actual = {img.size()}"
-    assert len(pos.size()) == 3, \
-        f"Position size must be (nb_agents, batch_size, data_dim), " \
-        f"actual = {pos.size()}"
+    #assert len(img.size()) == 4, \
+    #    f"images.size() == (N, C, W, H), actual = {img.size()}"
+    #assert len(pos.size()) == 3, \
+    #    f"Position size must be (nb_agents, batch_size, data_dim), " \
+    #    f"actual = {pos.size()}"
 
     nb_a, b_pos, d = pos.size()
     b_img, c, h, w = img.size()
 
-    assert (pos[:, :, 0] + f < w).all() and (pos[:, :, 0] >= 0).all(), \
-        "Unbound obervation in first dim (pos = {}, f = {}, " \
-        "img_size = {}!".format(pos[:, 0], f, w)
-    assert (pos[:, :, 1] + f < h).all() and (pos[:, :, 1] >= 0).all(), \
-        "Unbound obervation in snd dim (pos = {}, f = {}, " \
-        "img_size = {}!".format(pos[:, 1], f, h)
+    #assert (pos[:, :, 0] + f < w).all() and (pos[:, :, 0] >= 0).all(), \
+    #    "Unbound obervation in first dim (pos = {}, f = {}, " \
+    #    "img_size = {}!".format(pos[:, 0], f, w)
+    #assert (pos[:, :, 1] + f < h).all() and (pos[:, :, 1] >= 0).all(), \
+    #    "Unbound obervation in snd dim (pos = {}, f = {}, " \
+    #    "img_size = {}!".format(pos[:, 1], f, h)
 
     # pos.size == (nb_ag, batch_size, 2)
     pos_min = pos

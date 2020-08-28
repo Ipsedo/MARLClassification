@@ -10,7 +10,8 @@ DATASET_CHOICES = ["mnist", "resisc45"]
 
 
 def my_pil_loader(path: str) -> Image.Image:
-    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
+    # open path as file to avoid ResourceWarning
+    # (https://github.com/python-pillow/Pillow/issues/835)
     f = open(path, 'rb')
     img = Image.open(f)
     return img.convert('RGB')

@@ -15,7 +15,7 @@ class MessageSender(nn.Module):
 
         self.seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
-            nn.ReLU(),
+            nn.CELU(),
             nn.Linear(self.__n_e, self.__n_m)
         )
 
