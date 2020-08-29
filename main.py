@@ -165,7 +165,8 @@ def train(
             # pred = [Nr, Nb, Nc]
             # prob = [Nr, Nb]
             retry_pred, retry_prob = episode_retry(
-                marl_m, x_train, main_options.step,
+                marl_m, x_train, train_options.epsilon,
+                main_options.step,
                 train_options.retry_number,
                 train_options.nb_class, device_str
             )
@@ -258,7 +259,7 @@ def train(
                 x_test, y_test = x_test.to(th.device(device_str)), \
                                  y_test.to(th.device(device_str))
 
-                preds, _ = episode(marl_m, x_test, main_options.step)
+                preds, _ = episode(marl_m, x_test, 0., main_options.step)
 
                 preds = fun.softmax(preds, dim=-1)
 
@@ -409,7 +410,7 @@ def test(main_options: MainOptions,
     for x, y in tqdm(data_loader):
         x, y = x.to(th.device(device_str)), y.to(th.device(device_str))
 
-        preds, probas = episode(marl_m, x, steps)
+        preds, probas = episode(marl_m, x, 0., steps)
 
         preds = fun.softmax(preds, dim=-1)
 
@@ -622,6 +623,11 @@ def main() -> None:
         help="Number of retry to estimate expectation."
     )
     train_parser.add_argument(
+        "--eps", "--epsilon-greedy", type=float, default=0.,
+        dest="epsilon_greedy",
+        help="Threshold from which apply greedy policy (random otherwise)"
+    )
+    train_parser.add_argument(
         "--freeze", type=str, default=[], nargs="+",
         dest="frozen_modules", action=SetAppendAction,
         choices=[
@@ -719,6 +725,7 @@ def main() -> None:
             args.nb_epoch,
             args.learning_rate,
             args.number_retry,
+            args.epsilon_greedy,
             args.batch_size,
             args.output_dir,
             args.frozen_modules,

@@ -7,6 +7,7 @@ from typing import Tuple
 def episode(
         agents: MultiAgent,
         img_batch: th.Tensor,
+        eps: float,
         max_it: int
 ) -> Tuple[th.Tensor, th.Tensor]:
     """
@@ -15,6 +16,8 @@ def episode(
     :type agents:
     :param img_batch:
     :type img_batch:
+    :param eps:
+    :type eps:
     :param max_it:
     :type max_it:
     :return:
@@ -24,7 +27,7 @@ def episode(
     agents.new_episode(img_batch.size(0), img_batch.size(-1))
 
     for t in range(max_it):
-        agents.step(img_batch)
+        agents.step(img_batch, eps)
 
     q, probas = agents.predict()
 
@@ -33,6 +36,7 @@ def episode(
 
 def detailed_episode(
         agents: MultiAgent, img_batch: th.Tensor,
+        eps: float,
         max_it: int, device_str: str, nb_class: int
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
     """
@@ -41,6 +45,8 @@ def detailed_episode(
     :type agents:
     :param img_batch:
     :type img_batch:
+    :param eps:
+    :type eps:
     :param max_it:
     :type max_it:
     :param device_str:
@@ -71,7 +77,7 @@ def detailed_episode(
     )
 
     for t in range(max_it):
-        agents.step(img_batch)
+        agents.step(img_batch, eps)
 
         step_pos[t, :, :, :] = agents.pos
 
@@ -85,6 +91,7 @@ def detailed_episode(
 
 def episode_retry(
         agents: MultiAgent, img_batch: th.Tensor,
+        eps: float,
         max_it: int, max_retry: int, nb_class: int,
         device_str: str
 ) -> Tuple[th.Tensor, th.Tensor]:
@@ -94,6 +101,8 @@ def episode_retry(
     :type agents:
     :param img_batch:
     :type img_batch:
+    :param eps:
+    :type eps:
     :param max_it:
     :type max_it:
     :param max_retry:
@@ -119,7 +128,7 @@ def episode_retry(
     )
 
     for r in range(max_retry):
-        pred, prob = episode(agents, img_batch, max_it)
+        pred, prob = episode(agents, img_batch, eps, max_it)
 
         retry_pred[r, :, :] = pred
         retry_prob[r, :] = prob

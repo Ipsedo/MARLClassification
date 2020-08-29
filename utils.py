@@ -38,6 +38,7 @@ TrainOptions = typ.NamedTuple(
      ("nb_epoch", int),
      ("learning_rate", float),
      ("retry_number", int),
+     ("epsilon", float),
      ("batch_size", int),
      ("output_dir", str),
      ("frozen_modules", typ.List[str]),
@@ -98,7 +99,7 @@ def visualize_steps(
 
     color_map = None
 
-    preds, _, pos = detailed_episode(agents, img.unsqueeze(0),
+    preds, _, pos = detailed_episode(agents, img.unsqueeze(0), 0.,
                                      max_it, device_str, nb_class)
     preds, pos = preds.cpu(), pos.cpu()
     img_ori = img_ori.permute(1, 2, 0).cpu()

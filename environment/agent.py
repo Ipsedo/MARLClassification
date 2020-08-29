@@ -121,11 +121,13 @@ class MultiAgent:
             device=th.device(self.__device_str)
         )
 
-    def step(self, img: th.Tensor) -> None:
+    def step(self, img: th.Tensor, eps: float) -> None:
         """
 
         :param img:
         :type img:
+        :param eps:
+        :type eps:
         :return:
         :rtype:
         """
@@ -204,7 +206,21 @@ class MultiAgent:
 
         # Greedy policy
         prob, policy_actions = action_scores.max(dim=-1)
-        a_t_next = actions[policy_actions.view(-1)] \
+
+        random_actions = th.randint(
+            0, actions.size(0),
+            (self.__nb_agents, self.__batch_size),
+            device=th.device(self.__device_str)
+        )
+        use_greedy = (th.rand(
+            (self.__nb_agents, self.__batch_size),
+            device=th.device(self.__device_str)
+        ) > eps).to(th.int)
+
+        final_actions = \
+            use_greedy * policy_actions + (1 - use_greedy) * random_actions
+
+        a_t_next = actions[final_actions.view(-1)] \
             .view(self.__nb_agents,
                   self.__batch_size,
                   actions.size(-1))

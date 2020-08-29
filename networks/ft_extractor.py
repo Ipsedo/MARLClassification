@@ -85,13 +85,13 @@ class RESISC45Cnn(CNNFtExtract):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 7, kernel_size=3, padding=1),
+            nn.Conv2d(3, 9, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv2d(7, 13, kernel_size=3, padding=1),
+            nn.Conv2d(9, 16, kernel_size=3, padding=1),
             nn.ReLU()
         )
 
-        self.__out_size = 13 * f ** 2
+        self.__out_size = 16 * f ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
