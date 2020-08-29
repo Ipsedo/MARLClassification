@@ -16,7 +16,6 @@ from collections import Counter
 
 import typing as typ
 
-
 MainOptions = typ.NamedTuple(
     "MainOptions",
     [("step", int),
@@ -134,7 +133,7 @@ def visualize_steps(
         fig = plt.figure()
         plt.imshow(curr_img, cmap=color_map)
         prediction = preds[t][img_idx].argmax(dim=-1).item()
-        pred_proba = th.nn.functional.softmax(preds[t], dim=-1)\
+        pred_proba = th.nn.functional.softmax(preds[t], dim=-1) \
             [img_idx][prediction].item()
         plt.title(f"Step = {t}, step_pred_class = "
                   f"{idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)")

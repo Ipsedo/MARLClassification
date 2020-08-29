@@ -77,7 +77,7 @@ def train(
     ])
 
     dataset_constructor = RESISC45Dataset \
-        if train_options.ft_extr_str.startswith("resisc")\
+        if train_options.ft_extr_str.startswith("resisc") \
         else MNISTDataset
 
     nn_models = ModelsWrapper(
@@ -433,7 +433,6 @@ def infer(
         main_options: MainOptions,
         infer_options: InferOptions
 ) -> None:
-
     images_path = infer_options.images_path
     output_dir = infer_options.output_dir
 
