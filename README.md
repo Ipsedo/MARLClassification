@@ -3,38 +3,23 @@
 from this [article](https://arxiv.org/abs/1905.04835)
 
 ## Description
-Essai de reproduction des résultats de l'article cité ci-dessus. Cet article porte sur de la classification d'image utilisant de l'apprentissage par renforcement.
+Results reproduction of the above article : 98% on MNIST.
 
-## Fichiers
-Voici une description de l'organisation de ce projet :
-```
-MARLClassification
-|
-|-- data/
-|     |-- mnist.py : Chargement des données MNIST
-|
-|-- environment/
-|     |-- agent.py : Classe représentant un agent dans ce MARL
-|     |-- core.py : Fonction de transition de l'environnement
-|     |-- observation.py : Fonction donnant une obesrvation d'image MNIST selon une position
-|     |-- transition.py : Fonction effectuant une transition selon une action
-|
-|-- nerworks/
-|     |-- ft_extractor.py : NN pour l'extraction de features
-|     |-- messages.py : NNs pour la reception et l'envoie de message entre agents
-|     |-- models.py : Classe regroupant tout les NNs de ce package
-|     |-- policy.py : NN pour la politique des agents
-|     |-- prediction.py : NN pour la prédiction
-|     |-- recurrents.py : NNs récurrents pour le Belief et Action
-|
-|-- res/
-|     |-- downloaded/ : contient les données téléchargées (MNIST)
-|     |-- img/ : contient les résultats du MARL
-|     |-- download_mnist.sh : script pour télécharger les données MNIST
-|
-|-- main.py : Divers tests et fonction d'apprentissage sur MNIST
-|-- tests.py : Test d'un CNN sur les données MNIST
+Extend to other image data NWPU-RESISC45 :
+
+| | Loss | Train | Eval |
+| --- | --- | :---: | :---: |
+| | | prec, rec | prec, rec |
+| Epoch 0 | -0.2638 | 6%, 9% | 12%, 14% |
+| Epoch 10 | -0.1813 | 55%, 56% | 49%, 48% |
+| Epoch 17 | -0.1613 | 63%, 64% | 54%, 53% |
+
+
+## Usage
+```bash
+$ # train on NWPU-RESISC45
+$ python main.py -a 10 --step 10 --cuda train --nb-action 4 --ft-extr resisc45 --batch-size 6 --nb-class 45 --img-size 256 -d 2 --n 1536 --nd 8 --f 10 --nm 256 --nl 2048 --nb-epoch 30 --nr 3 --learning-rate 3e-5 --eps 5e-2 -o ./out_train_resisc45_final
 ```
 
 ## Requirements
-torch, numpy, tqdm, matplotlib
+torch, torchvision, torchnet, numpy, tqdm, matplotlib
