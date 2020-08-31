@@ -151,12 +151,15 @@ class MultiAgent:
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
         d_bar_t = ((d_bar_t_mean * self.__nb_agents) - d_bar_t_tmp) \
-                  / (self.__nb_agents - 1)
+            / (self.__nb_agents - 1)
 
         # Map pos in feature space
+        norm_pos = self.pos.to(th.float) \
+            / th.tensor([[[img.size(-2), img.size(-1)]]],
+                        device=th.device(self.__device_str))
         lambda_t = self.__networks(
             self.__networks.map_pos,
-            self.pos.to(th.float)
+            norm_pos
         )
 
         # LSTMs input
