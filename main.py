@@ -77,7 +77,7 @@ def train(
     ])
 
     dataset_constructor = RESISC45Dataset \
-        if train_options.ft_extr_str.startswith("resisc")\
+        if train_options.ft_extr_str.startswith("resisc") \
         else MNISTDataset
 
     nn_models = ModelsWrapper(
@@ -125,10 +125,9 @@ def train(
     optim = th.optim.Adam(nn_models.get_params(list(module_to_train)),
                           lr=train_options.learning_rate)
 
-    idx = list(range(len(dataset)))
-    shuffle(idx)
-    idx_train = idx[:int(0.85 * len(idx))]
-    idx_test = idx[int(0.85 * len(idx)):]
+    idx = th.randperm(len(dataset))
+    idx_train = idx[:int(0.85 * idx.size(0))]
+    idx_test = idx[int(0.85 * idx.size(0)):]
 
     train_dataset = Subset(dataset, idx_train)
     test_dataset = Subset(dataset, idx_test)
@@ -343,8 +342,10 @@ def train(
 # Test - Main
 #######################
 
-def test(main_options: MainOptions,
-         test_options: TestOptions) -> None:
+def test(
+        main_options: MainOptions,
+        test_options: TestOptions
+) -> None:
     steps = main_options.step
 
     json_path = test_options.json_path
@@ -433,7 +434,6 @@ def infer(
         main_options: MainOptions,
         infer_options: InferOptions
 ) -> None:
-
     images_path = infer_options.images_path
     output_dir = infer_options.output_dir
 
@@ -442,6 +442,7 @@ def infer(
     json_f.close()
 
     nn_models = ModelsWrapper.from_json(infer_options.json_path)
+    nn_models.load_state_dict(th.load(infer_options.state_dict_path))
 
     marl_m = MultiAgent.load_from(
         infer_options.json_path,
