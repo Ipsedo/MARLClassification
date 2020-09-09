@@ -1,7 +1,6 @@
-from environment.observation import obs_img
-from environment.transition import trans_img
-from environment.agent import MultiAgent
-from environment.core import episode, episode_retry
+from environment import MultiAgent, \
+    episode, episode_retry, \
+    obs_img, trans_img
 
 from networks.models import ModelsWrapper
 
@@ -146,6 +145,8 @@ def train(
     prec_epoch = []
     recall_epoch = []
 
+    epsilon = train_options.epsilon
+
     for e in range(train_options.nb_epoch):
         train_ep_st = datetime.datetime.now()
 
@@ -164,7 +165,7 @@ def train(
             # pred = [Nr, Nb, Nc]
             # prob = [Nr, Nb]
             retry_pred, retry_prob = episode_retry(
-                marl_m, x_train, train_options.epsilon,
+                marl_m, x_train, epsilon,
                 main_options.step,
                 train_options.retry_number,
                 train_options.nb_class, device_str
@@ -221,12 +222,15 @@ def train(
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
                 f"loss = {sum_loss / (i + 1):.4f}, "
-                f"train_prec = {precs.mean():.4f}, "
-                f"train_rec = {recs.mean():.4f}, "
+                f"eps = {epsilon:.4f}, "
+                f"train_prec = {precs.mean():.3f}, "
+                f"train_rec = {recs.mean():.3f}, "
                 f"frozen_params = [{mean_param_list_str}]"
             )
 
             i += 1
+            epsilon *= train_options.epsilon_desay
+            epsilon = max(epsilon, 0.)
 
         precs, recs = prec_rec(conf_meter)
 
@@ -624,9 +628,14 @@ def main() -> None:
         help="Number of retry to estimate expectation."
     )
     train_parser.add_argument(
-        "--eps", "--epsilon-greedy", type=float, default=0.,
+        "--eps", type=float, default=0.,
         dest="epsilon_greedy",
         help="Threshold from which apply greedy policy (random otherwise)"
+    )
+    train_parser.add_argument(
+        "--eps-dec", type=float, default=0.,
+        dest="epsilon_decay",
+        help="Epsilon decay, at each forward eps <- eps * eps_decay"
     )
     train_parser.add_argument(
         "--freeze", type=str, default=[], nargs="+",
@@ -727,6 +736,7 @@ def main() -> None:
             args.learning_rate,
             args.number_retry,
             args.epsilon_greedy,
+            args.epsilon_decay,
             args.batch_size,
             args.output_dir,
             args.frozen_modules,

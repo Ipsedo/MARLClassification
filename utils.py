@@ -38,6 +38,7 @@ TrainOptions = typ.NamedTuple(
      ("learning_rate", float),
      ("retry_number", int),
      ("epsilon", float),
+     ("epsilon_desay", float),
      ("batch_size", int),
      ("output_dir", str),
      ("frozen_modules", typ.List[str]),

@@ -103,34 +103,6 @@ class RESISC45Cnn(CNNFtExtract):
         return self.__out_size
 
 
-class RESISC45CnnSmall(CNNFtExtract):
-    """
-        for 256*256px img
-        """
-
-    def __init__(self, f: int) -> None:
-        super().__init__()
-
-        self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 9, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.Conv2d(9, 16, kernel_size=3, padding=1),
-            nn.ReLU()
-        )
-
-        # out_size == 2048
-        self.__out_size = 16 * f ** 2
-
-    def forward(self, o_t: th.Tensor) -> th.Tensor:
-        out = self.seq_conv(o_t)
-        out = out.flatten(1, -1)
-        return out
-
-    @property
-    def out_size(self) -> int:
-        return self.__out_size
-
-
 class TestRESISC45(nn.Module):
     def __init__(self):
         super().__init__()

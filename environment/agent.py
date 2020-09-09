@@ -1,7 +1,7 @@
 import torch as th
 from networks.models import ModelsWrapper
 
-from typing import Callable, Tuple
+from typing import Callable, Tuple, List
 
 import json
 
@@ -42,7 +42,9 @@ class MultiAgent:
         self.__f = f
         self.__n_m = n_m
 
-        self.__nb_action = nb_action
+        self.__actions: List[List[float]] = \
+            [[1., 0.], [-1., 0.], [0., 1.], [0., -1.]]
+        self.__nb_action = len(self.__actions)
         self.__batch_size = None
 
         # Env info
@@ -201,9 +203,9 @@ class MultiAgent:
             self.__h_caret[self.__t + 1]
         )
 
-        # TODO generic actions
+        # Pass actions to Tensor
         actions = th.tensor(
-            [[1., 0.], [-1., 0.], [0., 1.], [0., -1.]],
+            self.__actions,
             device=th.device(self.__device_str)
         )
 

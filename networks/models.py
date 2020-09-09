@@ -1,12 +1,10 @@
 from networks.ft_extractor import \
-    MNISTCnn, RESISC45Cnn, RESISC45CnnSmall, \
+    MNISTCnn, RESISC45Cnn, \
     StateToFeatures, CNNFtExtract
 from networks.messages import MessageSender
 from networks.recurrents import LSTMCellWrapper
 from networks.policy import Policy
 from networks.prediction import Prediction
-
-from data.dataset import DATASET_CHOICES
 
 import torch as th
 import torch.nn as nn
@@ -49,7 +47,6 @@ class ModelsWrapper(nn.Module):
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
         mnist: MNISTCnn,
-        resisc_small: RESISC45CnnSmall,
         resisc: RESISC45Cnn
     }
 
