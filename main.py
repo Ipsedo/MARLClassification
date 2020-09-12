@@ -26,10 +26,9 @@ import datetime
 
 import json
 
-from typing import List
-
 from os import mkdir, makedirs
 from os.path import join, exists, isdir, isfile
+import glob
 
 import sys
 
@@ -189,7 +188,7 @@ def train(
 
             # L2 Loss - Classification error / reward
             # reward = -error(y_true, y_step_pred).mean(class_dim)
-            r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
+            r = -th.pow(y_eye - retry_pred, 2.).sum(dim=-1)
 
             # Compute loss
             losses = retry_prob * r.detach() + r
@@ -197,6 +196,7 @@ def train(
             # Losses mean on images batch and trials
             # maximize(E[reward]) -> minimize(-E[reward])
             loss = -losses.mean()
+            #loss = r.mean()
 
             # Reset gradient
             optim.zero_grad()
@@ -475,12 +475,15 @@ def infer(
         marl_m.cuda()
         device_str = "cuda"
 
-    for i, img_path in enumerate(tqdm(images_path)):
+    images = tqdm([img for img_path in images_path
+                   for img in glob.glob(img_path, recursive=True)])
+
+    for img_path in images:
         img = my_pil_loader(img_path)
         x_ori = img_ori_pipeline(img)
         x = img_pipeline(img)
 
-        curr_img_path = join(output_dir, f"img_{i}")
+        curr_img_path = join(output_dir, img_path.split("/")[-1])
 
         if not exists(curr_img_path):
             mkdir(curr_img_path)
