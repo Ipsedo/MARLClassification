@@ -79,7 +79,7 @@ def detailed_episode(
     for t in range(max_it):
         agents.step(img_batch, eps)
 
-        step_pos[t, :, :, :] = agents.pos
+        step_pos[t, :, :] = agents.pos
 
         preds, probas = agents.predict()
 
@@ -118,19 +118,21 @@ def episode_retry(
     img_batch = img_batch.to(th.device(device_str))
 
     retry_pred = th.zeros(
-        max_retry, img_batch.size(0), nb_class,
+        max_retry, max_it, img_batch.size(0), nb_class,
         device=th.device(device_str)
     )
 
     retry_prob = th.zeros(
-        max_retry, img_batch.size(0),
+        max_retry, max_it, img_batch.size(0),
         device=th.device(device_str)
     )
 
     for r in range(max_retry):
-        pred, prob = episode(agents, img_batch, eps, max_it)
+        pred, prob, _ = detailed_episode(
+            agents, img_batch, eps, max_it, device_str, nb_class
+        )
 
-        retry_pred[r, :, :] = pred
-        retry_prob[r, :] = prob
+        retry_pred[r, :, :, :] = pred
+        retry_prob[r, :, :] = prob
 
     return retry_pred, retry_prob

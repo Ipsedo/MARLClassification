@@ -25,10 +25,12 @@ MainOptions = typ.NamedTuple(
 
 TrainOptions = typ.NamedTuple(
     "TrainOptions",
-    [("hidden_size", int),
-     ("hidden_size_linear", int),
+    [("hidden_size_belief", int),
+     ("hidden_size_linear_belief", int),
+     ("hidden_size_linear_action", int),
      ("hidden_size_msg", int),
      ("hidden_size_state", int),
+     ("hidden_size_action", int),
      ("dim", int),
      ("window_size", int),
      ("img_size", int),

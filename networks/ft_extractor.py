@@ -77,9 +77,6 @@ class MNISTCnn(CNNFtExtract):
 # RESISC-45 Stuff
 
 class RESISC45Cnn(CNNFtExtract):
-    """
-    for 5000*5000px img
-    """
 
     def __init__(self, f: int = 10) -> None:
         super().__init__()

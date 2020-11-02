@@ -81,13 +81,15 @@ def train(
     nn_models = ModelsWrapper(
         train_options.ft_extr_str,
         train_options.window_size,
-        train_options.hidden_size,
+        train_options.hidden_size_belief,
+        train_options.hidden_size_action,
         train_options.hidden_size_msg,
         train_options.hidden_size_state,
         train_options.dim,
         train_options.nb_action,
         train_options.nb_class,
-        train_options.hidden_size_linear
+        train_options.hidden_size_linear_belief,
+        train_options.hidden_size_linear_action
     )
 
     dataset = dataset_constructor(img_pipeline)
@@ -99,7 +101,8 @@ def train(
     marl_m = MultiAgent(
         main_options.nb_agent,
         nn_models,
-        train_options.hidden_size,
+        train_options.hidden_size_belief,
+        train_options.hidden_size_action,
         train_options.window_size,
         train_options.hidden_size_msg,
         train_options.nb_action,
@@ -161,8 +164,8 @@ def train(
             x_train, y_train = x_train.to(th.device(device_str)), \
                                y_train.to(th.device(device_str))
 
-            # pred = [Nr, Nb, Nc]
-            # prob = [Nr, Nb]
+            # pred = [Nr, Ns, Nb, Nc]
+            # prob = [Nr, Ns, Nb]
             retry_pred, retry_prob = episode_retry(
                 marl_m, x_train, epsilon,
                 main_options.step,
@@ -174,21 +177,22 @@ def train(
             y_eye = th.eye(
                 train_options.nb_class,
                 device=th.device(device_str)
-            )[y_train.unsqueeze(0)]
+            )[y_train.unsqueeze(0)].unsqueeze(1).repeat(1, main_options.step, 1, 1)
 
             # pass to class proba (softmax)
-            retry_pred = fun.softmax(retry_pred, dim=-1)
+            #retry_pred = fun.softmax(retry_pred, dim=-1)
+            pred = fun.softmax(retry_pred, -1)
 
             # Update confusion meter
             # mean between trials
             conf_meter.add(
-                fun.softmax(retry_pred.detach().mean(dim=0), dim=-1),
+                pred.detach()[:, -1, :, :].mean(dim=0),
                 y_train
             )
 
             # L2 Loss - Classification error / reward
             # reward = -error(y_true, y_step_pred).mean(class_dim)
-            r = -th.pow(y_eye - retry_pred, 2.).sum(dim=-1)
+            r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
 
             # Compute loss
             losses = retry_prob * r.detach() + r
@@ -196,7 +200,6 @@ def train(
             # Losses mean on images batch and trials
             # maximize(E[reward]) -> minimize(-E[reward])
             loss = -losses.mean()
-            #loss = r.mean()
 
             # Reset gradient
             optim.zero_grad()
@@ -315,7 +318,8 @@ def train(
     plt.plot(loss_v, "g", label="criterion value")
     plt.xlabel("Epoch")
     plt.title(f"MARL Classification f={train_options.window_size}, "
-              f"n={train_options.hidden_size}, "
+              f"n_b={train_options.hidden_size_belief}, "
+              f"n_a={train_options.hidden_size_action}, "
               f"n_m={train_options.hidden_size_msg}, "
               f"d={train_options.dim}, T={main_options.step}")
 
@@ -591,8 +595,12 @@ def main() -> None:
         help="Choose features extractor (CNN)"
     )
     train_parser.add_argument(
-        "--n", type=int, default=64,
-        help="Hidden size for NNs"
+        "--nb", type=int, default=64, dest="n_b",
+        help="Hidden size for belief LSTM"
+    )
+    train_parser.add_argument(
+        "--na", type=int, default=16, dest="n_a",
+        help="Hidden size for action LSTM"
     )
     train_parser.add_argument(
         "--nm", type=int, default=16, dest="n_m",
@@ -603,7 +611,11 @@ def main() -> None:
         help="State hidden size"
     )
     train_parser.add_argument(
-        "--nl", type=int, default=128, dest="n_l",
+        "--nlb", type=int, default=128, dest="n_l_b",
+        help="Network internal hidden size for linear projections"
+    )
+    train_parser.add_argument(
+        "--nla", type=int, default=128, dest="n_l_a",
         help="Network internal hidden size for linear projections"
     )
 
@@ -726,10 +738,12 @@ def main() -> None:
         )
 
         train_options = TrainOptions(
-            args.n,
-            args.n_l,
+            args.n_b,
+            args.n_l_b,
+            args.n_l_a,
             args.n_m,
             args.n_d,
+            args.n_a,
             args.dim,
             args.f,
             args.img_size,
