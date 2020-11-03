@@ -6,6 +6,8 @@ from environment.core import detailed_episode
 import torch as th
 from torchnet.meter import ConfusionMeter
 
+import mlflow
+
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -40,7 +42,7 @@ TrainOptions = typ.NamedTuple(
      ("learning_rate", float),
      ("retry_number", int),
      ("epsilon", float),
-     ("epsilon_desay", float),
+     ("epsilon_decay", float),
      ("batch_size", int),
      ("output_dir", str),
      ("frozen_modules", typ.List[str]),
@@ -120,6 +122,8 @@ def visualize_steps(
     plt.savefig(join(output_dir, f"pred_original.png"))
     plt.close(fig)
 
+    mlflow.log_artifact(join(output_dir, f"pred_original.png"))
+
     curr_img = th.zeros(h, w, 4)
     for t in range(max_it):
 
@@ -143,6 +147,8 @@ def visualize_steps(
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
         plt.close(fig)
+
+        mlflow.log_artifact(join(output_dir, f"pred_step_{t}.png"))
 
 
 def prec_rec(conf_meter: ConfusionMeter) \

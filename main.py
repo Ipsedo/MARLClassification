@@ -9,7 +9,7 @@ from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, \
 import data.transforms as custom_tr
 
 from utils import MainOptions, TrainOptions, TestOptions, InferOptions, \
-    visualize_steps, prec_rec, format_metric, SetAppendAction
+    visualize_steps, prec_rec, SetAppendAction, format_metric
 
 import torch as th
 import torch.nn.functional as fun
@@ -18,11 +18,12 @@ import torchvision.transforms as tr
 
 from torchnet.meter import ConfusionMeter
 
+import mlflow
+
 from random import randint, shuffle
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import datetime
 
 import json
 
@@ -62,12 +63,13 @@ def train(
         raise Exception(f"\"{join(output_dir, model_dir)}\""
                         f"is not a directory.")
 
-    logs_file = open(join(output_dir, "train.log"), "w")
-    args_str = " ".join([a for a in sys.argv])
-    logs_file.write(args_str + "\n\n")
-    logs_file.flush()
+    exp_name = "MARLClassification"
+    mlflow.set_experiment(exp_name)
 
-    ops_to_skip = train_options.frozen_modules
+    mlflow.start_run(run_name="train")
+
+    mlflow.log_param("output_dir", output_dir)
+    mlflow.log_param("model_dir", join(output_dir, model_dir))
 
     img_pipeline = tr.Compose([
         tr.ToTensor(),
@@ -94,10 +96,6 @@ def train(
 
     dataset = dataset_constructor(img_pipeline)
 
-    class2idx_f = open(join(output_dir, "class2idx.json"), "w")
-    json.dump(dataset.class_to_idx, class2idx_f)
-    class2idx_f.close()
-
     marl_m = MultiAgent(
         main_options.nb_agent,
         nn_models,
@@ -110,6 +108,31 @@ def train(
         trans_img
     )
 
+    mlflow.log_params({
+        "ft_extractor": train_options.ft_extr_str,
+        "window_size": train_options.window_size,
+        "hidden_size_belief": train_options.hidden_size_belief,
+        "hidden_size_action": train_options.hidden_size_linear_action,
+        "hidden_size_msg": train_options.hidden_size_msg,
+        "hidden_size_state": train_options.hidden_size_state,
+        "dim": train_options.dim,
+        "nb_action": train_options.nb_action,
+        "nb_class": train_options.nb_class,
+        "hidden_size_linear_belief": train_options.hidden_size_linear_belief,
+        "hidden_size_linear_action": train_options.hidden_size_linear_action,
+        "class_to_idx": dataset.class_to_idx,
+        "nb_agent": main_options.nb_agent,
+        "frozen_modules": train_options.frozen_modules,
+        "epsilon": train_options.epsilon,
+        "epsilon_decay": train_options.epsilon_decay,
+        "nb_epoch": train_options.nb_epoch,
+        "learning_rate": train_options.learning_rate,
+        "img_size": train_options.img_size,
+        "retry_number": train_options.retry_number,
+        "step": main_options.step,
+        "batch_size": train_options.batch_size
+    })
+
     cuda = main_options.cuda
     device_str = "cpu"
 
@@ -119,6 +142,8 @@ def train(
         nn_models.cuda()
         marl_m.cuda()
         device_str = "cuda"
+
+    mlflow.log_param("device", device_str)
 
     module_to_train = ModelsWrapper.module_list \
         .difference(train_options.frozen_modules)
@@ -143,22 +168,18 @@ def train(
         shuffle=True, num_workers=3, drop_last=False
     )
 
-    loss_v = []
-    prec_epoch = []
-    recall_epoch = []
-
     epsilon = train_options.epsilon
 
+    curr_step = 0
+
     for e in range(train_options.nb_epoch):
-        train_ep_st = datetime.datetime.now()
-
-        sum_loss = 0
-
         nn_models.train()
+
+        sum_loss = 0.
+        i = 0
 
         conf_meter = ConfusionMeter(train_options.nb_class)
 
-        i = 0
         tqdm_bar = tqdm(train_dataloader)
         for x_train, y_train in tqdm_bar:
             x_train, y_train = x_train.to(th.device(device_str)), \
@@ -177,15 +198,22 @@ def train(
             y_eye = th.eye(
                 train_options.nb_class,
                 device=th.device(device_str)
-            )[y_train.unsqueeze(0)].unsqueeze(1).repeat(1, main_options.step, 1, 1)
+            )[y_train.unsqueeze(0)].unsqueeze(1).repeat(
+                1, main_options.step, 1, 1)
 
             # pass to class proba (softmax)
-            #retry_pred = fun.softmax(retry_pred, dim=-1)
+            # retry_pred = fun.softmax(retry_pred, dim=-1)
             pred = fun.softmax(retry_pred, -1)
 
             # Update confusion meter
             # mean between trials
             conf_meter.add(
+                pred.detach()[:, -1, :, :].mean(dim=0),
+                y_train
+            )
+
+            tmp_conf_meter = ConfusionMeter(train_options.nb_class)
+            tmp_conf_meter.add(
                 pred.detach()[:, -1, :, :].mean(dim=0),
                 y_train
             )
@@ -213,51 +241,50 @@ def train(
             # Update epoch loss sum
             sum_loss += loss.item()
 
-            # Compute score
-            precs, recs = prec_rec(conf_meter)
+            # Compute batch score
+            precs, recs = prec_rec(tmp_conf_meter)
 
-            # verify some parameters are un-optimized - test
-            param_list = nn_models.get_params(ops_to_skip)
-            mean_param_list_str = ", ".join(
-                [f'{p.norm():.0e}' for p in param_list]
+            mlflow.log_metrics(
+                {"loss": loss.item(),
+                 "train_prec": precs.mean(),
+                 "train_rec": recs.mean(),
+                 "epsilon": epsilon},
+                step=curr_step
             )
+
+            # Compute global score
+            precs, recs = prec_rec(conf_meter)
 
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
                 f"loss = {sum_loss / (i + 1):.4f}, "
                 f"eps = {epsilon:.4f}, "
                 f"train_prec = {precs.mean():.3f}, "
-                f"train_rec = {recs.mean():.3f}, "
-                f"frozen_params = [{mean_param_list_str}]"
+                f"train_rec = {recs.mean():.3f}"
             )
 
-            i += 1
-            epsilon *= train_options.epsilon_desay
+            epsilon *= train_options.epsilon_decay
             epsilon = max(epsilon, 0.)
 
-        precs, recs = prec_rec(conf_meter)
-
-        precs_str = format_metric(precs, dataset.class_to_idx)
-        recs_str = format_metric(recs, dataset.class_to_idx)
+            i += 1
+            curr_step += 1
 
         sum_loss /= len(train_dataloader)
 
-        elapsed_time = datetime.datetime.now() - train_ep_st
-        logs_file.write(
-            f"#############################################\n"
-            f"Epoch {e} - Train - Loss = {sum_loss:.4f}\n"
-            f"train_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}%\n"
-            f"train_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}%\n"
-            f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
-            f"{elapsed_time.seconds // 60 % 60}min "
-            f"{elapsed_time.seconds % 60}s\n"
+        plt.matshow(conf_meter.value().tolist())
+        plt.title(f"confusion_matrix_epoch_{e}_train")
+        plt.colorbar()
+        plt.ylabel('True Label')
+        plt.xlabel('Predicated Label')
+        plt.savefig(join(output_dir, f"confusion_matrix_epoch_{e}_train.png"))
+        plt.close()
+
+        mlflow.log_artifact(
+            join(output_dir, f"confusion_matrix_epoch_{e}_train.png")
         )
-        logs_file.flush()
 
         nn_models.eval()
         conf_meter.reset()
-
-        train_ep_st = datetime.datetime.now()
 
         with th.no_grad():
             tqdm_bar = tqdm(test_dataloader)
@@ -283,48 +310,38 @@ def train(
         # Compute score
         precs, recs = prec_rec(conf_meter)
 
-        precs_str = format_metric(precs, dataset.class_to_idx)
-        recs_str = format_metric(recs, dataset.class_to_idx)
+        plt.matshow(conf_meter.value().tolist())
+        plt.title(f"confusion_matrix_epoch_{e}_eval")
+        plt.colorbar()
+        plt.ylabel('True Label')
+        plt.xlabel('Predicated Label')
+        plt.savefig(join(output_dir, f"confusion_matrix_epoch_{e}_eval.png"))
+        plt.close()
 
-        elapsed_time = datetime.datetime.now() - train_ep_st
-        logs_file.write(
-            f"#############################################\n"
-            f"Epoch {e} - Eval\n"
-            f"eval_prec = mean([{precs_str}]) = {precs.mean() * 100.:.1f}%\n"
-            f"eval_rec = mean([{recs_str}]) = {recs.mean() * 100.:.1f}%\n"
-            f"elapsed_time = {elapsed_time.seconds // 60 // 60}h "
-            f"{elapsed_time.seconds // 60 % 60}min "
-            f"{elapsed_time.seconds % 60}s\n\n"
+        mlflow.log_artifact(
+            join(output_dir, f"confusion_matrix_epoch_{e}_eval.png")
         )
-        logs_file.flush()
 
-        prec_epoch.append(precs.mean())
-        recall_epoch.append(recs.mean())
-        loss_v.append(sum_loss)
+        mlflow.log_metrics(
+            {"eval_prec": precs.mean(),
+             "eval_recs": recs.mean()},
+            step=curr_step
+        )
 
         nn_models.json_args(
             join(output_dir,
                  model_dir,
                  f"marl_epoch_{e}.json")
         )
-        th.save(nn_models.state_dict(),
-                join(output_dir, model_dir, f"nn_models_epoch_{e}.pt"))
-        th.save(optim.state_dict(),
-                join(output_dir, model_dir, f"optim_epoch_{e}.pt"))
 
-    plt.figure()
-    plt.plot(prec_epoch, "b", label="precision - mean (eval)")
-    plt.plot(recall_epoch, "r", label="recall - mean (eval)")
-    plt.plot(loss_v, "g", label="criterion value")
-    plt.xlabel("Epoch")
-    plt.title(f"MARL Classification f={train_options.window_size}, "
-              f"n_b={train_options.hidden_size_belief}, "
-              f"n_a={train_options.hidden_size_action}, "
-              f"n_m={train_options.hidden_size_msg}, "
-              f"d={train_options.dim}, T={main_options.step}")
-
-    plt.legend()
-    plt.savefig(join(output_dir, "train_graph.png"))
+        mlflow.pytorch.log_model(
+            nn_models, f"nn_models_epoch_{e}"
+        )
+        mlflow.log_artifact(
+            join(output_dir,
+                 model_dir,
+                 f"marl_epoch_{e}.json")
+        )
 
     empty_pipe = tr.Compose([
         tr.ToTensor()
@@ -343,7 +360,7 @@ def train(
                     output_dir, train_options.nb_class, device_str,
                     dataset.class_to_idx)
 
-    logs_file.close()
+    mlflow.end_run()
 
 
 #######################
