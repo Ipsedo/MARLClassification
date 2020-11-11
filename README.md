@@ -18,7 +18,7 @@ Extend to other image data NWPU-RESISC45 :
 ## Usage
 ```bash
 $ # train on NWPU-RESISC45
-$ python main.py -a 10 --step 10 --cuda train --nb-action 4 --ft-extr resisc45 --batch-size 6 --nb-class 45 --img-size 256 -d 2 --n 1536 --nd 8 --f 10 --nm 256 --nl 2048 --nb-epoch 30 --nr 3 --learning-rate 3e-5 --eps 5e-2 -o ./out_train_resisc45_final
+$ python main.py -a 20 --step 15 --cuda train --nb-action 4 --ft-extr resisc45 --batch-size 8 --nb-class 45 --img-size 256 -d 2 --nb 1536 --na 1536 --nd 8 --f 10 --nm 256 --nlb 2048 --nla 2048 --nb-epoch 30 --nr 1 --learning-rate 3e-5 --eps 0. --eps-dec 1. -o ./out/resisc45_final
 ```
 
 ## Requirements
