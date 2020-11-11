@@ -207,7 +207,7 @@ def train(
             # Update confusion meter
             # mean between trials
             conf_meter.add(
-                pred.detach()[:, -1, :, :].mean(dim=0),
+                retry_pred.detach()[:, -1, :, :].mean(dim=0),
                 y_train
             )
 
