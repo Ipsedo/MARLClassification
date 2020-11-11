@@ -33,16 +33,18 @@ class ModelsWrapper(nn.Module):
     predict: str = "q_theta_8"
 
     module_list: Set[str] = {
-        map_obs, map_pos,
+        map_obs,
+        map_pos,
         evaluate_msg,
-        belief_unit, action_unit,
-        policy, predict
+        belief_unit,
+        action_unit,
+        policy,
+        predict
     }
 
     # Features extractors - CNN
 
     mnist: str = "mnist"
-    resisc_small: str = "resisc45_small"
     resisc: str = "resisc45"
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {

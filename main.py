@@ -9,7 +9,7 @@ from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, \
 import data.transforms as custom_tr
 
 from utils import MainOptions, TrainOptions, TestOptions, InferOptions, \
-    visualize_steps, prec_rec, SetAppendAction,\
+    visualize_steps, prec_rec, SetAppendAction, \
     format_metric, save_conf_matrix
 
 import torch as th
@@ -42,8 +42,7 @@ def train(
         main_options: MainOptions,
         train_options: TrainOptions
 ) -> None:
-
-    assert train_options.dim == 2,\
+    assert train_options.dim == 2, \
         "Only 2D is supported at the moment " \
         "for data loading and observation / transition. " \
         "See torchvision.datasets.ImageFolder"
@@ -113,8 +112,10 @@ def train(
         "dim": train_options.dim,
         "nb_action": train_options.nb_action,
         "nb_class": train_options.nb_class,
-        "hidden_size_linear_belief": train_options.hidden_size_linear_belief,
-        "hidden_size_linear_action": train_options.hidden_size_linear_action,
+        "hidden_size_linear_belief":
+            train_options.hidden_size_linear_belief,
+        "hidden_size_linear_action":
+            train_options.hidden_size_linear_action,
         "nb_agent": main_options.nb_agent,
         "frozen_modules": train_options.frozen_modules,
         "epsilon": train_options.epsilon,
@@ -147,9 +148,12 @@ def train(
 
     module_to_train = ModelsWrapper.module_list \
         .difference(train_options.frozen_modules)
+
     # for RL agent models parameters
-    optim = th.optim.Adam(nn_models.get_params(list(module_to_train)),
-                          lr=train_options.learning_rate)
+    optim = th.optim.Adam(
+        nn_models.get_params(list(module_to_train)),
+        lr=train_options.learning_rate
+    )
 
     idx = th.randperm(len(dataset))
     idx_train = idx[:int(0.85 * idx.size(0))]
@@ -340,11 +344,13 @@ def train(
 
     test_idx = randint(0, len(test_dataloader_ori))
 
-    visualize_steps(marl_m, test_dataloader[test_idx][0],
-                    test_dataloader_ori[test_idx][0],
-                    main_options.step, train_options.window_size,
-                    output_dir, train_options.nb_class, device_str,
-                    dataset.class_to_idx)
+    visualize_steps(
+        marl_m, test_dataloader[test_idx][0],
+        test_dataloader_ori[test_idx][0],
+        main_options.step, train_options.window_size,
+        output_dir, train_options.nb_class, device_str,
+        dataset.class_to_idx
+    )
 
     mlflow.end_run()
 
@@ -357,7 +363,6 @@ def test(
         main_options: MainOptions,
         test_options: TestOptions
 ) -> None:
-
     steps = main_options.step
 
     json_path = test_options.json_path
@@ -446,7 +451,6 @@ def infer(
         main_options: MainOptions,
         infer_options: InferOptions
 ) -> None:
-
     images_path = infer_options.images_path
     output_dir = infer_options.output_dir
     state_dict_path = infer_options.state_dict_path
@@ -496,8 +500,10 @@ def infer(
         marl_m.cuda()
         device_str = "cuda"
 
-    images = tqdm([img for img_path in images_path
-                   for img in glob.glob(img_path, recursive=True)])
+    images = tqdm(
+        [img for img_path in images_path
+         for img in glob.glob(img_path, recursive=True)]
+    )
 
     for img_path in images:
         img = my_pil_loader(img_path)
@@ -606,8 +612,8 @@ def main() -> None:
         "--ft-extr", type=str,
         choices=[
             ModelsWrapper.mnist,
-            ModelsWrapper.resisc,
-            ModelsWrapper.resisc_small],
+            ModelsWrapper.resisc
+        ],
         default="mnist", dest="ft_extractor",
         help="Choose features extractor (CNN)"
     )
@@ -629,45 +635,54 @@ def main() -> None:
     )
     train_parser.add_argument(
         "--nlb", type=int, default=128, dest="n_l_b",
-        help="Network internal hidden size for linear projections"
+        help="Network internal hidden size "
+             "for linear projections (belief unit)"
     )
     train_parser.add_argument(
         "--nla", type=int, default=128, dest="n_l_a",
-        help="Network internal hidden size for linear projections"
+        help="Network internal hidden size for "
+             "linear projections (action unit)"
     )
 
     # Training arguments
     train_parser.add_argument(
-        "--batch-size", type=int, default=8, dest="batch_size",
+        "--batch-size", type=int,
+        default=8, dest="batch_size",
         help="Image batch size for training and evaluation"
     )
     train_parser.add_argument(
-        "-o", "--output-dir", type=str, required=True, dest="output_dir",
-        help="The output dir containing res and models per epoch. "
-             "Created if needed."
+        "-o", "--output-dir", type=str,
+        required=True, dest="output_dir",
+        help="The output dir containing res "
+             "and models per epoch. Created if needed."
     )
     train_parser.add_argument(
-        "--lr", "--learning-rate", type=float, default=1e-3,
+        "--lr", "--learning-rate",
+        type=float, default=1e-3,
         dest="learning_rate",
         help=""
     )
     train_parser.add_argument(
-        "--nb-epoch", type=int, default=10, dest="nb_epoch",
+        "--nb-epoch", type=int,
+        default=10, dest="nb_epoch",
         help="Number of training epochs"
     )
     train_parser.add_argument(
-        "--nr", "--number-retry", type=int, default=7, dest="number_retry",
+        "--nr", "--number-retry", type=int,
+        default=7, dest="number_retry",
         help="Number of retry to estimate expectation."
     )
     train_parser.add_argument(
         "--eps", type=float, default=0.,
         dest="epsilon_greedy",
-        help="Threshold from which apply greedy policy (random otherwise)"
+        help="Threshold from which apply "
+             "greedy policy (random otherwise)"
     )
     train_parser.add_argument(
         "--eps-dec", type=float, default=0.,
         dest="epsilon_decay",
-        help="Epsilon decay, at each forward eps <- eps * eps_decay"
+        help="Epsilon decay, at each forward "
+             "eps <- eps * eps_decay"
     )
     train_parser.add_argument(
         "--freeze", type=str, default=[], nargs="+",
@@ -687,30 +702,35 @@ def main() -> None:
     # Test args
     ##################
     test_parser.add_argument(
-        "--batch-size", type=int, default=8, dest="batch_size",
+        "--batch-size", type=int,
+        default=8, dest="batch_size",
         help="Image batch size for training and evaluation"
     )
     test_parser.add_argument(
-        "--image-path", type=str, required=True, dest="image_path",
+        "--image-path", type=str,
+        required=True, dest="image_path",
         help="Input image path for inference"
     )
     test_parser.add_argument(
-        "--img-size", type=int, default=28, dest="img_size",
+        "--img-size", type=int,
+        default=28, dest="img_size",
         help="Image side size, assume all image are squared"
     )
     test_parser.add_argument(
-        "--json-path", type=str, required=True, dest="json_path",
+        "--json-path", type=str,
+        required=True, dest="json_path",
         help="JSON multi agent metadata path"
     )
     test_parser.add_argument(
-        "--state-dict-path", type=str, required=True, dest="state_dict_path",
+        "--state-dict-path", type=str,
+        required=True, dest="state_dict_path",
         help="ModelsWrapper state dict path"
     )
     test_parser.add_argument(
         "-o", "--output-dir", type=str, required=True,
         dest="output_dir",
-        help="The directory where the model outputs will be saved. "
-             "Created if needed"
+        help="The directory where the model outputs "
+             "will be saved. Created if needed"
     )
 
     ##################
@@ -722,11 +742,13 @@ def main() -> None:
         help="Path of images used for inference"
     )
     infer_parser.add_argument(
-        "--json-path", type=str, required=True, dest="json_path",
+        "--json-path", type=str,
+        required=True, dest="json_path",
         help="JSON multi agent metadata path"
     )
     infer_parser.add_argument(
-        "--state-dict-path", type=str, required=True, dest="state_dict_path",
+        "--state-dict-path", type=str,
+        required=True, dest="state_dict_path",
         help="ModelsWrapper state dict path"
     )
     infer_parser.add_argument(
@@ -735,10 +757,10 @@ def main() -> None:
         help="Class to index JSON file"
     )
     infer_parser.add_argument(
-        "-o", "--output-image-dir", type=str, required=True,
-        dest="output_image_dir",
-        help="The directory where the model outputs will be saved. "
-             "Created if needed"
+        "-o", "--output-image-dir", type=str,
+        required=True, dest="output_image_dir",
+        help="The directory where the model outputs "
+             "will be saved. Created if needed"
     )
 
     ###################################
