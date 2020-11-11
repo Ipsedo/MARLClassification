@@ -4,6 +4,7 @@ from environment.agent import MultiAgent
 from environment.core import detailed_episode
 
 import torch as th
+import torch.nn.functional as fun
 from torchnet.meter import ConfusionMeter
 
 import mlflow
@@ -103,8 +104,10 @@ def visualize_steps(
 
     color_map = None
 
-    preds, _, pos = detailed_episode(agents, img.unsqueeze(0), 0.,
-                                     max_it, device_str, nb_class)
+    preds, _, pos = detailed_episode(
+        agents, img.unsqueeze(0), 0.,
+        max_it, device_str, nb_class
+    )
     preds, pos = preds.cpu(), pos.cpu()
     img_ori = img_ori.permute(1, 2, 0).cpu()
 
@@ -140,10 +143,12 @@ def visualize_steps(
         fig = plt.figure()
         plt.imshow(curr_img, cmap=color_map)
         prediction = preds[t][img_idx].argmax(dim=-1).item()
-        pred_proba = th.nn.functional.softmax(preds[t][img_idx], dim=-1) \
-            [prediction].item()
-        plt.title(f"Step = {t}, step_pred_class = "
-                  f"{idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)")
+        pred_proba = preds[t][img_idx][prediction].item()
+        print(pred_proba)
+        plt.title(
+            f"Step = {t}, step_pred_class = "
+            f"{idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)"
+        )
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
         plt.close(fig)

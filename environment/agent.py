@@ -1,4 +1,5 @@
 import torch as th
+import torch.nn.functional as fun
 from networks.models import ModelsWrapper
 
 from typing import Callable, Tuple, List
@@ -256,8 +257,9 @@ class MultiAgent:
         :return: tuple <predictions, action_probabilities>
         """
 
-        return self.__networks(self.__networks.predict,
-                               self.__h[-1]).mean(dim=0), \
+        return fun.softmax(self.__networks(
+            self.__networks.predict,
+            self.__h[-1]).mean(dim=0), dim=-1), \
                self.__action_probas[-1].log().sum(dim=0)
 
     @property
