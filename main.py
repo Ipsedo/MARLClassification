@@ -128,7 +128,6 @@ def train(
         "batch_size": train_options.batch_size
     })
 
-    # mlflow.set_tag("class_to_idx", dataset.class_to_idx)
     json_f = open(join(output_dir, "class_to_idx.json"), "w")
     json.dump(dataset.class_to_idx, json_f)
     json_f.close()
@@ -205,10 +204,6 @@ def train(
             )[y_train.unsqueeze(0)].unsqueeze(1).repeat(
                 1, main_options.step, 1, 1)
 
-            # pass to class proba (softmax)
-            # retry_pred = fun.softmax(retry_pred, dim=-1)
-            pred = fun.softmax(retry_pred, -1)
-
             # Update confusion meter
             # mean between trials
             conf_meter.add(
@@ -283,8 +278,6 @@ def train(
                                  y_test.to(th.device(device_str))
 
                 preds, _ = episode(marl_m, x_test, 0., main_options.step)
-
-                preds = fun.softmax(preds, dim=-1)
 
                 conf_meter.add(preds.detach(), y_test)
 
@@ -429,8 +422,6 @@ def test(
         x, y = x.to(th.device(device_str)), y.to(th.device(device_str))
 
         preds, probas = episode(marl_m, x, 0., steps)
-
-        preds = fun.softmax(preds, dim=-1)
 
         conf_meter.add(preds.detach(), y)
 
