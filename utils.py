@@ -52,20 +52,20 @@ TrainOptions = typ.NamedTuple(
 TestOptions = typ.NamedTuple(
     "TestOptions",
     [("img_size", int),
+     ("state_dict_path", str),
      ("batch_size", int),
      ("json_path", str),
-     ("state_dict_path", str),
      ("image_root", str),
      ("output_dir", str)]
 )
 
 InferOptions = typ.NamedTuple(
     "InferOptions",
-    [("json_path", str),
-     ("state_dict_path", str),
+    [("state_dict_path", str),
+     ("json_path", str),
      ("images_path", typ.List[str]),
      ("output_dir", str),
-     ("class_to_idx_json", str)]
+     ("class_to_idx", str)]
 )
 
 
@@ -177,6 +177,21 @@ def format_metric(metric: np.ndarray,
         [f'\"{idx_to_class[curr_cls]}\" : {metric[curr_cls] * 100.:.1f}%'
          for curr_cls in range(metric.shape[0])]
     )
+
+
+def save_conf_matrix(
+        conf_meter: ConfusionMeter, epoch: int,
+        output_dir: str, stage: str
+) -> None:
+    plt.matshow(conf_meter.value().tolist())
+    plt.title(f"confusion_matrix_epoch_{epoch}_train")
+    plt.colorbar()
+    plt.ylabel('True Label')
+    plt.xlabel('Predicated Label')
+    plt.savefig(
+        join(output_dir, f"confusion_matrix_epoch_{epoch}_{stage}.png")
+    )
+    plt.close()
 
 
 class SetAppendAction(Action):

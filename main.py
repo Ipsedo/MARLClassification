@@ -9,7 +9,8 @@ from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, \
 import data.transforms as custom_tr
 
 from utils import MainOptions, TrainOptions, TestOptions, InferOptions, \
-    visualize_steps, prec_rec, SetAppendAction, format_metric
+    visualize_steps, prec_rec, SetAppendAction,\
+    format_metric, save_conf_matrix
 
 import torch as th
 import torch.nn.functional as fun
@@ -44,15 +45,7 @@ def train(
         main_options: MainOptions,
         train_options: TrainOptions
 ) -> None:
-    """
 
-    :param main_options:
-    :type main_options:
-    :param train_options:
-    :type train_options:
-    :return:
-    :rtype:
-    """
     output_dir = train_options.output_dir
 
     model_dir = "models"
@@ -112,7 +105,7 @@ def train(
         "ft_extractor": train_options.ft_extr_str,
         "window_size": train_options.window_size,
         "hidden_size_belief": train_options.hidden_size_belief,
-        "hidden_size_action": train_options.hidden_size_linear_action,
+        "hidden_size_action": train_options.hidden_size_action,
         "hidden_size_msg": train_options.hidden_size_msg,
         "hidden_size_state": train_options.hidden_size_state,
         "dim": train_options.dim,
@@ -120,7 +113,6 @@ def train(
         "nb_class": train_options.nb_class,
         "hidden_size_linear_belief": train_options.hidden_size_linear_belief,
         "hidden_size_linear_action": train_options.hidden_size_linear_action,
-        "class_to_idx": dataset.class_to_idx,
         "nb_agent": main_options.nb_agent,
         "frozen_modules": train_options.frozen_modules,
         "epsilon": train_options.epsilon,
@@ -132,6 +124,12 @@ def train(
         "step": main_options.step,
         "batch_size": train_options.batch_size
     })
+
+    # mlflow.set_tag("class_to_idx", dataset.class_to_idx)
+    json_f = open(join(output_dir, "class_to_idx.json"), "w")
+    json.dump(dataset.class_to_idx, json_f)
+    json_f.close()
+    mlflow.log_artifact(join(output_dir, "class_to_idx.json"))
 
     cuda = main_options.cuda
     device_str = "cpu"
@@ -212,12 +210,6 @@ def train(
                 y_train
             )
 
-            tmp_conf_meter = ConfusionMeter(train_options.nb_class)
-            tmp_conf_meter.add(
-                pred.detach()[:, -1, :, :].mean(dim=0),
-                y_train
-            )
-
             # L2 Loss - Classification error / reward
             # reward = -error(y_true, y_step_pred).mean(class_dim)
             r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
@@ -241,19 +233,17 @@ def train(
             # Update epoch loss sum
             sum_loss += loss.item()
 
-            # Compute batch score
-            precs, recs = prec_rec(tmp_conf_meter)
-
-            mlflow.log_metrics(
-                {"loss": loss.item(),
-                 "train_prec": precs.mean(),
-                 "train_rec": recs.mean(),
-                 "epsilon": epsilon},
-                step=curr_step
-            )
-
             # Compute global score
             precs, recs = prec_rec(conf_meter)
+
+            if curr_step % 100 == 0:
+                mlflow.log_metrics(
+                    {"loss": loss.item(),
+                     "train_prec": precs.mean().item(),
+                     "train_rec": recs.mean().item(),
+                     "epsilon": epsilon},
+                    step=curr_step
+                )
 
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
@@ -271,13 +261,7 @@ def train(
 
         sum_loss /= len(train_dataloader)
 
-        plt.matshow(conf_meter.value().tolist())
-        plt.title(f"confusion_matrix_epoch_{e}_train")
-        plt.colorbar()
-        plt.ylabel('True Label')
-        plt.xlabel('Predicated Label')
-        plt.savefig(join(output_dir, f"confusion_matrix_epoch_{e}_train.png"))
-        plt.close()
+        save_conf_matrix(conf_meter, e, output_dir, "train")
 
         mlflow.log_artifact(
             join(output_dir, f"confusion_matrix_epoch_{e}_train.png")
@@ -310,17 +294,7 @@ def train(
         # Compute score
         precs, recs = prec_rec(conf_meter)
 
-        plt.matshow(conf_meter.value().tolist())
-        plt.title(f"confusion_matrix_epoch_{e}_eval")
-        plt.colorbar()
-        plt.ylabel('True Label')
-        plt.xlabel('Predicated Label')
-        plt.savefig(join(output_dir, f"confusion_matrix_epoch_{e}_eval.png"))
-        plt.close()
-
-        mlflow.log_artifact(
-            join(output_dir, f"confusion_matrix_epoch_{e}_eval.png")
-        )
+        save_conf_matrix(conf_meter, e, output_dir, "eval")
 
         mlflow.log_metrics(
             {"eval_prec": precs.mean(),
@@ -333,14 +307,24 @@ def train(
                  model_dir,
                  f"marl_epoch_{e}.json")
         )
-
-        mlflow.pytorch.log_model(
-            nn_models, f"nn_models_epoch_{e}"
+        th.save(
+            nn_models.state_dict(),
+            join(output_dir, model_dir,
+                 f"nn_models_epoch_{e}.pt")
         )
+
         mlflow.log_artifact(
             join(output_dir,
                  model_dir,
                  f"marl_epoch_{e}.json")
+        )
+        mlflow.log_artifact(
+            join(output_dir, model_dir,
+                 f"nn_models_epoch_{e}.pt")
+        )
+        mlflow.log_artifact(
+            join(output_dir,
+                 f"confusion_matrix_epoch_{e}_eval.png")
         )
 
     empty_pipe = tr.Compose([
@@ -371,6 +355,7 @@ def test(
         main_options: MainOptions,
         test_options: TestOptions
 ) -> None:
+
     steps = main_options.step
 
     json_path = test_options.json_path
@@ -384,12 +369,12 @@ def test(
         f"\"{json_path}\" is not a file"
 
     assert exists(state_dict_path), \
-        f"State dict path \"{state_dict_path}\" does not exist"
+        f"State dict path {state_dict_path} does not exist"
     assert isfile(state_dict_path), \
-        f"\"{state_dict_path}\" is not a file"
+        f"{state_dict_path} is not a file"
 
     if exists(output_dir) and isdir(output_dir):
-        print(f"File in {output_dir} will be overwrite")
+        print(f"File in {output_dir} will be overwritten")
     elif exists(output_dir) and not isdir(output_dir):
         raise Exception(f"\"{output_dir}\" is not a directory")
     else:
@@ -459,18 +444,31 @@ def infer(
         main_options: MainOptions,
         infer_options: InferOptions
 ) -> None:
+
     images_path = infer_options.images_path
     output_dir = infer_options.output_dir
+    state_dict_path = infer_options.state_dict_path
+    json_path = infer_options.json_path
 
-    json_f = open(infer_options.class_to_idx_json, "r")
+    assert exists(json_path), \
+        f"JSON path \"{json_path}\" does not exist"
+    assert isfile(json_path), \
+        f"\"{json_path}\" is not a file"
+
+    assert exists(state_dict_path), \
+        f"State dict path {state_dict_path} does not exist"
+    assert isfile(state_dict_path), \
+        f"{state_dict_path} is not a file"
+
+    json_f = open(infer_options.class_to_idx, "r")
     class_to_idx = json.load(json_f)
     json_f.close()
 
-    nn_models = ModelsWrapper.from_json(infer_options.json_path)
-    nn_models.load_state_dict(th.load(infer_options.state_dict_path))
+    nn_models = ModelsWrapper.from_json(json_path)
+    nn_models.load_state_dict(th.load(state_dict_path))
 
     marl_m = MultiAgent.load_from(
-        infer_options.json_path,
+        json_path,
         main_options.nb_agent,
         nn_models,
         obs_img,
@@ -703,8 +701,8 @@ def main() -> None:
         help="JSON multi agent metadata path"
     )
     test_parser.add_argument(
-        "--state-dict", type=str, required=True, dest="state_dict",
-        help="networks.models.ModelsWrapper PyTorch state dict file"
+        "--state-dict-path", type=str, required=True, dest="state_dict_path",
+        help="ModelsWrapper state dict path"
     )
     test_parser.add_argument(
         "-o", "--output-dir", type=str, required=True,
@@ -726,12 +724,12 @@ def main() -> None:
         help="JSON multi agent metadata path"
     )
     infer_parser.add_argument(
-        "--state-dict", type=str, required=True, dest="state_dict",
-        help="networks.models.ModelsWrapper PyTorch state dict file"
+        "--state-dict-path", type=str, required=True, dest="state_dict_path",
+        help="ModelsWrapper state dict path"
     )
     infer_parser.add_argument(
-        "--class2idx-json", type=str, required=True,
-        dest="class_to_idx_json",
+        "--class2idx", type=str, required=True,
+        dest="class_to_idx",
         help="Class to index JSON file"
     )
     infer_parser.add_argument(
@@ -792,9 +790,9 @@ def main() -> None:
 
         test_options = TestOptions(
             args.img_size,
+            args.state_dict_path,
             args.batch_size,
             args.json_path,
-            args.state_dict,
             args.image_path,
             args.output_dir
         )
@@ -812,11 +810,11 @@ def main() -> None:
         )
 
         infer_options = InferOptions(
+            args.state_dict_path,
             args.json_path,
-            args.state_dict,
             args.infer_images,
             args.output_image_dir,
-            args.class_to_idx_json
+            args.class_to_idx
         )
 
         if not exists(args.output_image_dir):
