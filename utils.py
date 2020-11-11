@@ -195,9 +195,11 @@ def save_conf_matrix(
 
 
 class SetAppendAction(Action):
-    def __call__(self, parser: ArgumentParser, namespace: Namespace,
-                 values: typ.Union[typ.Text, typ.Sequence[typ.Any], None],
-                 option_string: typ.Optional[typ.Text] = ...) -> None:
+    def __call__(
+            self, parser: ArgumentParser, namespace: Namespace,
+            values: typ.Union[typ.Text, typ.Sequence[typ.Any], None],
+            option_string: typ.Optional[typ.Text] = ...
+    ) -> None:
         unique_values = set(values)
 
         if len(unique_values) != len(values):
