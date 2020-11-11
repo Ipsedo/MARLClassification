@@ -23,7 +23,6 @@ import mlflow
 
 from random import randint, shuffle
 
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 import json
@@ -31,8 +30,6 @@ import json
 from os import mkdir, makedirs
 from os.path import join, exists, isdir, isfile
 import glob
-
-import sys
 
 import argparse
 
@@ -45,6 +42,11 @@ def train(
         main_options: MainOptions,
         train_options: TrainOptions
 ) -> None:
+
+    assert train_options.dim == 2,\
+        "Only 2D is supported at the moment " \
+        "for data loading and observation / transition. " \
+        "See torchvision.datasets.ImageFolder"
 
     output_dir = train_options.output_dir
 
