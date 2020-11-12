@@ -1,6 +1,8 @@
 # MARLClassification
 
-from this [article](https://arxiv.org/abs/1905.04835)
+[Multi-Agent Image Classification via Reinforcement Learning](https://arxiv.org/abs/1905.04835)
+
+_Hossein K. Mousavi, Mohammadreza Nazari, Martin Takáč, Nader Motee, 2019_
 
 ## Description
 Results reproduction of the above article : 98% on MNIST.
