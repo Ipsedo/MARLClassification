@@ -1,0 +1,15 @@
+artifact_uri: file:///home/samuel/Documents/MARLClassification/mlruns/1/61094fdb9d65445da7fcad061dbc86bf/artifacts
+end_time: 1605205726734
+entry_point_name: ''
+experiment_id: '1'
+lifecycle_stage: active
+name: ''
+run_id: 61094fdb9d65445da7fcad061dbc86bf
+run_uuid: 61094fdb9d65445da7fcad061dbc86bf
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1605196370822
+status: 3
+tags: []
+user_id: samuel
