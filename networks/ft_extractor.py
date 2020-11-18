@@ -136,13 +136,14 @@ class KneeMRICnn(CNNFtExtract):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv3d(1, 3, kernel_size=3, padding=1),
+            nn.Conv3d(1, 5, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Conv3d(3, 5, kernel_size=3, padding=1),
-            nn.ReLU()
+            nn.Conv3d(5, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool3d(2, 2)
         )
 
-        self.__out_size = 5 * f ** 3
+        self.__out_size = 16 * (f // 2) ** 3
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
