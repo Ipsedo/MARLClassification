@@ -4,41 +4,6 @@ from functools import reduce
 import operator as op
 
 
-def obs_2d_img(img: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
-    """
-    TODO
-
-    :param img:
-    :type img:
-    :param pos:
-    :type pos:
-    :param f:
-    :type f:
-    :return:
-    :rtype:
-    """
-
-    nb_a, b_pos, d = pos.size()
-    b_img, c, h, w = img.size()
-
-    # pos.size == (nb_ag, batch_size, 2)
-    pos_min = pos
-    pos_max = pos_min + f
-
-    values_x = th.arange(0, w, device=pos.device)
-    mask_x = (pos_min[:, :, 0, None] <= values_x.view(1, 1, w)) & \
-             (values_x.view(1, 1, w) < pos_max[:, :, 0, None])
-
-    values_y = th.arange(0, h, device=pos.device)
-    mask_y = (pos_min[:, :, 1, None] <= values_y.view(1, 1, h)) & \
-             (values_y.view(1, 1, h) < pos_max[:, :, 1, None])
-
-    mask = mask_x.unsqueeze(-2) & mask_y.unsqueeze(-1)
-
-    return img.unsqueeze(0).masked_select(mask.unsqueeze(-3)) \
-        .view(nb_a, b_img, c, f, f)
-
-
 def obs_generic(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     x_sizes = x.size()
     b_img, c = x_sizes[0], x_sizes[1]

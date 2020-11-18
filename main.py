@@ -1,6 +1,5 @@
 from environment import MultiAgent, \
     episode, episode_retry, \
-    obs_2d_img, trans_2d_img, \
     obs_generic, trans_generic
 
 from networks.models import ModelsWrapper
