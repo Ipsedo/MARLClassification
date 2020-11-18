@@ -1,6 +1,7 @@
 from networks.ft_extractor import \
     MNISTCnn, RESISC45Cnn, \
-    StateToFeatures, CNNFtExtract
+    StateToFeatures, CNNFtExtract, \
+    KneeMRICnn
 from networks.messages import MessageSender
 from networks.recurrents import LSTMCellWrapper
 from networks.policy import Policy
@@ -46,15 +47,17 @@ class ModelsWrapper(nn.Module):
 
     mnist: str = "mnist"
     resisc: str = "resisc45"
+    knee_mri: str = "kneemri"
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
         mnist: MNISTCnn,
-        resisc: RESISC45Cnn
+        resisc: RESISC45Cnn,
+        knee_mri: KneeMRICnn
     }
 
     def __init__(self, ft_extr_str: str, f: int,
                  n_b: int, n_a: int, n_m: int, n_d: int, d: int,
-                 nb_action: int, nb_class: int,
+                 actions: List[List[int]], nb_class: int,
                  hidden_size_belief: int,
                  hidden_size_action: int) -> None:
         super().__init__()
@@ -69,7 +72,7 @@ class ModelsWrapper(nn.Module):
                 map_obs_module.out_size + n_d + n_m, n_b),
             self.action_unit: LSTMCellWrapper(
                 map_obs_module.out_size + n_d + n_m, n_a),
-            self.policy: Policy(nb_action, n_a, hidden_size_action),
+            self.policy: Policy(len(actions), n_a, hidden_size_action),
             self.predict: Prediction(n_b, nb_class, hidden_size_belief)
         })
 
@@ -84,7 +87,7 @@ class ModelsWrapper(nn.Module):
         self.__n_d = n_d
 
         self.__d = d
-        self.__nb_action = nb_action
+        self.__actions = actions
         self.__nb_class = nb_class
 
     def forward(self, op: str, *args):
@@ -115,7 +118,7 @@ class ModelsWrapper(nn.Module):
             "hidden_size_msg": self.__n_m,
             "hidden_size_state": self.__n_d,
             "state_dim": self.__d,
-            "nb_action": self.__nb_action,
+            "actions": self.__actions,
             "class_number": self.__nb_class,
             "hidden_size_linear_belief": self.__n_l_b,
             "hidden_size_linear_action": self.__n_l_a,
@@ -143,7 +146,7 @@ class ModelsWrapper(nn.Module):
                 args_d["hidden_size_msg"],
                 args_d["hidden_size_state"],
                 args_d["state_dim"],
-                args_d["nb_action"],
+                args_d["actions"],
                 args_d["class_number"],
                 args_d["hidden_size_linear_belief"],
                 args_d["hidden_size_linear_action"]

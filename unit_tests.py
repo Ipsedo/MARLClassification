@@ -12,8 +12,8 @@ from tqdm import tqdm
 from data.dataset import RESISC45Dataset
 from environment.agent import MultiAgent
 from environment.core import episode
-from environment.observation import obs_img
-from environment.transition import trans_img
+from environment.observation import obs_2d_img
+from environment.transition import trans_2d_img
 from networks.ft_extractor import TestRESISC45
 from networks.models import MNISTModelWrapper
 
@@ -35,18 +35,18 @@ def test_mnist_transition():
 
     print("First test :")
     pos_1 = th.tensor([[[0., 0.]]])
-    print(trans_img(pos_1, a_1, 5, 28))
-    print(trans_img(pos_1, a_2, 5, 28))
-    print(trans_img(pos_1, a_3, 5, 28))
-    print(trans_img(pos_1, a_4, 5, 28))
+    print(trans_2d_img(pos_1, a_1, 5, 28))
+    print(trans_2d_img(pos_1, a_2, 5, 28))
+    print(trans_2d_img(pos_1, a_3, 5, 28))
+    print(trans_2d_img(pos_1, a_4, 5, 28))
     print()
 
     print("Snd test")
     pos_2 = th.tensor([[[22., 22.]]])
-    print(trans_img(pos_2, a_1, 5, 28))
-    print(trans_img(pos_2, a_2, 5, 28))
-    print(trans_img(pos_2, a_3, 5, 28))
-    print(trans_img(pos_2, a_4, 5, 28))
+    print(trans_2d_img(pos_2, a_1, 5, 28))
+    print(trans_2d_img(pos_2, a_2, 5, 28))
+    print(trans_2d_img(pos_2, a_3, 5, 28))
+    print(trans_2d_img(pos_2, a_4, 5, 28))
 
 
 def test_mnist_obs():
@@ -69,13 +69,13 @@ def test_mnist_obs():
          [[4 + 1, 4 + 1], [4 + 1, 4 + 1]]]
     ).cuda()
 
-    print(obs_img(img, pos, 6))
-    print(obs_img(img.permute(0, 1, 3, 2), pos, 6))
+    print(obs_2d_img(img, pos, 6))
+    print(obs_2d_img(img.permute(0, 1, 3, 2), pos, 6))
     print()
 
     for p in [[[0, 0]], [[0, 27]], [[27, 0]], [[27, 27]]]:
         try:
-            print(obs_img(img, th.tensor([p]).cuda(), 4))
+            print(obs_2d_img(img, th.tensor([p]).cuda(), 4))
             print(f"Test failed with pos = {p}")
         except Exception as e:
             print(e)
@@ -103,7 +103,7 @@ def test_agent_step():
     marl_m = MultiAgent(
         3, m, n, f, n_m,
         action_size,
-        obs_img, trans_img
+        obs_2d_img, trans_2d_img
     )
 
     m.cuda()
@@ -153,7 +153,7 @@ def test_core_step():
     marl_m = MultiAgent(
         3, m, n, f, n_m,
         action_size,
-        obs_img, trans_img
+        obs_2d_img, trans_2d_img
     )
     marl_m.cuda()
 

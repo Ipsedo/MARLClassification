@@ -39,7 +39,7 @@ TrainOptions = typ.NamedTuple(
      ("window_size", int),
      ("img_size", int),
      ("nb_class", int),
-     ("nb_action", int),
+     ("action", typ.List[typ.List[int]]),
      ("nb_epoch", int),
      ("learning_rate", float),
      ("retry_number", int),

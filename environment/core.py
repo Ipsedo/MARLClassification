@@ -24,7 +24,8 @@ def episode(
     :rtype:
     """
 
-    agents.new_episode(img_batch.size(0), img_batch.size(-1))
+    img_sizes = [s for s in img_batch.size()[2:]]
+    agents.new_episode(img_batch.size(0), img_sizes)
 
     for t in range(max_it):
         agents.step(img_batch, eps)
@@ -57,7 +58,8 @@ def detailed_episode(
     :rtype:
     """
 
-    agents.new_episode(img_batch.size(0), img_batch.size(-1))
+    img_sizes = [s for s in img_batch.size()[2:]]
+    agents.new_episode(img_batch.size(0), img_sizes)
 
     img_batch = img_batch.to(th.device(device_str))
 

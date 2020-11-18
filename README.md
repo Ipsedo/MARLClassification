@@ -20,8 +20,8 @@ Extend to other image data NWPU-RESISC45 :
 ## Usage
 ```bash
 $ # train on NWPU-RESISC45
-$ python main.py -a 20 --step 15 --cuda train --nb-action 4 --ft-extr resisc45 --batch-size 8 --nb-class 45 --img-size 256 -d 2 --nb 1536 --na 1536 --nd 8 --f 10 --nm 256 --nlb 2048 --nla 2048 --nb-epoch 30 --nr 1 --learning-rate 3e-5 --eps 0. --eps-dec 1. -o ./out/resisc45_final
+$ python main.py -a 20 --step 15 --cuda --run-id train_resisc45 train --action [[1,0],[-1,0],[0,1],[0,-1]] --ft-extr resisc45 --batch-size 8 --nb-class 45 --img-size 256 -d 2 --nb 1536 --na 1536 --nd 8 --f 10 --nm 256 --nlb 2048 --nla 2048 --nb-epoch 50 --nr 1 --learning-rate 2e-5 --eps 0. --eps-dec 1. -o ./out/resisc45
 ```
 
 ## Requirements
-torch, torchvision, torchnet, numpy, tqdm, matplotlib
+torch, torchvision, torchnet, numpy, tqdm, matplotlib, pandas

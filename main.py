@@ -1,11 +1,12 @@
 from environment import MultiAgent, \
     episode, episode_retry, \
-    obs_img, trans_img
+    obs_2d_img, trans_2d_img, \
+    obs_generic, trans_generic
 
 from networks.models import ModelsWrapper
 
-from data.dataset import ImageFolder, MNISTDataset, RESISC45Dataset, \
-    my_pil_loader
+from data.dataset import ImageFolder, MNISTDataset,\
+    RESISC45Dataset, KneeMRIDataset, my_pil_loader
 import data.transforms as custom_tr
 
 from utils import MainOptions, TrainOptions, TestOptions, InferOptions, \
@@ -31,6 +32,8 @@ from os import mkdir, makedirs
 from os.path import join, exists, isdir, isfile
 import glob
 
+import re
+
 import argparse
 
 
@@ -42,7 +45,7 @@ def train(
         main_options: MainOptions,
         train_options: TrainOptions
 ) -> None:
-    assert train_options.dim == 2, \
+    assert train_options.dim == 2 or train_options.dim == 3, \
         "Only 2D is supported at the moment " \
         "for data loading and observation / transition. " \
         "See torchvision.datasets.ImageFolder"
@@ -70,9 +73,12 @@ def train(
         custom_tr.NormalNorm()
     ])
 
-    dataset_constructor = RESISC45Dataset \
-        if train_options.ft_extr_str.startswith("resisc") \
-        else MNISTDataset
+    if train_options.ft_extr_str.startswith("resisc"):
+        dataset_constructor = RESISC45Dataset
+    elif train_options.ft_extr_str.startswith("mnist"):
+        dataset_constructor = MNISTDataset
+    else:
+        dataset_constructor = KneeMRIDataset
 
     nn_models = ModelsWrapper(
         train_options.ft_extr_str,
@@ -82,7 +88,7 @@ def train(
         train_options.hidden_size_msg,
         train_options.hidden_size_state,
         train_options.dim,
-        train_options.nb_action,
+        train_options.action,
         train_options.nb_class,
         train_options.hidden_size_linear_belief,
         train_options.hidden_size_linear_action
@@ -97,9 +103,9 @@ def train(
         train_options.hidden_size_action,
         train_options.window_size,
         train_options.hidden_size_msg,
-        train_options.nb_action,
-        obs_img,
-        trans_img
+        train_options.action,
+        obs_generic,
+        trans_generic
     )
 
     mlflow.log_params({
@@ -110,7 +116,7 @@ def train(
         "hidden_size_msg": train_options.hidden_size_msg,
         "hidden_size_state": train_options.hidden_size_state,
         "dim": train_options.dim,
-        "nb_action": train_options.nb_action,
+        "action": train_options.action,
         "nb_class": train_options.nb_class,
         "hidden_size_linear_belief":
             train_options.hidden_size_linear_belief,
@@ -398,7 +404,7 @@ def test(
     nn_models.load_state_dict(th.load(state_dict_path))
     marl_m = MultiAgent.load_from(
         json_path, main_options.nb_agent,
-        nn_models, obs_img, trans_img
+        nn_models, obs_2d_img, trans_2d_img
     )
 
     data_loader = DataLoader(
@@ -468,8 +474,8 @@ def infer(
         json_path,
         main_options.nb_agent,
         nn_models,
-        obs_img,
-        trans_img
+        obs_2d_img,
+        trans_2d_img
     )
 
     img_ori_pipeline = tr.Compose([
@@ -580,8 +586,10 @@ def main() -> None:
 
     # Data options
     train_parser.add_argument(
-        "--nb-action", type=int, default=4, dest="nb_action",
-        help="Number of discrete actions"
+        "--action", type=str,
+        default="[[1, 0], [-1, 0], [0, 1], [0, -1]]",
+        dest="action",
+        help="Discrete actions"
     )
     train_parser.add_argument(
         "--img-size", type=int, default=28, dest="img_size",
@@ -607,7 +615,8 @@ def main() -> None:
         "--ft-extr", type=str,
         choices=[
             ModelsWrapper.mnist,
-            ModelsWrapper.resisc
+            ModelsWrapper.resisc,
+            ModelsWrapper.knee_mri
         ],
         default="mnist", dest="ft_extractor",
         help="Choose features extractor (CNN)"
@@ -771,6 +780,10 @@ def main() -> None:
             args.step, args.run_id, args.cuda, args.agents
         )
 
+        reg_action = re.compile(r"\] *, *\[")
+        action = reg_action.split(args.action[2:-2])
+        action = [[int(i) for i in act.split(",")] for act in action]
+
         train_options = TrainOptions(
             args.n_b,
             args.n_l_b,
@@ -782,7 +795,7 @@ def main() -> None:
             args.f,
             args.img_size,
             args.nb_class,
-            args.nb_action,
+            action,
             args.nb_epoch,
             args.learning_rate,
             args.number_retry,

@@ -10,9 +10,9 @@ import json
 class MultiAgent:
     def __init__(
             self, nb_agents: int, model_wrapper: ModelsWrapper,
-            n_b: int, n_a: int, f: int, n_m: int, nb_action: int,
+            n_b: int, n_a: int, f: int, n_m: int, action: List[List[int]],
             obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
-            trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]
+            trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor]
     ) -> None:
         """
 
@@ -44,9 +44,9 @@ class MultiAgent:
         self.__f = f
         self.__n_m = n_m
 
-        self.__actions: List[List[float]] = \
-            [[1., 0.], [-1., 0.], [0., 1.], [0., -1.]]
+        self.__actions: List[List[int]] = action
         self.__nb_action = len(self.__actions)
+        self.__dim = len(self.__actions[0])
         self.__batch_size = None
 
         # Env info
@@ -75,7 +75,7 @@ class MultiAgent:
         self.__is_cuda = False
         self.__device_str = "cpu"
 
-    def new_episode(self, batch_size: int, img_size: int) -> None:
+    def new_episode(self, batch_size: int, img_size: List[int]) -> None:
         """
 
         :param batch_size:
@@ -119,11 +119,12 @@ class MultiAgent:
             / self.__nb_action
         ]
 
-        self.pos = th.randint(
-            img_size - self.__f,
-            (self.__nb_agents, batch_size, 2),
-            device=th.device(self.__device_str)
-        )
+        self.pos = th.stack([
+            th.randint(
+                i_s - self.__f,
+                (self.__nb_agents, batch_size),
+                device=th.device(self.__device_str))
+            for i_s in img_size], dim=-1)
 
     def step(self, img: th.Tensor, eps: float) -> None:
         """
@@ -136,16 +137,16 @@ class MultiAgent:
         :rtype:
         """
 
-        size = img.size(-1)
+        img_sizes = [s for s in img.size()[2:]]
 
         # Observation
         o_t = self.__obs(img, self.pos, self.__f)
 
         # Feature space
-        # CNN need (N, C, W, H) not (N1, ..., N18, C, W, H)
+        # CNN need (N, C, S1, S2, ..., Sd) got (Na, Nb, C, S1, S2, ..., Sd)
         b_t = self.__networks(
             self.__networks.map_obs,
-            o_t.flatten(0, -4)
+            o_t.flatten(0, 1)
         ).view(len(self), self.__batch_size, -1)
 
         # Get messages
@@ -159,7 +160,7 @@ class MultiAgent:
 
         # Map pos in feature space
         norm_pos = self.pos.to(th.float) \
-                   / th.tensor([[[img.size(-2), img.size(-1)]]],
+                   / th.tensor([[img_sizes]],
                                device=th.device(self.__device_str))
         lambda_t = self.__networks(
             self.__networks.map_pos,
@@ -239,7 +240,7 @@ class MultiAgent:
         self.pos = self.__trans(
             self.pos.to(th.float),
             a_t_next, self.__f,
-            size
+            img_sizes
         ).to(th.long)
 
         self.__t += 1
