@@ -60,7 +60,7 @@ def train(
     exp_name = "MARLClassification"
     mlflow.set_experiment(exp_name)
 
-    mlflow.start_run(run_name="train")
+    mlflow.start_run(run_name=f"train_{main_options.run_id}")
 
     mlflow.log_param("output_dir", output_dir)
     mlflow.log_param("model_dir", join(output_dir, model_dir))
@@ -555,12 +555,16 @@ def main() -> None:
     # Main args
     ##################
 
+    main_parser.add_argument(
+        "--run-id", type=str, required=True,
+        dest="run_id", help="MLFlow run id"
+    )
+
     # Algorithm arguments
     main_parser.add_argument(
         "-a", "--agents", type=int, default=3, dest="agents",
         help="Number of agents"
     )
-
     main_parser.add_argument(
         "--step", type=int, default=7,
         help="Step number of RL episode"
@@ -764,7 +768,7 @@ def main() -> None:
     if args.main_choice == "train":
         # Create Options
         main_options = MainOptions(
-            args.step, args.cuda, args.agents
+            args.step, args.run_id, args.cuda, args.agents
         )
 
         train_options = TrainOptions(
@@ -800,7 +804,7 @@ def main() -> None:
     # Test main
     elif args.main_choice == "test":
         main_options = MainOptions(
-            args.step, args.cuda, args.agents
+            args.step, args.run_id, args.cuda, args.agents
         )
 
         test_options = TestOptions(
@@ -821,7 +825,7 @@ def main() -> None:
 
     elif args.main_choice == "infer":
         main_options = MainOptions(
-            args.step, args.cuda, args.agents
+            args.step, args.run_id, args.cuda, args.agents
         )
 
         infer_options = InferOptions(

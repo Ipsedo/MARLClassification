@@ -22,6 +22,7 @@ import typing as typ
 MainOptions = typ.NamedTuple(
     "MainOptions",
     [("step", int),
+     ("run_id", str),
      ("cuda", bool),
      ("nb_agent", int)]
 )
