@@ -65,20 +65,26 @@ class KneeMRIDataset(TensorDataset):
         self.__max_depth = -1
         self.__max_width = -1
         self.__max_height = -1
+        self.__nb_img = 0
 
-        def __open_pickle(fn: str) -> th.Tensor:
+        def __open_pickle_size(fn: str) -> None:
             f = open(knee_mri_root_path + "/extracted/" + fn, "rb")
             x = pkl.load(f)
             f.close()
             self.__max_depth = max(self.__max_depth, x.shape[0])
             self.__max_width = max(self.__max_width, x.shape[1])
             self.__max_height = max(self.__max_height, x.shape[2])
-            return th.from_numpy(x.astype(np.float)).to(th.float)
+            self.__nb_img += 1
 
-        metadata_csv["x"] = \
-            metadata_csv["volumeFilename"].progress_map(__open_pickle)
+        metadata_csv["volumeFilename"].progress_map(__open_pickle_size)
 
-        def __pad_img(x: th.Tensor) -> th.Tensor:
+        def __open_img(fn: str) -> th.Tensor:
+            f = open(knee_mri_root_path + "/extracted/" + fn, "rb")
+            x = pkl.load(f)
+            f.close()
+
+            x = th.from_numpy(x.astype(np.float)).to(th.float)
+
             # depth
             curr_depth = x.size(0)
 
@@ -104,9 +110,12 @@ class KneeMRIDataset(TensorDataset):
                 x, [pad_6, pad_5, pad_4, pad_3, pad_2, pad_1], value=0
             )
 
-        metadata_csv["x"] = metadata_csv["x"].progress_map(__pad_img)
+        data = th.empty(self.__nb_img, 1, self.__max_depth, self.__max_width, self.__max_height)
 
-        metadata_csv["depth"] = metadata_csv["x"].progress_map(lambda x: x.size(0))
+        for i, file_name in enumerate(
+                tqdm.tqdm(metadata_csv["volumeFilename"].tolist())
+        ):
+            data[i, :, :, :] = __open_img(file_name).unsqueeze(0)
 
         self.class_to_idx = {
             "healthy": 0,
@@ -114,7 +123,6 @@ class KneeMRIDataset(TensorDataset):
             "completely ruptured": 2
         }
 
-        data = th.stack(metadata_csv["x"].tolist(), dim=0).unsqueeze(1)
         labels = th.tensor(metadata_csv["aclDiagnosis"].tolist())
 
         super().__init__(data, labels)
