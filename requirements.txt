@@ -7,3 +7,7 @@ torchnet
 tqdm
 matplotlib
 numpy
+
+# other stuff
+pandas
+mlflow
