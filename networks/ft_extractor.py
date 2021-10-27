@@ -25,9 +25,9 @@ class TestCNN(nn.Module):
         self.__n = n
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(1, 8, kernel_size=3),
+            nn.Conv2d(1, 8, kernel_size=(3, 3)),
             nn.ReLU(),
-            nn.Conv2d(8, 16, kernel_size=3),
+            nn.Conv2d(8, 16, kernel_size=(3, 3)),
             nn.ReLU()
         )
 
@@ -53,10 +53,10 @@ class MNISTCnn(CNNFtExtract):
         self.__f = f
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(1, 3, kernel_size=3,
+            nn.Conv2d(1, 3, kernel_size=(3, 3),
                       padding=1, padding_mode='zeros'),
             nn.ReLU(),
-            nn.Conv2d(3, 6, kernel_size=3,
+            nn.Conv2d(3, 6, kernel_size=(3, 3),
                       padding=1, padding_mode='zeros'),
             nn.ReLU()
         )
@@ -82,9 +82,9 @@ class RESISC45Cnn(CNNFtExtract):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 9, kernel_size=3, padding=1),
+            nn.Conv2d(3, 9, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
-            nn.Conv2d(9, 16, kernel_size=3, padding=1),
+            nn.Conv2d(9, 16, kernel_size=(3, 3), padding=1),
             nn.ReLU()
         )
 
@@ -104,9 +104,9 @@ class TestRESISC45(nn.Module):
     def __init__(self):
         super().__init__()
         self.seq_conv = nn.Sequential(
-            nn.Conv2d(3, 9, kernel_size=3, padding=1),
+            nn.Conv2d(3, 9, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
-            nn.Conv2d(9, 16, kernel_size=3, padding=1),
+            nn.Conv2d(9, 16, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
             nn.Conv2d(16, 32, kernel_size=5, padding=2, stride=2),
             nn.ReLU()
@@ -136,14 +136,18 @@ class KneeMRICnn(CNNFtExtract):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
-            nn.Conv3d(1, 5, kernel_size=3, padding=1),
+            nn.Conv3d(1, 8, kernel_size=(3, 3, 3), padding=1),
             nn.ReLU(),
-            nn.Conv3d(5, 16, kernel_size=3, padding=1),
+            nn.MaxPool3d(2, 2),
+            nn.Conv3d(8, 16, kernel_size=(3, 3, 3), padding=1),
+            nn.ReLU(),
+            nn.MaxPool3d(2, 2),
+            nn.Conv3d(16, 32, kernel_size=(3, 3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool3d(2, 2)
         )
 
-        self.__out_size = 16 * (f // 2) ** 3
+        self.__out_size = 32 * (f // 8) ** 3
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
