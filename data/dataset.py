@@ -1,6 +1,6 @@
 import torch as th
 import torch.nn.functional as fun
-from torch.utils.data import TensorDataset
+from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 
 import numpy as np
@@ -13,7 +13,7 @@ import pandas as pd
 
 from os.path import exists, isdir
 
-from typing import Any
+from typing import Any, Tuple
 
 import tqdm
 
@@ -52,12 +52,17 @@ class RESISC45Dataset(ImageFolder):
                          is_valid_file=None)
 
 
-class KneeMRIDataset(TensorDataset):
+class KneeMRIDataset(Dataset):
     def __init__(self, img_transform: Any):
-        knee_mri_root_path = "./res/downloaded/knee_mri"
+
+        super().__init__()
+
+        self.__knee_mri_root_path = "./res/downloaded/knee_mri"
+
+        self.__img_transform = img_transform
 
         metadata_csv = pd.read_csv(
-            knee_mri_root_path + "/" + "metadata.csv", sep=","
+            self.__knee_mri_root_path + "/" + "metadata.csv", sep=","
         )
 
         tqdm.tqdm.pandas()
@@ -68,7 +73,7 @@ class KneeMRIDataset(TensorDataset):
         self.__nb_img = 0
 
         def __open_pickle_size(fn: str) -> None:
-            f = open(knee_mri_root_path + "/extracted/" + fn, "rb")
+            f = open(self.__knee_mri_root_path + "/extracted/" + fn, "rb")
             x = pkl.load(f)
             f.close()
             self.__max_depth = max(self.__max_depth, x.shape[0])
@@ -78,44 +83,13 @@ class KneeMRIDataset(TensorDataset):
 
         metadata_csv["volumeFilename"].progress_map(__open_pickle_size)
 
-        def __open_img(fn: str) -> th.Tensor:
-            f = open(knee_mri_root_path + "/extracted/" + fn, "rb")
-            x = pkl.load(f)
-            f.close()
-
-            x = th.from_numpy(x.astype(np.float)).to(th.float)
-
-            # depth
-            curr_depth = x.size(0)
-
-            to_pad = self.__max_depth - curr_depth
-            pad_1 = to_pad // 2 + to_pad % 2
-            pad_2 = to_pad // 2
-
-            # width
-            curr_width = x.size(1)
-
-            to_pad = self.__max_width - curr_width
-            pad_3 = to_pad // 2 + to_pad % 2
-            pad_4 = to_pad // 2
-
-            # height
-            curr_height = x.size(2)
-
-            to_pad = self.__max_height - curr_height
-            pad_5 = to_pad // 2 + to_pad % 2
-            pad_6 = to_pad // 2
-
-            return fun.pad(
-                x, [pad_6, pad_5, pad_4, pad_3, pad_2, pad_1], value=0
+        self.__dataset = [
+            (str(fn), lbl)
+            for fn, lbl in zip(
+                metadata_csv["volumeFilename"].tolist(),
+                metadata_csv["aclDiagnosis"].tolist()
             )
-
-        data = th.empty(self.__nb_img, 1, self.__max_depth, self.__max_width, self.__max_height)
-
-        for i, file_name in enumerate(
-                tqdm.tqdm(metadata_csv["volumeFilename"].tolist())
-        ):
-            data[i, :, :, :] = __open_img(file_name).unsqueeze(0)
+        ]
 
         self.class_to_idx = {
             "healthy": 0,
@@ -123,6 +97,47 @@ class KneeMRIDataset(TensorDataset):
             "completely ruptured": 2
         }
 
-        labels = th.tensor(metadata_csv["aclDiagnosis"].tolist())
+    def __open_img(self, fn: str) -> th.Tensor:
+        f = open(self.__knee_mri_root_path + "/extracted/" + fn, "rb")
+        x = pkl.load(f)
+        f.close()
 
-        super().__init__(data, labels)
+        x = th.from_numpy(x.astype(np.float)).to(th.float)
+
+        # depth
+        curr_depth = x.size(0)
+
+        to_pad = self.__max_depth - curr_depth
+        pad_1 = to_pad // 2 + to_pad % 2
+        pad_2 = to_pad // 2
+
+        # width
+        curr_width = x.size(1)
+
+        to_pad = self.__max_width - curr_width
+        pad_3 = to_pad // 2 + to_pad % 2
+        pad_4 = to_pad // 2
+
+        # height
+        curr_height = x.size(2)
+
+        to_pad = self.__max_height - curr_height
+        pad_5 = to_pad // 2 + to_pad % 2
+        pad_6 = to_pad // 2
+
+        return fun.pad(
+            x, [pad_6, pad_5, pad_4, pad_3, pad_2, pad_1], value=0
+        )
+
+    def __getitem__(self, index) -> Tuple[th.Tensor, th.Tensor]:
+        fn = self.__dataset[index][0]
+
+        label = self.__dataset[index][1]
+        img = self.__open_img(fn).unsqueeze(0)
+
+        return img, th.tensor(label)
+
+    def __len__(self) -> int:
+        return self.__nb_img
+
+
