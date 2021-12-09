@@ -132,7 +132,7 @@ class TestRESISC45(nn.Module):
 # Knee MRI stuff
 
 class KneeMRICnn(CNNFtExtract):
-    def __init__(self, f: int = 10):
+    def __init__(self, f: int = 16):
         super().__init__()
 
         self.seq_conv = nn.Sequential(
@@ -142,12 +142,12 @@ class KneeMRICnn(CNNFtExtract):
             nn.Conv3d(8, 16, kernel_size=(3, 3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool3d(2, 2),
-            nn.Conv3d(16, 32, kernel_size=(3, 3, 3), padding=1),
+            nn.Conv3d(16, 24, kernel_size=(3, 3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool3d(2, 2)
         )
 
-        self.__out_size = 32 * (f // 8) ** 3
+        self.__out_size = 24 * (f // 8) ** 3
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.seq_conv(o_t)
