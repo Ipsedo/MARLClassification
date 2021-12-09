@@ -28,8 +28,8 @@ class MultiAgent:
         :type f:
         :param n_m:
         :type n_m:
-        :param nb_action:
-        :type nb_action:
+        :param action:
+        :type action:
         :param obs:
         :type obs:
         :param trans:
@@ -216,7 +216,7 @@ class MultiAgent:
         prob, policy_actions = action_scores.max(dim=-1)
 
         random_actions = th.randint(
-            0, actions.size(0),
+            0, actions.size()[0],
             (self.__nb_agents, self.__batch_size),
             device=th.device(self.__device_str)
         )
@@ -231,7 +231,7 @@ class MultiAgent:
         a_t_next = actions[final_actions.view(-1)] \
             .view(self.__nb_agents,
                   self.__batch_size,
-                  actions.size(-1))
+                  actions.size()[-1])
 
         # Append log probability
         self.__action_probas.append(prob)
@@ -293,7 +293,7 @@ class MultiAgent:
             cls, models_wrapper_json_file: str, nb_agent: int,
             model_wrapper: ModelsWrapper,
             obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
-            trans: Callable[[th.Tensor, th.Tensor, int, int], th.Tensor]
+            trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor]
     ) -> 'MultiAgent':
 
         with open(models_wrapper_json_file, "r") as f_json:
@@ -304,7 +304,8 @@ class MultiAgent:
                     j_obj["hidden_size_belief"],
                     j_obj["hidden_size_action"],
                     j_obj["window_size"],
-                    j_obj["hidden_size_msg"], j_obj["nb_action"],
+                    j_obj["hidden_size_msg"],
+                    j_obj["actions"],
                     obs, trans
                 )
             except Exception as e:
