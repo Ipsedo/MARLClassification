@@ -1,19 +1,35 @@
-from environment import MultiAgent, \
-    episode, episode_retry, \
-    obs_generic, trans_generic
+from environment import (
+    MultiAgent,
+    episode,
+    episode_retry,
+    obs_generic,
+    trans_generic
+)
 
 from networks.models import ModelsWrapper
 
-from data.dataset import ImageFolder, MNISTDataset,\
-    RESISC45Dataset, KneeMRIDataset, my_pil_loader
+from data.dataset import (
+    ImageFolder,
+    MNISTDataset,
+    RESISC45Dataset,
+    KneeMRIDataset,
+    my_pil_loader
+)
 import data.transforms as custom_tr
 
-from utils import MainOptions, TrainOptions, TestOptions, InferOptions, \
-    visualize_steps, prec_rec, SetAppendAction, \
-    format_metric, save_conf_matrix
+from utils import (
+    MainOptions,
+    TrainOptions,
+    TestOptions,
+    InferOptions,
+    visualize_steps,
+    prec_rec,
+    SetAppendAction,
+    format_metric,
+    save_conf_matrix
+)
 
 import torch as th
-import torch.nn.functional as fun
 from torch.utils.data import Subset, DataLoader
 import torchvision.transforms as tr
 
@@ -160,8 +176,8 @@ def train(
     )
 
     idx = th.randperm(len(dataset))
-    idx_train = idx[:int(0.85 * idx.size(0))]
-    idx_test = idx[int(0.85 * idx.size(0)):]
+    idx_train = idx[:int(0.85 * idx.size()[0])]
+    idx_test = idx[int(0.85 * idx.size()[0]):]
 
     train_dataset = Subset(dataset, idx_train)
     test_dataset = Subset(dataset, idx_test)
@@ -218,7 +234,7 @@ def train(
 
             # L2 Loss - Classification error / reward
             # reward = -error(y_true, y_step_pred).mean(class_dim)
-            r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
+            r = 1. - th.pow(y_eye - retry_pred, 2.).mean(dim=-1)
 
             # Compute loss
             losses = retry_prob * r.detach() + r
@@ -403,7 +419,7 @@ def test(
     nn_models.load_state_dict(th.load(state_dict_path))
     marl_m = MultiAgent.load_from(
         json_path, main_options.nb_agent,
-        nn_models, obs_2d_img, trans_2d_img
+        nn_models, obs_generic, trans_generic
     )
 
     data_loader = DataLoader(
@@ -473,8 +489,8 @@ def infer(
         json_path,
         main_options.nb_agent,
         nn_models,
-        obs_2d_img,
-        trans_2d_img
+        obs_generic,
+        trans_generic
     )
 
     img_ori_pipeline = tr.Compose([
@@ -779,7 +795,7 @@ def main() -> None:
             args.step, args.run_id, args.cuda, args.agents
         )
 
-        reg_action = re.compile(r"\] *, *\[")
+        reg_action = re.compile(r"] *, *\[")
         action = reg_action.split(args.action[2:-2])
         action = [[int(i) for i in act.split(",")] for act in action]
 
