@@ -48,7 +48,6 @@ class RESISC45Dataset(ImageFolder):
 
 class KneeMRIDataset(Dataset):
     def __init__(self, img_transform: Any):
-
         super().__init__()
 
         self.__knee_mri_root_path = "./res/downloaded/knee_mri"
@@ -133,5 +132,3 @@ class KneeMRIDataset(Dataset):
 
     def __len__(self) -> int:
         return self.__nb_img
-
-
