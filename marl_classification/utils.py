@@ -44,8 +44,8 @@ TrainOptions = typ.NamedTuple(
      ("ft_extr_str", str)]
 )
 
-TestOptions = typ.NamedTuple(
-    "TestOptions",
+EvalOptions = typ.NamedTuple(
+    "EvalOptions",
     [("img_size", int),
      ("state_dict_path", str),
      ("batch_size", int),

@@ -10,7 +10,7 @@ from .train import train
 from .utils import (
     SetAppendAction,
     TrainOptions,
-    TestOptions,
+    EvalOptions,
     MainOptions,
     InferOptions
 )
@@ -300,7 +300,7 @@ def main() -> None:
             args.step, args.run_id, args.cuda, args.agents
         )
 
-        test_options = TestOptions(
+        eval_options = EvalOptions(
             args.img_size,
             args.state_dict_path,
             args.batch_size,
@@ -314,7 +314,7 @@ def main() -> None:
         if exists(args.output_dir) and not isdir(args.output_dir):
             raise Exception(f"\"{args.output_dir}\" is not a directory.")
 
-        evaluation(main_options, test_options)
+        evaluation(main_options, eval_options)
 
     elif args.main_choice == "infer":
         main_options = MainOptions(

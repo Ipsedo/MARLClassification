@@ -17,19 +17,19 @@ from .environment import (
     episode
 )
 from .networks import ModelsWrapper
-from .utils import MainOptions, TestOptions, prec_rec, format_metric
+from .utils import MainOptions, EvalOptions, prec_rec, format_metric
 
 
 def evaluation(
         main_options: MainOptions,
-        test_options: TestOptions
+        eval_options: EvalOptions
 ) -> None:
     steps = main_options.step
 
-    json_path = test_options.json_path
-    state_dict_path = test_options.state_dict_path
-    image_root = test_options.image_root
-    output_dir = test_options.output_dir
+    json_path = eval_options.json_path
+    state_dict_path = eval_options.state_dict_path
+    image_root = eval_options.image_root
+    output_dir = eval_options.output_dir
 
     assert exists(json_path), \
         f"JSON path \"{json_path}\" does not exist"
@@ -70,7 +70,7 @@ def evaluation(
     )
 
     data_loader = DataLoader(
-        test_dataset, batch_size=test_options.batch_size,
+        test_dataset, batch_size=eval_options.batch_size,
         shuffle=True, num_workers=8, drop_last=False
     )
 
