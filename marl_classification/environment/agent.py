@@ -1,10 +1,10 @@
-import torch as th
-import torch.nn.functional as fun
-from networks.models import ModelsWrapper
-
+import json
 from typing import Callable, Tuple, List
 
-import json
+import torch as th
+import torch.nn.functional as fun
+
+from networks.models import ModelsWrapper
 
 
 class MultiAgent:
@@ -143,7 +143,7 @@ class MultiAgent:
         o_t = self.__obs(img, self.pos, self.__f)
 
         # Feature space
-        # CNN need (N, C, S1, S2, ..., Sd) got (Na, Nb, C, S1, S2, ..., Sd)
+        # CNN need (N, C, S1, S2, ..., Sd) got (Na, Nb, C, S1, S2, ..., Sd) => flatten agent and batch dims
         b_t = self.__networks(
             self.__networks.map_obs,
             o_t.flatten(0, 1)
@@ -206,7 +206,7 @@ class MultiAgent:
             self.__h_caret[self.__t + 1]
         )
 
-        # Pass actions to Tensor
+        # Create actions tensor
         actions = th.tensor(
             self.__actions,
             device=th.device(self.__device_str)
@@ -215,26 +215,32 @@ class MultiAgent:
         # Greedy policy
         prob, policy_actions = action_scores.max(dim=-1)
 
+        # Random policy
         random_actions = th.randint(
             0, actions.size()[0],
             (self.__nb_agents, self.__batch_size),
             device=th.device(self.__device_str)
         )
+
+        # Compute epsilon-greedy policy
         use_greedy = (th.rand(
             (self.__nb_agents, self.__batch_size),
             device=th.device(self.__device_str)
         ) > eps).to(th.int)
 
-        final_actions = \
-            use_greedy * policy_actions + (1 - use_greedy) * random_actions
+        final_actions = use_greedy * policy_actions + (1 - use_greedy) * random_actions
 
         a_t_next = actions[final_actions.view(-1)] \
             .view(self.__nb_agents,
                   self.__batch_size,
                   actions.size()[-1])
 
-        # Append log probability
-        self.__action_probas.append(prob)
+        # Append probability
+        self.__action_probas.append(
+            action_scores
+            .gather(-1, final_actions.unsqueeze(-1))
+            .squeeze(-1)
+        )
 
         # Apply action / Upgrade agent state
         self.pos = self.__trans(
@@ -259,9 +265,9 @@ class MultiAgent:
         """
 
         return fun.softmax(self.__networks(
-            self.__networks.predict,
-            self.__h[-1]).mean(dim=0), dim=-1), \
-               self.__action_probas[-1].log().sum(dim=0)
+                self.__networks.predict,
+                self.__h[-1]).mean(dim=0), dim=-1), \
+            self.__action_probas[-1].log().sum(dim=0)
 
     @property
     def is_cuda(self) -> bool:
