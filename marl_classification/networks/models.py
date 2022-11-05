@@ -1,20 +1,18 @@
+import json
+from os.path import exists, isfile
+from typing import List, Set, Dict, Callable
+
+import torch as th
+import torch.nn as nn
+
 from networks.ft_extractor import \
     MNISTCnn, RESISC45Cnn, \
     StateToFeatures, CNNFtExtract, \
     KneeMRICnn
 from networks.messages import MessageSender
-from networks.recurrents import LSTMCellWrapper
 from networks.policy import Policy
 from networks.prediction import Prediction
-
-import torch as th
-import torch.nn as nn
-
-import json
-
-from os.path import exists, isfile
-
-from typing import List, Set, Dict, Callable
+from networks.recurrents import LSTMCellWrapper
 
 
 #####################

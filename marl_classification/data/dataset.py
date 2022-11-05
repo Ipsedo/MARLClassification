@@ -1,21 +1,15 @@
-import torch as th
-import torch.nn.functional as fun
-from torch.utils.data import Dataset
-from torchvision.datasets import ImageFolder
-
-import numpy as np
-
-from PIL import Image
-
 import pickle as pkl
-
-import pandas as pd
-
 from os.path import exists, isdir
-
 from typing import Any, Tuple
 
+import numpy as np
+import pandas as pd
+import torch as th
+import torch.nn.functional as fun
 import tqdm
+from PIL import Image
+from torch.utils.data import Dataset
+from torchvision.datasets import ImageFolder
 
 DATASET_CHOICES = ["mnist", "resisc45"]
 

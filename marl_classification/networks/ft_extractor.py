@@ -1,7 +1,7 @@
-import torch.nn as nn
-import torch as th
-
 from abc import ABC, abstractmethod
+
+import torch as th
+import torch.nn as nn
 
 
 class CNNFtExtract(nn.Module, ABC):
@@ -116,7 +116,7 @@ class TestRESISC45(nn.Module):
 
         self.seq_lin = nn.Sequential(
             nn.Linear(out_size, 4096),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Linear(4096, 45),
             nn.Softmax(dim=-1)
         )
@@ -175,7 +175,7 @@ class StateToFeatures(nn.Module):
 
         self.seq_lin = nn.Sequential(
             nn.Linear(self.__d, self.__n_d),
-            nn.CELU()
+            nn.ReLU()
         )
 
     def forward(self, p_t):

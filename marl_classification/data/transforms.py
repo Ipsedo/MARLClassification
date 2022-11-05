@@ -1,8 +1,7 @@
-import torch as th
-
+from abc import ABCMeta, abstractmethod
 from typing import Tuple
 
-from abc import ABCMeta, abstractmethod
+import torch as th
 
 
 # All the transforms here are based on .dataset.ImgDataset

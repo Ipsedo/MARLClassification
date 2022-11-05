@@ -1,9 +1,8 @@
-import torch as th
-
-from functools import reduce
 import operator as op
-
+from functools import reduce
 from typing import List
+
+import torch as th
 
 
 def trans_generic(

@@ -1,7 +1,8 @@
+from typing import Tuple
+
 import torch as th
 
 from .agent import MultiAgent
-from typing import Tuple
 
 
 def episode(
@@ -59,7 +60,9 @@ def detailed_episode(
     """
 
     img_sizes = [s for s in img_batch.size()[2:]]
-    agents.new_episode(img_batch.size(0), img_sizes)
+    batch_size = img_batch.size(0)
+
+    agents.new_episode(batch_size, img_sizes)
 
     img_batch = img_batch.to(th.device(device_str))
 
@@ -69,12 +72,12 @@ def detailed_episode(
     )
 
     step_preds = th.zeros(
-        max_it, img_batch.size(0), nb_class,
+        max_it, batch_size, nb_class,
         device=th.device(device_str)
     )
 
     step_probas = th.zeros(
-        max_it, img_batch.size(0),
+        max_it, batch_size,
         device=th.device(device_str)
     )
 

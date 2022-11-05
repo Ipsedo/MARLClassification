@@ -1,7 +1,7 @@
-import torch as th
-
-from functools import reduce
 import operator as op
+from functools import reduce
+
+import torch as th
 
 
 def obs_generic(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:

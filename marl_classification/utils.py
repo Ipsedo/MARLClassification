@@ -1,23 +1,16 @@
+import typing as typ
 from argparse import ArgumentParser, Namespace, Action
-
-from environment.agent import MultiAgent
-from environment.core import detailed_episode
-
-import torch as th
-import torch.nn.functional as fun
-from torchnet.meter import ConfusionMeter
-
-import mlflow
-
-import numpy as np
-
-import matplotlib.pyplot as plt
-
+from collections import Counter
 from os.path import join
 
-from collections import Counter
+import matplotlib.pyplot as plt
+import mlflow
+import numpy as np
+import torch as th
+from torchnet.meter import ConfusionMeter
 
-import typing as typ
+from .environment.agent import MultiAgent
+from .environment.episode import detailed_episode
 
 MainOptions = typ.NamedTuple(
     "MainOptions",
