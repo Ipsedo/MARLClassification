@@ -44,7 +44,7 @@ def evaluation(
     if exists(output_dir) and isdir(output_dir):
         print(f"File in {output_dir} will be overwritten")
     elif exists(output_dir) and not isdir(output_dir):
-        raise Exception(f"\"{output_dir}\" is not a directory")
+        raise NotADirectoryError(f"\"{output_dir}\" is not a directory")
     else:
         print(f"Create \"{output_dir}\"")
         mkdir(output_dir)

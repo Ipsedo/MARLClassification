@@ -290,7 +290,7 @@ def main() -> None:
         if not exists(args.output_dir):
             makedirs(args.output_dir)
         if exists(args.output_dir) and not isdir(args.output_dir):
-            raise Exception(f"\"{args.output_dir}\" is not a directory.")
+            raise NotADirectoryError(f"\"{args.output_dir}\" is not a directory.")
 
         train(main_options, train_options)
 
@@ -312,7 +312,7 @@ def main() -> None:
         if not exists(args.output_dir):
             makedirs(args.output_dir)
         if exists(args.output_dir) and not isdir(args.output_dir):
-            raise Exception(f"\"{args.output_dir}\" is not a directory.")
+            raise NotADirectoryError(f"\"{args.output_dir}\" is not a directory.")
 
         evaluation(main_options, eval_options)
 
@@ -332,7 +332,7 @@ def main() -> None:
         if not exists(args.output_image_dir):
             makedirs(args.output_image_dir)
         if exists(args.output_image_dir) and not isdir(args.output_image_dir):
-            raise Exception(f"\"{args.output_image_dir}\" is not a directory.")
+            raise NotADirectoryError(f"\"{args.output_image_dir}\" is not a directory.")
 
         infer(main_options, infer_options)
 
