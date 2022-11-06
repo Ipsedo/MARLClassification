@@ -186,24 +186,26 @@ def train(
                 train_options.nb_class, device_str
             )
 
+            # select last step
+            pred = retry_pred[:, -1, :, :]
+
             # Class one hot encoding
+            # y_eye = [Nr=1, Nb, Nc]
             y_eye = th.eye(
                 train_options.nb_class,
                 device=th.device(device_str)
-            )[y_train.unsqueeze(0)].unsqueeze(1).repeat(
-                1, main_options.step, 1, 1)
+            )[y_train.unsqueeze(0)]
 
             # Update confusion meter
-            # mean between trials
+            # mean between retries
             conf_meter.add(
-                retry_pred.detach()[:, -1, :, :].mean(dim=0),
+                pred.detach().mean(dim=0),
                 y_train
             )
 
             # L2 Loss - Classification error / reward
-            # reward = -error(y_true, y_step_pred).mean(class_dim)
-            # select last step
-            r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)[:, -1, :]
+            # reward = -error(y_true, last_y_pred).mean(class_dim)
+            r = -th.pow(y_eye - pred, 2.).mean(dim=-1)
 
             # Compute loss
             # sum log proba (on steps), then pass to exponential
