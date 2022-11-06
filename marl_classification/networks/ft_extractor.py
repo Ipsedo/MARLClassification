@@ -9,7 +9,7 @@ class CNNFtExtract(nn.Module, ABC):
     @property
     @abstractmethod
     def out_size(self) -> int:
-        return -1
+        raise NotImplementedError()
 
 
 ############################
