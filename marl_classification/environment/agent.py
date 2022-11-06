@@ -155,13 +155,16 @@ class MultiAgent:
         d_bar_t_tmp = self.msg[self.__t]
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
-        d_bar_t = ((d_bar_t_mean * self.__nb_agents) - d_bar_t_tmp) \
-                  / (self.__nb_agents - 1)
+        d_bar_t = (
+                (d_bar_t_mean * self.__nb_agents - d_bar_t_tmp) /
+                (self.__nb_agents - 1)
+        )
 
         # Map pos in feature space
-        norm_pos = self.pos.to(th.float) \
-                   / th.tensor([[img_sizes]],
-                               device=th.device(self.__device_str))
+        norm_pos = (
+                self.pos.to(th.float) /
+                th.tensor([[img_sizes]], device=th.device(self.__device_str))
+        )
         lambda_t = self.__networks(
             self.__networks.map_pos,
             norm_pos

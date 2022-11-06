@@ -77,10 +77,10 @@ def infer(
         marl_m.cuda()
         device_str = "cuda"
 
-    images = tqdm(
-        [img for img_path in images_path
-         for img in glob.glob(img_path, recursive=True)]
-    )
+    images = tqdm([
+        img for img_path in images_path
+        for img in glob.glob(img_path, recursive=True)
+    ])
 
     for img_path in images:
         img = my_pil_loader(img_path)

@@ -29,7 +29,7 @@ def train(
         train_options: TrainOptions
 ) -> None:
     assert train_options.dim == 2 or train_options.dim == 3, \
-        "Only 2D is supported at the moment " \
+        "Only 2D or 3D is supported at the moment " \
         "for data loading and observation / transition. " \
         "See torchvision.datasets.ImageFolder"
 
@@ -152,12 +152,12 @@ def train(
 
     train_dataloader = DataLoader(
         train_dataset, batch_size=train_options.batch_size,
-        shuffle=True, num_workers=3, drop_last=False
+        shuffle=True, num_workers=6, drop_last=False, pin_memory=True
     )
 
     test_dataloader = DataLoader(
         test_dataset, batch_size=train_options.batch_size,
-        shuffle=True, num_workers=3, drop_last=False
+        shuffle=True, num_workers=6, drop_last=False, pin_memory=True
     )
 
     epsilon = train_options.epsilon
@@ -206,7 +206,7 @@ def train(
             r = -th.pow(y_eye - retry_pred, 2.).mean(dim=-1)[:, -1, :]
 
             # Compute loss
-            # sum log proba (on steps)
+            # sum log proba (on steps), then pass to exponential
             losses = retry_prob.sum(dim=1).exp() * r.detach() + r
 
             # Losses mean on images batch and trials
@@ -229,13 +229,12 @@ def train(
             precs, recs = prec_rec(conf_meter)
 
             if curr_step % 100 == 0:
-                mlflow.log_metrics(
-                    {"loss": loss.item(),
-                     "train_prec": precs.mean().item(),
-                     "train_rec": recs.mean().item(),
-                     "epsilon": epsilon},
-                    step=curr_step
-                )
+                mlflow.log_metrics(step=curr_step, metrics={
+                    "loss": loss.item(),
+                    "train_prec": precs.mean().item(),
+                    "train_rec": recs.mean().item(),
+                    "epsilon": epsilon
+                })
 
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
@@ -286,11 +285,10 @@ def train(
 
         save_conf_matrix(conf_meter, e, output_dir, "eval")
 
-        mlflow.log_metrics(
-            {"eval_prec": precs.mean(),
-             "eval_recs": recs.mean()},
-            step=curr_step
-        )
+        mlflow.log_metrics(step=curr_step, metrics={
+            "eval_prec": precs.mean(),
+            "eval_recs": recs.mean()
+        })
 
         nn_models.json_args(
             join(output_dir,
