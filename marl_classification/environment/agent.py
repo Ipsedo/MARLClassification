@@ -4,7 +4,7 @@ from typing import Callable, Tuple, List
 import torch as th
 import torch.nn.functional as fun
 
-from networks.models import ModelsWrapper
+from ..networks.models import ModelsWrapper
 
 
 class MultiAgent:
