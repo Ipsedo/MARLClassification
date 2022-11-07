@@ -26,19 +26,19 @@ class MNISTCnn(CNNFtExtract):
     def __init__(self, f: int) -> None:
         super().__init__()
 
-        self.__f = f
-
         self.__seq_conv = nn.Sequential(
-            nn.Conv2d(1, 4, kernel_size=(3, 3), padding=1),
+            nn.Conv2d(1, 8, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
-            nn.Conv2d(4, 8, kernel_size=(3, 3), padding=1),
+            nn.MaxPool2d(2, 2),
+            nn.Conv2d(8, 16, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
+            nn.MaxPool2d(2, 2),
             nn.Flatten(1, -1)
         )
 
-        self.__out_size = 8 * f ** 2
+        self.__out_size = 16 * (f // 4) ** 2
 
-    def forward(self, o_t):
+    def forward(self, o_t: th.Tensor) -> th.Tensor:
         o_t = o_t[:, 0, None, :, :]  # grey scale
         return self.__seq_conv(o_t)
 
