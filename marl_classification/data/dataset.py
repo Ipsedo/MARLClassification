@@ -1,5 +1,5 @@
 import pickle as pkl
-from os.path import exists, isdir
+from os.path import exists, isdir, dirname, abspath, join
 from typing import Any, Tuple
 
 import numpy as np
@@ -13,6 +13,8 @@ from torchvision.datasets import ImageFolder
 
 DATASET_CHOICES = ["mnist", "resisc45"]
 
+RES_PATH = abspath(join(dirname(abspath(__file__)), "..", "..", "res"))
+
 
 def my_pil_loader(path: str) -> Image.Image:
     # open path as file to avoid ResourceWarning
@@ -24,7 +26,7 @@ def my_pil_loader(path: str) -> Image.Image:
 
 class MNISTDataset(ImageFolder):
     def __init__(self, img_transform: Any) -> None:
-        mnist_root_path = "./res/downloaded/mnist_png/all_png"
+        mnist_root_path = join(RES_PATH, "downloaded", "mnist_png", "all_png")
 
         assert exists(mnist_root_path) and isdir(mnist_root_path), \
             f"{mnist_root_path} does not exist or is not a directory"
@@ -36,7 +38,7 @@ class MNISTDataset(ImageFolder):
 
 class RESISC45Dataset(ImageFolder):
     def __init__(self, img_transform: Any) -> None:
-        resisc_root_path = "./res/downloaded/NWPU-RESISC45"
+        resisc_root_path = join(RES_PATH, "downloaded", "NWPU-RESISC45")
 
         assert exists(resisc_root_path) and isdir(resisc_root_path), \
             f"{resisc_root_path} does not exist or is not a directory"
@@ -50,12 +52,12 @@ class KneeMRIDataset(Dataset):
     def __init__(self, img_transform: Any):
         super().__init__()
 
-        self.__knee_mri_root_path = "./res/downloaded/knee_mri"
+        self.__knee_mri_root_path = join(RES_PATH, "downloaded", "knee_mri")
 
         self.__img_transform = img_transform
 
         metadata_csv = pd.read_csv(
-            self.__knee_mri_root_path + "/" + "metadata.csv", sep=","
+            join(self.__knee_mri_root_path, "metadata.csv"), sep=","
         )
 
         tqdm.tqdm.pandas()
@@ -66,7 +68,7 @@ class KneeMRIDataset(Dataset):
         self.__nb_img = 0
 
         def __open_pickle_size(fn: str) -> None:
-            f = open(self.__knee_mri_root_path + "/extracted/" + fn, "rb")
+            f = open(join(self.__knee_mri_root_path, "extracted", fn), "rb")
             x = pkl.load(f)
             f.close()
             self.__max_depth = max(self.__max_depth, x.shape[0])
@@ -91,7 +93,7 @@ class KneeMRIDataset(Dataset):
         }
 
     def __open_img(self, fn: str) -> th.Tensor:
-        f = open(self.__knee_mri_root_path + "/extracted/" + fn, "rb")
+        f = open(join(self.__knee_mri_root_path, "extracted", fn), "rb")
         x = pkl.load(f)
         f.close()
 
