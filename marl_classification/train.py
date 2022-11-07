@@ -20,7 +20,7 @@ from .environment import (
     episode
 )
 from .networks import ModelsWrapper
-from .utils import MainOptions, TrainOptions
+from .options import MainOptions, TrainOptions
 from .utils import prec_rec, save_conf_matrix, visualize_steps
 
 

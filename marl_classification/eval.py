@@ -17,7 +17,8 @@ from .environment import (
     episode
 )
 from .networks import ModelsWrapper
-from .utils import MainOptions, EvalOptions, prec_rec, format_metric
+from .options import MainOptions, EvalOptions
+from .utils import prec_rec, format_metric
 
 
 def evaluation(

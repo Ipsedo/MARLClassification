@@ -17,11 +17,8 @@ from .environment import (
     trans_generic
 )
 from .networks.models import ModelsWrapper
-from .utils import (
-    MainOptions,
-    InferOptions,
-    visualize_steps
-)
+from .options import MainOptions, InferOptions
+from .utils import visualize_steps
 
 
 def infer(

@@ -6,14 +6,14 @@ from os.path import isdir, exists
 from .eval import evaluation
 from .infer import infer
 from .networks import ModelsWrapper
-from .train import train
-from .utils import (
-    SetAppendAction,
+from .options import (
     TrainOptions,
     EvalOptions,
     MainOptions,
     InferOptions
 )
+from .train import train
+from .utils import SetAppendAction
 
 
 def main() -> None:

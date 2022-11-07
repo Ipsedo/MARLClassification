@@ -1,7 +1,7 @@
-import typing as typ
 from argparse import ArgumentParser, Namespace, Action
 from collections import Counter
 from os.path import join
+from typing import Mapping, Any, Union, Sequence, Tuple, Text, Optional
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -12,63 +12,12 @@ from torchnet.meter import ConfusionMeter
 from .environment.agent import MultiAgent
 from .environment.episode import detailed_episode
 
-MainOptions = typ.NamedTuple(
-    "MainOptions",
-    [("step", int),
-     ("run_id", str),
-     ("cuda", bool),
-     ("nb_agent", int)]
-)
-
-TrainOptions = typ.NamedTuple(
-    "TrainOptions",
-    [("hidden_size_belief", int),
-     ("hidden_size_linear_belief", int),
-     ("hidden_size_linear_action", int),
-     ("hidden_size_msg", int),
-     ("hidden_size_state", int),
-     ("hidden_size_action", int),
-     ("dim", int),
-     ("window_size", int),
-     ("img_size", int),
-     ("nb_class", int),
-     ("action", typ.List[typ.List[int]]),
-     ("nb_epoch", int),
-     ("learning_rate", float),
-     ("retry_number", int),
-     ("epsilon", float),
-     ("epsilon_decay", float),
-     ("batch_size", int),
-     ("output_dir", str),
-     ("frozen_modules", typ.List[str]),
-     ("ft_extr_str", str)]
-)
-
-EvalOptions = typ.NamedTuple(
-    "EvalOptions",
-    [("img_size", int),
-     ("state_dict_path", str),
-     ("batch_size", int),
-     ("json_path", str),
-     ("image_root", str),
-     ("output_dir", str)]
-)
-
-InferOptions = typ.NamedTuple(
-    "InferOptions",
-    [("state_dict_path", str),
-     ("json_path", str),
-     ("images_path", typ.List[str]),
-     ("output_dir", str),
-     ("class_to_idx", str)]
-)
-
 
 def visualize_steps(
         agents: MultiAgent, img: th.Tensor, img_ori: th.Tensor,
         max_it: int, f: int, output_dir: str,
         nb_class: int, device_str: str,
-        class_map: typ.Mapping[typ.Any, int]
+        class_map: Mapping[Any, int]
 ) -> None:
     """
 
@@ -150,7 +99,7 @@ def visualize_steps(
 
 
 def prec_rec(conf_meter: ConfusionMeter) \
-        -> typ.Tuple[np.ndarray, np.ndarray]:
+        -> Tuple[np.ndarray, np.ndarray]:
     conf_mat = conf_meter.value()
 
     precs_sum = [conf_mat[:, i].sum() for i in range(conf_mat.shape[1])]
@@ -169,7 +118,7 @@ def prec_rec(conf_meter: ConfusionMeter) \
 
 
 def format_metric(metric: np.ndarray,
-                  class_map: typ.Mapping[typ.Any, int]) -> str:
+                  class_map: Mapping[Any, int]) -> str:
     idx_to_class = {class_map[k]: k for k in class_map}
     return ", ".join(
         [f'\"{idx_to_class[curr_cls]}\" : {metric[curr_cls] * 100.:.1f}%'
@@ -182,7 +131,7 @@ def save_conf_matrix(
         output_dir: str, stage: str
 ) -> None:
     plt.matshow(conf_meter.value().tolist())
-    plt.title(f"confusion_matrix_epoch_{epoch}_train")
+    plt.title(f"confusion matrix epoch {epoch} - {stage}")
     plt.colorbar()
     plt.ylabel('True Label')
     plt.xlabel('Predicated Label')
@@ -195,8 +144,8 @@ def save_conf_matrix(
 class SetAppendAction(Action):
     def __call__(
             self, parser: ArgumentParser, namespace: Namespace,
-            values: typ.Union[typ.Text, typ.Sequence[typ.Any], None],
-            option_string: typ.Optional[typ.Text] = ...
+            values: Union[Text, Sequence[Any], None],
+            option_string: Optional[Text] = ...
     ) -> None:
         unique_values = set(values)
 
