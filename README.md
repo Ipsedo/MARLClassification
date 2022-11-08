@@ -38,7 +38,7 @@ You may download datasets with bash scripts in `res` folder.
 To run training :
 ```bash
 $ # train on MNIST
-$ python -m marl_classification -a 3 --step 5 --cuda --run-id train_mnist train --action [[1,0],[-1,0],[0,1],[0,-1]] --img-size 28 --nb-class 10 -d 2 --f 4 --ft-extr mnist --nb 48 --na 48 --nm 16 --nd 8 --nlb 64 --nla 64 --batch-size 32 --lr 1e-3 --nb-epoch 20 --nr 4 --eps 1. --eps-dec 0.99995 -o ./out/mnist
+$ python -m marl_classification -a 3 --step 5 --cuda --run-id train_mnist train --action [[1,0],[-1,0],[0,1],[0,-1]] --img-size 28 --nb-class 10 -d 2 --f 4 --ft-extr mnist --nb 64 --na 64 --nm 16 --nd 8 --nlb 96 --nla 96 --batch-size 32 --lr 1e-3 --nb-epoch 20 --nr 4 --eps 1. --eps-dec 0.99995 -o ./out/mnist
 $ # train on NWPU-RESISC45
 $ python -m marl_classification -a 16 --step 16 --cuda --run-id train_resisc45 train --action [[1,0],[-1,0],[0,1],[0,-1]] --ft-extr resisc45 --batch-size 8 --nb-class 45 --img-size 256 -d 2 --nb 256 --na 256 --nd 8 --f 10 --nm 64 --nlb 384 --nla 384 --nb-epoch 20 --nr 4 --learning-rate 1e-3 --eps 1.0 --eps-dec 0.99995 -o ./out/resisc45
 $ # train on Knee MRI
