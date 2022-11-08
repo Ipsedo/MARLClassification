@@ -57,7 +57,7 @@ class MultiAgent:
         self.__networks = model_wrapper
 
         # initial state
-        self.pos = None
+        self.__pos = None
         self.__t = 0
 
         # Hidden vectors
@@ -67,7 +67,7 @@ class MultiAgent:
         self.__h_caret = None
         self.__c_caret = None
 
-        self.msg = None
+        self.__msg = None
 
         self.__action_probas = None
 
@@ -108,7 +108,7 @@ class MultiAgent:
                      device=th.device(self.__device_str))
         ]
 
-        self.msg = [
+        self.__msg = [
             th.zeros(self.__nb_agents, batch_size, self.__n_m,
                      device=th.device(self.__device_str))
         ]
@@ -119,7 +119,7 @@ class MultiAgent:
             / self.__nb_action
         ]
 
-        self.pos = th.stack([
+        self.__pos = th.stack([
             th.randint(
                 i_s - self.__f,
                 (self.__nb_agents, batch_size),
@@ -152,7 +152,7 @@ class MultiAgent:
         # Get messages
         # d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
         #                              self.msg[self.__t])
-        d_bar_t_tmp = self.msg[self.__t]
+        d_bar_t_tmp = self.__msg[self.__t]
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
         d_bar_t = (
@@ -186,7 +186,7 @@ class MultiAgent:
         self.__c.append(c_t_next)
 
         # Evaluate message
-        self.msg.append(self.__networks(
+        self.__msg.append(self.__networks(
             self.__networks.evaluate_msg,
             self.__h[self.__t + 1])
         )
@@ -246,7 +246,7 @@ class MultiAgent:
         )
 
         # Apply action / Upgrade agent state
-        self.pos = self.__trans(
+        self.__pos = self.__trans(
             self.pos.to(th.float),
             a_t_next, self.__f,
             img_sizes
@@ -288,6 +288,10 @@ class MultiAgent:
     def cpu(self) -> None:
         self.__is_cuda = False
         self.__device_str = "cpu"
+
+    @property
+    def pos(self) -> th.Tensor:
+        return self.__pos
 
     def __len__(self) -> int:
         """
