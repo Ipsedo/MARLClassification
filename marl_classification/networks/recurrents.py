@@ -29,12 +29,15 @@ class LSTMCellWrapper(nn.Module):
 
         nb_ag, batch_size, hidden_size = h.size()
 
-        h, c, u = \
-            h.flatten(0, 1), \
-            c.flatten(0, 1), \
+        h, c, u = (
+            h.flatten(0, 1),
+            c.flatten(0, 1),
             u.flatten(0, 1)
+        )
 
         h_next, c_next = self.lstm(u, (h, c))
 
-        return h_next.view(nb_ag, batch_size, -1), \
-               c_next.view(nb_ag, batch_size, -1)
+        return (
+            h_next.view(nb_ag, batch_size, -1),
+            c_next.view(nb_ag, batch_size, -1)
+        )
