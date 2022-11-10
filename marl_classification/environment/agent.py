@@ -226,10 +226,13 @@ class MultiAgent:
         )
 
         # Compute epsilon-greedy policy
-        use_greedy = (th.rand(
-            (self.__nb_agents, self.__batch_size),
-            device=th.device(self.__device_str)
-        ) > eps).to(th.int)
+        use_greedy = th.gt(
+            th.rand(
+                (self.__nb_agents, self.__batch_size),
+                device=th.device(self.__device_str)
+            ),
+            eps
+        ).to(th.int)
 
         final_actions = use_greedy * policy_actions + (1 - use_greedy) * random_actions
 
@@ -268,9 +271,9 @@ class MultiAgent:
         """
 
         return fun.softmax(self.__networks(
-                self.__networks.predict,
-                self.__h[-1]).mean(dim=0), dim=-1), \
-            self.__action_probas[-1].log().sum(dim=0)
+            self.__networks.predict,
+            self.__h[-1]).mean(dim=0), dim=-1), \
+               self.__action_probas[-1].log().sum(dim=0)
 
     @property
     def is_cuda(self) -> bool:

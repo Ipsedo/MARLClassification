@@ -1,29 +1,27 @@
 #!/usr/bin/env bash
 
-if ! [[ -d "./downloaded" ]]; then
-    mkdir downloaded
-fi
-cd downloaded
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-if ! [[ -d "./knee_mri" ]]; then
-    mkdir knee_mri
-fi
-cd knee_mri
-
-if ! [[ -f "./metadata.csv" ]]; then
-    wget http://www.riteh.uniri.hr/~istajduh/projects/kneeMRI/data/metadata.csv
+if ! [[ -d "${SCRIPT_DIR}/downloaded" ]]; then
+    mkdir "${SCRIPT_DIR}/downloaded"
 fi
 
-if ! [[ -d "./extracted" ]]; then
-    mkdir extracted
+if ! [[ -d "${SCRIPT_DIR}/downloaded/knee_mri" ]]; then
+    mkdir "${SCRIPT_DIR}/downloaded/knee_mri"
+fi
+cd "${SCRIPT_DIR}/downloaded/knee_mri" || exit 1
+
+if ! [[ -f "${SCRIPT_DIR}/downloaded/knee_mri/metadata.csv" ]]; then
+    wget http://www.riteh.uniri.hr/~istajduh/projects/kneeMRI/data/metadata.csv -P "${SCRIPT_DIR}/downloaded/knee_mri"
+fi
+
+if ! [[ -d "${SCRIPT_DIR}/downloaded/knee_mri/extracted" ]]; then
+    mkdir "${SCRIPT_DIR}/downloaded/knee_mri/extracted"
 fi
 
 for i in {01..10}; do
-    if ! [[ -f "./vol${i}.7z" ]]; then
-        wget http://www.riteh.uniri.hr/~istajduh/projects/kneeMRI/data/volumetric_data/vol${i}.7z
+    if ! [[ -f "${SCRIPT_DIR}/downloaded/knee_mri/vol${i}.7z" ]]; then
+        wget "http://www.riteh.uniri.hr/~istajduh/projects/kneeMRI/data/volumetric_data/vol${i}.7z" -P "${SCRIPT_DIR}/downloaded/knee_mri"
+        7z x "${SCRIPT_DIR}/downloaded/knee_mri/vol${i}.7z" -o"${SCRIPT_DIR}/downloaded/knee_mri/extracted"
     fi
-    7z x vol${i}.7z -o./extracted
 done
-
-
-cd ../..

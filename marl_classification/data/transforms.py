@@ -50,7 +50,7 @@ class ChannelNormalNorm(ImgTransform):
 class NormalNorm(ImgTransform):
 
     def __call__(self, x: th.Tensor) -> th.Tensor:
-        return (x - x.mean()) / x.std()
+        return (x - th.mean(x)) / th.std(x)
 
 
 #########################

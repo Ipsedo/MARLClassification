@@ -65,10 +65,13 @@ class RESISC45Cnn(CNNFtExtract):
             nn.Conv2d(16, 32, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+            nn.Conv2d(32, 64, kernel_size=(3, 3), padding=(1, 1)),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
             nn.Flatten(1, -1)
         )
 
-        self.__out_size = 32 * (f // 4) ** 2
+        self.__out_size = 64 * (f // 8) ** 2
 
         for m in self.__seq_conv:
             if isinstance(m, nn.Conv2d):
@@ -89,19 +92,19 @@ class KneeMRICnn(CNNFtExtract):
         super().__init__()
 
         self.__seq_conv = nn.Sequential(
-            nn.Conv3d(1, 4, kernel_size=(3, 3, 3), padding=1),
-            nn.ReLU(),
-            nn.MaxPool3d(2, 2),
-            nn.Conv3d(4, 8, kernel_size=(3, 3, 3), padding=1),
+            nn.Conv3d(1, 8, kernel_size=(3, 3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool3d(2, 2),
             nn.Conv3d(8, 16, kernel_size=(3, 3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool3d(2, 2),
+            nn.Conv3d(16, 32, kernel_size=(3, 3, 3), padding=1),
+            nn.ReLU(),
+            nn.MaxPool3d(2, 2),
             nn.Flatten(1, -1)
         )
 
-        self.__out_size = 16 * (f // 8) ** 3
+        self.__out_size = 32 * (f // 8) ** 3
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         out = self.__seq_conv(o_t)

@@ -1,28 +1,29 @@
 #!/bin/bash
 
-if ! [[ -d "./downloaded" ]]; then
-    mkdir downloaded
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+if ! [[ -d "${SCRIPT_DIR}/downloaded" ]]; then
+    mkdir "${SCRIPT_DIR}/downloaded"
 fi
-cd downloaded
 
 # Download mnist PNGs
-if ! [[ -f "./mnistzip.zip" ]]; then
+if ! [[ -f "${SCRIPT_DIR}/downloaded/mnistzip.zip" ]]; then
     echo "Download MNIST png from Kaggle"
-    kaggle datasets download -d playlist/mnistzip
+    kaggle datasets download -d playlist/mnistzip -p "${SCRIPT_DIR}/downloaded"
 fi
 
-if ! [[ -d "./mnist_png" ]]; then
+if ! [[ -d "${SCRIPT_DIR}/downloaded/mnist_png" ]]; then
     echo "Extract mnistzip.zip"
-    unzip mnistzip.zip
+    unzip "${SCRIPT_DIR}/downloaded/mnistzip.zip" -d "${SCRIPT_DIR}/downloaded"
 fi
 
-cd mnist_png
-if ! [[ -d "./all_png" ]]; then
+if ! [[ -d "${SCRIPT_DIR}/downloaded/mnist_png/all_png" ]]; then
     echo "Create all_png folder"
-    mkdir all_png
+    mkdir "${SCRIPT_DIR}/downloaded/mnist_png/all_png"
+
     echo "Copy train img to all_png folder"
-    cp -r train/* all_png
+    cp -r "${SCRIPT_DIR}/downloaded/mnist_png/train/"* "${SCRIPT_DIR}/downloaded/mnist_png/all_png"
+
     echo "Copy eval img to all_png folder"
-    cp -r valid/* all_png
+    cp -r "${SCRIPT_DIR}/downloaded/mnist_png/valid/"* "${SCRIPT_DIR}/downloaded/mnist_png/all_png"
 fi
-cd ../..

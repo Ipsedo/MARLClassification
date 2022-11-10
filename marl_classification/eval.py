@@ -1,11 +1,9 @@
 from os import mkdir
 from os.path import exists, isfile, isdir
-from random import shuffle
 
 import torch as th
 import torchvision.transforms as tr
-from torch.utils.data import Subset, DataLoader
-from torchnet.meter import ConfusionMeter
+from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
@@ -16,57 +14,45 @@ from .environment import (
     trans_generic,
     episode
 )
+from .metrics import ConfusionMeter, format_metric
 from .networks import ModelsWrapper
 from .options import MainOptions, EvalOptions
-from .utils import prec_rec, format_metric
 
 
 def evaluation(
         main_options: MainOptions,
         eval_options: EvalOptions
 ) -> None:
-    steps = main_options.step
 
-    json_path = eval_options.json_path
-    state_dict_path = eval_options.state_dict_path
-    image_root = eval_options.image_root
-    output_dir = eval_options.output_dir
+    assert exists(eval_options.json_path), \
+        f"JSON path \"{eval_options.json_path}\" does not exist"
+    assert isfile(eval_options.json_path), \
+        f"\"{eval_options.json_path}\" is not a file"
 
-    assert exists(json_path), \
-        f"JSON path \"{json_path}\" does not exist"
-    assert isfile(json_path), \
-        f"\"{json_path}\" is not a file"
+    assert exists(eval_options.state_dict_path), \
+        f"State dict path {eval_options.state_dict_path} does not exist"
+    assert isfile(eval_options.state_dict_path), \
+        f"{eval_options.state_dict_path} is not a file"
 
-    assert exists(state_dict_path), \
-        f"State dict path {state_dict_path} does not exist"
-    assert isfile(state_dict_path), \
-        f"{state_dict_path} is not a file"
-
-    if exists(output_dir) and isdir(output_dir):
-        print(f"File in {output_dir} will be overwritten")
-    elif exists(output_dir) and not isdir(output_dir):
-        raise NotADirectoryError(f"\"{output_dir}\" is not a directory")
+    if exists(eval_options.output_dir) and isdir(eval_options.output_dir):
+        print(f"File in {eval_options.output_dir} will be overwritten")
+    elif exists(eval_options.output_dir) and not isdir(eval_options.output_dir):
+        raise NotADirectoryError(f"\"{eval_options.output_dir}\" is not a directory")
     else:
-        print(f"Create \"{output_dir}\"")
-        mkdir(output_dir)
+        print(f"Create \"{eval_options.output_dir}\"")
+        mkdir(eval_options.output_dir)
 
     img_pipeline = tr.Compose([
         tr.ToTensor(),
         custom_tr.NormalNorm()
     ])
 
-    img_dataset = ImageFolder(image_root, transform=img_pipeline)
+    test_dataset = ImageFolder(eval_options.image_root, transform=img_pipeline)
 
-    idx = list(range(len(img_dataset)))
-    shuffle(idx)
-    idx_test = idx[int(0.85 * len(idx)):]
-
-    test_dataset = Subset(img_dataset, idx_test)
-
-    nn_models = ModelsWrapper.from_json(json_path)
-    nn_models.load_state_dict(th.load(state_dict_path))
+    nn_models = ModelsWrapper.from_json(eval_options.json_path)
+    nn_models.load_state_dict(th.load(eval_options.state_dict_path))
     marl_m = MultiAgent.load_from(
-        json_path, main_options.nb_agent,
+        eval_options.json_path, main_options.nb_agent,
         nn_models, obs_generic, trans_generic
     )
 
@@ -90,16 +76,19 @@ def evaluation(
     for x, y in tqdm(data_loader):
         x, y = x.to(th.device(device_str)), y.to(th.device(device_str))
 
-        preds, probas = episode(marl_m, x, 0., steps)
+        preds, probas = episode(marl_m, x, 0., main_options.step)
 
         conf_meter.add(preds.detach(), y)
 
-    print(conf_meter.value())
+    print(conf_meter.conf_mat())
 
-    precs, recs = prec_rec(conf_meter)
+    precs, recs = (
+        conf_meter.precision(),
+        conf_meter.recall()
+    )
 
-    precs_str = format_metric(precs, img_dataset.class_to_idx)
-    recs_str = format_metric(recs, img_dataset.class_to_idx)
+    precs_str = format_metric(precs, test_dataset.class_to_idx)
+    recs_str = format_metric(recs, test_dataset.class_to_idx)
 
     print(f"Precision : {precs_str}")
     print(f"Precision mean = {precs.mean()}")

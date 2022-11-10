@@ -254,93 +254,94 @@ def main() -> None:
 
     args = main_parser.parse_args()
 
-    if args.main_choice == "train":
-        # Create Options
-        main_options = MainOptions(
-            args.step, args.run_id, args.cuda, args.agents
-        )
+    match args.main_choice:
+        case "train":
+            # Create Options
+            main_options = MainOptions(
+                args.step, args.run_id, args.cuda, args.agents
+            )
 
-        reg_action = re.compile(r"] *, *\[")
-        action = reg_action.split(args.action[2:-2])
-        action = [[int(i) for i in act.split(",")] for act in action]
+            reg_action = re.compile(r"] *, *\[")
+            action = reg_action.split(args.action[2:-2])
+            action = [[int(i) for i in act.split(",")] for act in action]
 
-        train_options = TrainOptions(
-            args.n_b,
-            args.n_l_b,
-            args.n_l_a,
-            args.n_m,
-            args.n_d,
-            args.n_a,
-            args.dim,
-            args.f,
-            args.img_size,
-            args.nb_class,
-            action,
-            args.nb_epoch,
-            args.learning_rate,
-            args.number_retry,
-            args.epsilon_greedy,
-            args.epsilon_decay,
-            args.batch_size,
-            args.output_dir,
-            args.frozen_modules,
-            args.ft_extractor
-        )
+            train_options = TrainOptions(
+                args.n_b,
+                args.n_l_b,
+                args.n_l_a,
+                args.n_m,
+                args.n_d,
+                args.n_a,
+                args.dim,
+                args.f,
+                args.img_size,
+                args.nb_class,
+                action,
+                args.nb_epoch,
+                args.learning_rate,
+                args.number_retry,
+                args.epsilon_greedy,
+                args.epsilon_decay,
+                args.batch_size,
+                args.output_dir,
+                args.frozen_modules,
+                args.ft_extractor
+            )
 
-        if not exists(args.output_dir):
-            makedirs(args.output_dir)
-        if exists(args.output_dir) and not isdir(args.output_dir):
-            raise NotADirectoryError(f"\"{args.output_dir}\" is not a directory.")
+            if not exists(args.output_dir):
+                makedirs(args.output_dir)
+            if exists(args.output_dir) and not isdir(args.output_dir):
+                raise NotADirectoryError(f"\"{args.output_dir}\" is not a directory.")
 
-        train(main_options, train_options)
+            train(main_options, train_options)
 
-    # Test main
-    elif args.main_choice == "test":
-        main_options = MainOptions(
-            args.step, args.run_id, args.cuda, args.agents
-        )
+        # Test main
+        case "test":
+            main_options = MainOptions(
+                args.step, args.run_id, args.cuda, args.agents
+            )
 
-        eval_options = EvalOptions(
-            args.img_size,
-            args.state_dict_path,
-            args.batch_size,
-            args.json_path,
-            args.image_path,
-            args.output_dir
-        )
+            eval_options = EvalOptions(
+                args.img_size,
+                args.state_dict_path,
+                args.batch_size,
+                args.json_path,
+                args.image_path,
+                args.output_dir
+            )
 
-        if not exists(args.output_dir):
-            makedirs(args.output_dir)
-        if exists(args.output_dir) and not isdir(args.output_dir):
-            raise NotADirectoryError(f"\"{args.output_dir}\" is not a directory.")
+            if not exists(args.output_dir):
+                makedirs(args.output_dir)
+            if exists(args.output_dir) and not isdir(args.output_dir):
+                raise NotADirectoryError(f"\"{args.output_dir}\" is not a directory.")
 
-        evaluation(main_options, eval_options)
+            evaluation(main_options, eval_options)
 
-    elif args.main_choice == "infer":
-        main_options = MainOptions(
-            args.step, args.run_id, args.cuda, args.agents
-        )
+        case "infer":
+            main_options = MainOptions(
+                args.step, args.run_id, args.cuda, args.agents
+            )
 
-        infer_options = InferOptions(
-            args.state_dict_path,
-            args.json_path,
-            args.infer_images,
-            args.output_image_dir,
-            args.class_to_idx
-        )
+            infer_options = InferOptions(
+                args.state_dict_path,
+                args.json_path,
+                args.infer_images,
+                args.output_image_dir,
+                args.class_to_idx
+            )
 
-        if not exists(args.output_image_dir):
-            makedirs(args.output_image_dir)
-        if exists(args.output_image_dir) and not isdir(args.output_image_dir):
-            raise NotADirectoryError(f"\"{args.output_image_dir}\" is not a directory.")
+            if not exists(args.output_image_dir):
+                makedirs(args.output_image_dir)
+            if exists(args.output_image_dir) and not isdir(args.output_image_dir):
+                raise NotADirectoryError(f"\"{args.output_image_dir}\" is not a directory.")
 
-        infer(main_options, infer_options)
+            infer(main_options, infer_options)
 
-    else:
-        main_parser.error(
-            f"Unrecognized mode : \"{args.mode}\""
-            f"type == {type(args.mode)}."
-        )
+        case _:
+            main_parser.error(
+                f"Unrecognized mode : \"{args.mode}\""
+                f"type == {type(args.mode)}."
+            )
 
 
 if __name__ == "__main__":

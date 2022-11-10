@@ -7,7 +7,6 @@ import mlflow
 import torch as th
 import torchvision.transforms as tr
 from torch.utils.data import Subset, DataLoader
-from torchnet.meter import ConfusionMeter
 from tqdm import tqdm
 
 from .data import KneeMRIDataset, MNISTDataset, RESISC45Dataset
@@ -19,9 +18,10 @@ from .environment import (
     episode_retry,
     episode
 )
+from .infer import visualize_steps
+from .metrics import ConfusionMeter
 from .networks import ModelsWrapper
 from .options import MainOptions, TrainOptions
-from .utils import prec_rec, save_conf_matrix, visualize_steps
 
 
 def train(
@@ -120,7 +120,6 @@ def train(
     json_f = open(join(output_dir, "class_to_idx.json"), "w")
     json.dump(dataset.class_to_idx, json_f)
     json_f.close()
-    mlflow.log_artifact(join(output_dir, "class_to_idx.json"))
 
     cuda = main_options.cuda
     device_str = "cpu"
@@ -143,9 +142,10 @@ def train(
         lr=train_options.learning_rate
     )
 
+    ratio_eval = 0.85
     idx = th.randperm(len(dataset))
-    idx_train = idx[:int(0.85 * idx.size()[0])]
-    idx_test = idx[int(0.85 * idx.size()[0]):]
+    idx_train = idx[:int(ratio_eval * idx.size()[0])]
+    idx_test = idx[int(ratio_eval * idx.size()[0]):]
 
     train_dataset = Subset(dataset, idx_train)
     test_dataset = Subset(dataset, idx_test)
@@ -164,16 +164,18 @@ def train(
 
     curr_step = 0
 
+    conf_meter_train = ConfusionMeter(
+        train_options.nb_class,
+        window_size=64
+    )
+
     for e in range(train_options.nb_epoch):
         nn_models.train()
 
         sum_loss = 0.
-        i = 0
-
-        conf_meter = ConfusionMeter(train_options.nb_class)
 
         tqdm_bar = tqdm(train_dataloader)
-        for x_train, y_train in tqdm_bar:
+        for i, (x_train, y_train) in enumerate(tqdm_bar):
             x_train, y_train = x_train.to(th.device(device_str)), \
                                y_train.to(th.device(device_str))
 
@@ -198,7 +200,7 @@ def train(
 
             # Update confusion meter
             # mean between retries
-            conf_meter.add(
+            conf_meter_train.add(
                 pred.detach().mean(dim=0),
                 y_train
             )
@@ -211,7 +213,7 @@ def train(
             # sum log proba (on steps), then pass to exponential
             losses = retry_prob.sum(dim=1).exp() * r.detach() + r
 
-            # Losses mean on images batch and trials
+            # Losses mean on images batch and retries
             # maximize(E[reward]) -> minimize(-E[reward])
             loss = -losses.mean()
 
@@ -228,7 +230,10 @@ def train(
             sum_loss += loss.item()
 
             # Compute global score
-            precs, recs = prec_rec(conf_meter)
+            precs, recs = (
+                conf_meter_train.precision(),
+                conf_meter_train.recall()
+            )
 
             if curr_step % 100 == 0:
                 mlflow.log_metrics(step=curr_step, metrics={
@@ -240,28 +245,21 @@ def train(
 
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
+                f"train_prec = {precs.mean().item():.3f}, "
+                f"train_rec = {recs.mean().item():.3f}, "
                 f"loss = {sum_loss / (i + 1):.4f}, "
-                f"eps = {epsilon:.4f}, "
-                f"train_prec = {precs.mean():.3f}, "
-                f"train_rec = {recs.mean():.3f}"
+                f"eps = {epsilon:.4f}"
             )
 
             epsilon *= train_options.epsilon_decay
             epsilon = max(epsilon, 0.)
 
-            i += 1
             curr_step += 1
 
         sum_loss /= len(train_dataloader)
 
-        save_conf_matrix(conf_meter, e, output_dir, "train")
-
-        mlflow.log_artifact(
-            join(output_dir, f"confusion_matrix_epoch_{e}_train.png")
-        )
-
         nn_models.eval()
-        conf_meter.reset()
+        conf_meter_eval = ConfusionMeter(train_options.nb_class, None)
 
         with th.no_grad():
             tqdm_bar = tqdm(test_dataloader)
@@ -271,25 +269,31 @@ def train(
 
                 preds, _ = episode(marl_m, x_test, 0., main_options.step)
 
-                conf_meter.add(preds.detach(), y_test)
+                conf_meter_eval.add(preds.detach(), y_test)
 
                 # Compute score
-                precs, recs = prec_rec(conf_meter)
+                precs, recs = (
+                    conf_meter_eval.precision(),
+                    conf_meter_eval.recall()
+                )
 
                 tqdm_bar.set_description(
                     f"Epoch {e} - Eval, "
-                    f"eval_prec = {precs.mean():.4f}, "
-                    f"eval_rec = {recs.mean():.4f}"
+                    f"eval_prec = {precs.mean().item():.4f}, "
+                    f"eval_rec = {recs.mean().item():.4f}"
                 )
 
         # Compute score
-        precs, recs = prec_rec(conf_meter)
+        precs, recs = (
+            conf_meter_eval.precision(),
+            conf_meter_eval.recall()
+        )
 
-        save_conf_matrix(conf_meter, e, output_dir, "eval")
+        conf_meter_eval.save_conf_matrix(e, output_dir, "eval")
 
         mlflow.log_metrics(step=curr_step, metrics={
-            "eval_prec": precs.mean(),
-            "eval_recs": recs.mean()
+            "eval_prec": precs.mean().item(),
+            "eval_recs": recs.mean().item()
         })
 
         nn_models.json_args(
@@ -301,20 +305,6 @@ def train(
             nn_models.state_dict(),
             join(output_dir, model_dir,
                  f"nn_models_epoch_{e}.pt")
-        )
-
-        mlflow.log_artifact(
-            join(output_dir,
-                 model_dir,
-                 f"marl_epoch_{e}.json")
-        )
-        mlflow.log_artifact(
-            join(output_dir, model_dir,
-                 f"nn_models_epoch_{e}.pt")
-        )
-        mlflow.log_artifact(
-            join(output_dir,
-                 f"confusion_matrix_epoch_{e}_eval.png")
         )
 
     empty_pipe = tr.Compose([

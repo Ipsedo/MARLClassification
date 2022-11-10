@@ -65,14 +65,16 @@ class ModelsWrapper(nn.Module):
 
         map_obs_module = self.ft_extractors[ft_extr_str](f)
 
-        self._networks_dict = nn.ModuleDict({
+        self.__networks_dict = nn.ModuleDict({
             self.map_obs: map_obs_module,
             self.map_pos: StateToFeatures(d, n_d),
             self.evaluate_msg: MessageSender(n_b, n_m, hidden_size_belief),
             self.belief_unit: LSTMCellWrapper(
-                map_obs_module.out_size + n_d + n_m, n_b),
+                map_obs_module.out_size + n_d + n_m, n_b
+            ),
             self.action_unit: LSTMCellWrapper(
-                map_obs_module.out_size + n_d + n_m, n_a),
+                map_obs_module.out_size + n_d + n_m, n_a
+            ),
             self.policy: Policy(len(actions), n_a, hidden_size_action),
             self.predict: Prediction(n_b, nb_class, hidden_size_belief)
         })
@@ -92,7 +94,7 @@ class ModelsWrapper(nn.Module):
         self.__nb_class = nb_class
 
     def forward(self, op: str, *args):
-        return self._networks_dict[op](*args)
+        return self.__networks_dict[op](*args)
 
     @property
     def nb_class(self) -> int:
@@ -105,7 +107,7 @@ class ModelsWrapper(nn.Module):
     def get_params(self, ops: List[str]) -> List[th.Tensor]:
         return [
             p for op in ops
-            for p in self._networks_dict[op].parameters()
+            for p in self.__networks_dict[op].parameters()
         ]
 
     def json_args(self, out_json_path: str) -> None:

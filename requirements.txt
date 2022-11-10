@@ -1,7 +1,6 @@
 # NNs stuff
 torch
 torchvision
-torchnet
 
 # visu stuff
 tqdm
@@ -11,3 +10,6 @@ numpy
 # other stuff
 pandas
 mlflow
+
+# to download datasets
+kaggle
