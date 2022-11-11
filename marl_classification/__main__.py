@@ -153,11 +153,6 @@ def main() -> None:
         help="Number of training epochs"
     )
     train_parser.add_argument(
-        "--nr", "--number-retry", type=int,
-        default=7, dest="number_retry",
-        help="Number of retry to estimate expectation."
-    )
-    train_parser.add_argument(
         "--eps", type=float, default=0.,
         dest="epsilon_greedy",
         help="Threshold from which apply "
@@ -279,7 +274,6 @@ def main() -> None:
                 action,
                 args.nb_epoch,
                 args.learning_rate,
-                args.number_retry,
                 args.epsilon_greedy,
                 args.epsilon_decay,
                 args.batch_size,

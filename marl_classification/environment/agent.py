@@ -2,7 +2,6 @@ import json
 from typing import Callable, Tuple, List
 
 import torch as th
-import torch.nn.functional as fun
 
 from ..networks.models import ModelsWrapper
 
@@ -270,10 +269,13 @@ class MultiAgent:
         :return: tuple <predictions, action_probabilities>
         """
 
-        return fun.softmax(self.__networks(
-            self.__networks.predict,
-            self.__h[-1]).mean(dim=0), dim=-1), \
-               self.__action_probas[-1].log().sum(dim=0)
+        return (
+            self.__networks(
+                self.__networks.predict,
+                self.__h[-1]
+            ).mean(dim=0),
+            self.__action_probas[-1].log().sum(dim=0)
+        )
 
     @property
     def is_cuda(self) -> bool:

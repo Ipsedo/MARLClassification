@@ -5,6 +5,7 @@ from random import randint
 
 import mlflow
 import torch as th
+import torch.nn.functional as th_fun
 import torchvision.transforms as tr
 from torch.utils.data import Subset, DataLoader
 from tqdm import tqdm
@@ -15,7 +16,7 @@ from .environment import (
     MultiAgent,
     obs_generic,
     trans_generic,
-    episode_retry,
+    detailed_episode,
     episode
 )
 from .infer import visualize_steps
@@ -112,7 +113,6 @@ def train(
         "nb_epoch": train_options.nb_epoch,
         "learning_rate": train_options.learning_rate,
         "img_size": train_options.img_size,
-        "retry_number": train_options.retry_number,
         "step": main_options.step,
         "batch_size": train_options.batch_size
     })
@@ -179,39 +179,31 @@ def train(
             x_train, y_train = x_train.to(th.device(device_str)), \
                                y_train.to(th.device(device_str))
 
-            # pred = [Nr, Ns, Nb, Nc]
-            # prob = [Nr, Ns, Nb]
-            retry_pred, retry_prob = episode_retry(
+            # pred = [Ns, Nb, Nc]
+            # prob = [Ns, Nb]
+            preds, probs, _ = detailed_episode(
                 marl_m, x_train, epsilon,
                 main_options.step,
-                train_options.retry_number,
-                train_options.nb_class, device_str
+                device_str,
+                train_options.nb_class
             )
 
             # select last step
-            pred = retry_pred[:, -1, :, :]
-
-            # Class one hot encoding
-            # y_eye = [Nr=1, Nb, Nc]
-            y_eye = th.eye(
-                train_options.nb_class,
-                device=th.device(device_str)
-            )[y_train.unsqueeze(0)]
+            pred = preds[-1, :, :]
 
             # Update confusion meter
             # mean between retries
             conf_meter_train.add(
-                pred.detach().mean(dim=0),
+                pred.detach(),
                 y_train
             )
 
-            # L2 Loss - Classification error / reward
-            # reward = -error(y_true, last_y_pred).mean(class_dim)
-            r = -th.pow(y_eye - pred, 2.).mean(dim=-1)
+            # reward = -error(y_pred, y_true)
+            r = -th_fun.cross_entropy(pred, y_train)
 
             # Compute loss
             # sum log proba (on steps), then pass to exponential
-            losses = retry_prob.sum(dim=1).exp() * r.detach() + r
+            losses = probs.sum(dim=0).exp() * r.detach() + r
 
             # Losses mean on images batch and retries
             # maximize(E[reward]) -> minimize(-E[reward])
