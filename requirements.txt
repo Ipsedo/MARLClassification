@@ -10,6 +10,7 @@ numpy
 # other stuff
 pandas
 mlflow
+jupyter
 
 # to download datasets
 kaggle
