@@ -13,7 +13,7 @@ from torchvision.datasets import ImageFolder
 
 DATASET_CHOICES = ["mnist", "resisc45"]
 
-RES_PATH = abspath(join(dirname(abspath(__file__)), "..", "..", "res"))
+RES_PATH = abspath(join(dirname(abspath(__file__)), "..", "..", "resources"))
 
 
 def my_pil_loader(path: str) -> Image.Image:

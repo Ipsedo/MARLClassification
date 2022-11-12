@@ -138,7 +138,7 @@ def main() -> None:
     train_parser.add_argument(
         "-o", "--output-dir", type=str,
         required=True, dest="output_dir",
-        help="The output dir containing res "
+        help="The output directory containing results "
              "and models per epoch. Created if needed."
     )
     train_parser.add_argument(
