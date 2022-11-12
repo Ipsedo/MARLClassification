@@ -9,3 +9,7 @@ fi
 if ! [[ -f "${SCRIPT_DIR}/downloaded/BigEarthNet-S2-v1.0.tar.gz" ]]; then
   wget --no-check-certificate https://bigearth.net/downloads/BigEarthNet-S2-v1.0.tar.gz -P "${SCRIPT_DIR}/downloaded"
 fi
+
+if ! [[ -d "${SCRIPT_DIR}/downloaded/BigEarthNet-S2-v1.0" ]]; then
+  tar -xvzf "${SCRIPT_DIR}/downloaded/BigEarthNet-S2-v1.0.tar.gz" -C "${SCRIPT_DIR}/downloaded/"
+fi
