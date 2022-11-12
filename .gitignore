@@ -4,3 +4,4 @@ downloaded/
 out/
 mlruns
 venv/
+.ipynb_checkpoints/
