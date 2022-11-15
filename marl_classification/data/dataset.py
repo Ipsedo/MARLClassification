@@ -1,5 +1,5 @@
 import pickle as pkl
-from os.path import exists, isdir, dirname, abspath, join
+from os.path import exists, isdir, join
 from typing import Any, Tuple
 
 import numpy as np
@@ -11,9 +11,8 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 
-DATASET_CHOICES = ["mnist", "resisc45"]
 
-RES_PATH = abspath(join(dirname(abspath(__file__)), "..", "..", "resources"))
+#RES_PATH = abspath(join(dirname(abspath(__file__)), "..", "..", "resources"))
 
 
 def my_pil_loader(path: str) -> Image.Image:
@@ -25,8 +24,8 @@ def my_pil_loader(path: str) -> Image.Image:
 
 
 class MNISTDataset(ImageFolder):
-    def __init__(self, img_transform: Any) -> None:
-        mnist_root_path = join(RES_PATH, "downloaded", "mnist_png", "all_png")
+    def __init__(self, res_path: str, img_transform: Any) -> None:
+        mnist_root_path = join(res_path, "downloaded", "mnist_png", "all_png")
 
         assert exists(mnist_root_path) and isdir(mnist_root_path), \
             f"{mnist_root_path} does not exist or is not a directory"
@@ -37,8 +36,8 @@ class MNISTDataset(ImageFolder):
 
 
 class RESISC45Dataset(ImageFolder):
-    def __init__(self, img_transform: Any) -> None:
-        resisc_root_path = join(RES_PATH, "downloaded", "NWPU-RESISC45")
+    def __init__(self, res_path: str, img_transform: Any) -> None:
+        resisc_root_path = join(res_path, "downloaded", "NWPU-RESISC45")
 
         assert exists(resisc_root_path) and isdir(resisc_root_path), \
             f"{resisc_root_path} does not exist or is not a directory"
@@ -48,11 +47,23 @@ class RESISC45Dataset(ImageFolder):
                          is_valid_file=None)
 
 
+class AIDDataset(ImageFolder):
+    def __init__(self, res_path: str, img_transform: Any) -> None:
+        aid_root_path = join(res_path, "downloaded", "AID")
+
+        assert exists(aid_root_path) and isdir(aid_root_path), \
+            f"{aid_root_path} does not exist or is not a directory"
+
+        super().__init__(aid_root_path, transform=img_transform,
+                         target_transform=None, loader=my_pil_loader,
+                         is_valid_file=None)
+
+
 class KneeMRIDataset(Dataset):
-    def __init__(self, img_transform: Any):
+    def __init__(self, res_path: str, img_transform: Any):
         super().__init__()
 
-        self.__knee_mri_root_path = join(RES_PATH, "downloaded", "knee_mri")
+        self.__knee_mri_root_path = join(res_path, "downloaded", "knee_mri")
 
         self.__img_transform = img_transform
 
