@@ -6,6 +6,7 @@ from typing import Mapping, Any
 
 import matplotlib.pyplot as plt
 import torch as th
+import torch.nn.functional as th_fun
 import torchvision.transforms as tr
 from tqdm import tqdm
 
@@ -70,11 +71,12 @@ def visualize_steps(
 
         fig = plt.figure()
         plt.imshow(curr_img, cmap=color_map)
-        prediction = preds[t][img_idx].argmax(dim=-1).item()
-        pred_proba = preds[t][img_idx][prediction].item()
+        pred_softmax = th_fun.softmax(preds[t][img_idx], dim=-1)
+        pred_max = pred_softmax.argmax(dim=-1).item()
+        pred_proba = pred_softmax[pred_max].item()
         plt.title(
             f"Step = {t}, step_pred_class = "
-            f"{idx_to_class[prediction]} ({pred_proba * 100.:.1f}%)"
+            f"{idx_to_class[pred_max]} ({pred_proba * 100.:.1f}%)"
         )
 
         plt.savefig(join(output_dir, f"pred_step_{t}.png"))
