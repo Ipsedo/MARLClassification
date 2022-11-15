@@ -137,6 +137,7 @@ class MultiAgent:
         """
 
         img_sizes = [s for s in img.size()[2:]]
+        nb_agent = len(self)
 
         # Observation
         o_t = self.__obs(img, self.pos, self.__f)
@@ -146,7 +147,7 @@ class MultiAgent:
         b_t = self.__networks(
             self.__networks.map_obs,
             o_t.flatten(0, 1)
-        ).view(len(self), self.__batch_size, -1)
+        ).view(nb_agent, self.__batch_size, -1)
 
         # Get messages
         # d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
@@ -155,8 +156,8 @@ class MultiAgent:
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
         d_bar_t = (
-                (d_bar_t_mean * self.__nb_agents - d_bar_t_tmp) /
-                (self.__nb_agents - 1)
+                (d_bar_t_mean * nb_agent - d_bar_t_tmp) /
+                (nb_agent - 1)
         )
 
         # Map pos in feature space
@@ -220,25 +221,25 @@ class MultiAgent:
         # Random policy
         random_actions = th.randint(
             0, actions.size()[0],
-            (self.__nb_agents, self.__batch_size),
+            (nb_agent, self.__batch_size),
             device=th.device(self.__device_str)
         )
 
         # Compute epsilon-greedy policy
         use_greedy = th.gt(
             th.rand(
-                (self.__nb_agents, self.__batch_size),
+                (nb_agent, self.__batch_size),
                 device=th.device(self.__device_str)
             ),
             eps
         ).to(th.int)
 
-        final_actions = use_greedy * policy_actions + (1 - use_greedy) * random_actions
+        final_actions = (
+                use_greedy * policy_actions +
+                (1 - use_greedy) * random_actions
+        )
 
-        a_t_next = actions[final_actions.view(-1)] \
-            .view(self.__nb_agents,
-                  self.__batch_size,
-                  actions.size()[-1])
+        a_t_next = actions[final_actions]
 
         # Append probability
         self.__action_probas.append(
