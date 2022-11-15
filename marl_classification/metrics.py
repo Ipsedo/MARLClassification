@@ -1,5 +1,7 @@
+from abc import ABC, abstractmethod
 from os.path import join
-from typing import Optional, List, Tuple, Union, Mapping, Any
+from statistics import mean
+from typing import Optional, List, Tuple, Union, Mapping, Any, Generic, TypeVar
 
 import matplotlib.pyplot as plt
 import torch as th
@@ -18,26 +20,51 @@ def format_metric(
     )
 
 
-class ConfusionMeter:
+T = TypeVar("T")
+
+
+class Meter(Generic[T], ABC):
+    def __init__(self, window_size: Optional[int]) -> None:
+        self.__window_size = window_size
+
+        self.__results: List[T] = []
+
+    @abstractmethod
+    def process_value(self, *args) -> T:
+        pass
+
+    @property
+    def _results(self) -> List[T]:
+        return self.__results
+
+    def add(self, *args) -> None:
+        if self.__window_size is not None and len(self.__results) >= self.__window_size:
+            self.__results.pop(0)
+
+        self.__results.append(self.process_value(*args))
+
+    def set_window_size(self, new_window_size: Union[int, None]) -> None:
+        if new_window_size is not None:
+            assert new_window_size > 0, f"window size must be > 0 : {new_window_size}"
+
+        self.__window_size = new_window_size
+
+
+class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
     def __init__(
             self,
             nb_class: int,
             window_size: Optional[int] = None,
     ):
+        super(ConfusionMeter, self).__init__(window_size)
         self.__nb_class = nb_class
-        self.__window_size = window_size
 
-        self.__results: List[Tuple[th.Tensor, th.Tensor]] = []
-
-    def add(self, y_proba: th.Tensor, y_true: th.Tensor) -> None:
-        if self.__window_size is not None and len(self.__results) >= self.__window_size:
-            self.__results.pop(0)
-
-        self.__results.append((y_proba.argmax(dim=1), y_true))
+    def process_value(self, y_proba: th.Tensor, y_true: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+        return y_proba.argmax(dim=1), y_true
 
     def conf_mat(self) -> th.Tensor:
-        y_pred = th.cat([y_p for y_p, _ in self.__results], dim=0)
-        y_true = th.cat([y_t for _, y_t in self.__results], dim=0)
+        y_pred = th.cat([y_p for y_p, _ in self._results], dim=0)
+        y_true = th.cat([y_t for _, y_t in self._results], dim=0)
 
         conf_matrix_indices = th.multiply(y_true, self.__nb_class) + y_pred
         conf_matrix = (
@@ -75,12 +102,6 @@ class ConfusionMeter:
 
         return recs
 
-    def set_window_size(self, new_window_size: Union[int, None]) -> None:
-        if new_window_size is not None:
-            assert new_window_size > 0, f"window size must be > 0 : {new_window_size}"
-
-        self.__window_size = new_window_size
-
     def save_conf_matrix(
             self,
             epoch: int,
@@ -101,3 +122,13 @@ class ConfusionMeter:
 
         plt.close()
 
+
+class LossMeter(Meter[float]):
+    def __init__(self, window_size: Optional[int]) -> None:
+        super(LossMeter, self).__init__(window_size)
+
+    def process_value(self, value: float) -> T:
+        return value
+
+    def loss(self) -> float:
+        return mean(self._results)
