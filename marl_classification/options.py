@@ -27,6 +27,7 @@ TrainOptions = NamedTuple(
      ("epsilon", float),
      ("epsilon_decay", float),
      ("batch_size", int),
+     ("resources_dir", str),
      ("output_dir", str),
      ("frozen_modules", List[str]),
      ("ft_extr_str", str)]
