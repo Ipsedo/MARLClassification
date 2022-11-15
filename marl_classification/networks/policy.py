@@ -1,3 +1,4 @@
+import torch as th
 import torch.nn as nn
 
 
@@ -11,16 +12,16 @@ class Policy(nn.Module):
                  hidden_size: int) -> None:
         super().__init__()
 
-        self.seq_lin = nn.Sequential(
+        self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, nb_action),
             nn.Softmax(dim=-1)
         )
 
-        for m in self.seq_lin:
+        for m in self.__seq_lin:
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
 
-    def forward(self, h_caret_t_next):
-        return self.seq_lin(h_caret_t_next)
+    def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
+        return self.__seq_lin(h_caret_t_next)

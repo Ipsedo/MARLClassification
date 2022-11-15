@@ -10,7 +10,8 @@ from .ft_extractor import (
     RESISC45Cnn,
     StateToFeatures,
     CNNFtExtract,
-    KneeMRICnn
+    KneeMRICnn,
+    AIDCnn
 )
 from .messages import MessageSender
 from .policy import Policy
@@ -49,11 +50,13 @@ class ModelsWrapper(nn.Module):
     mnist: str = "mnist"
     resisc: str = "resisc45"
     knee_mri: str = "kneemri"
+    aid: str = "aid"
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
         mnist: MNISTCnn,
         resisc: RESISC45Cnn,
-        knee_mri: KneeMRICnn
+        knee_mri: KneeMRICnn,
+        aid: AIDCnn
     }
 
     def __init__(self, ft_extr_str: str, f: int,

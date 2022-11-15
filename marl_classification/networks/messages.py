@@ -1,3 +1,4 @@
+import torch as th
 import torch.nn as nn
 
 
@@ -13,18 +14,18 @@ class MessageSender(nn.Module):
         self.__n_m = n_m
         self.__n_e = hidden_size
 
-        self.seq_lin = nn.Sequential(
+        self.__seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
             nn.ReLU(),
             nn.Linear(self.__n_e, self.__n_m)
         )
 
-        for m in self.seq_lin:
+        for m in self.__seq_lin:
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
 
-    def forward(self, h_t):
-        return self.seq_lin(h_t)
+    def forward(self, h_t: th.Tensor) -> th.Tensor:
+        return self.__seq_lin(h_t)
 
 
 class MessageReceiver(nn.Module):
@@ -37,14 +38,14 @@ class MessageReceiver(nn.Module):
         self.__n = n
         self.__n_m = n_m
 
-        self.seq_lin = nn.Sequential(
+        self.__seq_lin = nn.Sequential(
             nn.Linear(self.__n_m, self.__n),
             nn.ReLU()
         )
 
-        for m in self.seq_lin:
+        for m in self.__seq_lin:
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
 
-    def forward(self, m_t):
-        return self.seq_lin(m_t)
+    def forward(self, m_t: th.Tensor) -> th.Tensor:
+        return self.__seq_lin(m_t)

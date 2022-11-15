@@ -1,3 +1,6 @@
+from typing import Tuple
+
+import torch as th
 import torch.nn as nn
 
 
@@ -11,9 +14,9 @@ class LSTMCellWrapper(nn.Module):
     def __init__(self, input_size: int, n: int) -> None:
         super().__init__()
 
-        self.lstm = nn.LSTMCell(input_size, n)
+        self.__lstm = nn.LSTMCell(input_size, n)
 
-    def forward(self, h, c, u):
+    def forward(self, h: th.Tensor, c: th.Tensor, u: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """
         TODO
 
@@ -35,7 +38,7 @@ class LSTMCellWrapper(nn.Module):
             u.flatten(0, 1)
         )
 
-        h_next, c_next = self.lstm(u, (h, c))
+        h_next, c_next = self.__lstm(u, (h, c))
 
         return (
             h_next.view(nb_ag, batch_size, -1),
