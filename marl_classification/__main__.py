@@ -1,7 +1,7 @@
 import argparse
 import re
 from os import makedirs
-from os.path import isdir, exists
+from os.path import exists, isdir, dirname, abspath, join
 
 from .eval import evaluation
 from .infer import infer
@@ -129,17 +129,25 @@ def main() -> None:
              "linear projections (action unit)"
     )
 
-    # Training arguments
+    # I/O arguments
     train_parser.add_argument(
-        "--batch-size", type=int,
-        default=8, dest="batch_size",
-        help="Image batch size for training and evaluation"
+        "--res-folder", type=str,
+        required=False,
+        default=abspath(join(dirname(abspath(__file__)), "..", "resources")), # TODO test it with package
+        help="The resources path containing the download folder with datasets"
     )
     train_parser.add_argument(
         "-o", "--output-dir", type=str,
         required=True, dest="output_dir",
         help="The output directory containing results "
              "and models per epoch. Created if needed."
+    )
+
+    # Training arguments
+    train_parser.add_argument(
+        "--batch-size", type=int,
+        default=8, dest="batch_size",
+        help="Image batch size for training and evaluation"
     )
     train_parser.add_argument(
         "--lr", "--learning-rate",
@@ -277,6 +285,7 @@ def main() -> None:
                 args.epsilon_greedy,
                 args.epsilon_decay,
                 args.batch_size,
+                args.res_folder,
                 args.output_dir,
                 args.frozen_modules,
                 args.ft_extractor
