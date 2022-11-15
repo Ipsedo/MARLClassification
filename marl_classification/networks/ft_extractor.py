@@ -65,7 +65,7 @@ class RESISC45Cnn(CNNFtExtract):
             nn.Conv2d(16, 32, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(32, 64, kernel_size=(3, 3), padding=(1, 1)),
+            nn.Conv2d(32, 64, kernel_size=(3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
             nn.Flatten(1, -1)
@@ -83,6 +83,45 @@ class RESISC45Cnn(CNNFtExtract):
     @property
     def out_size(self) -> int:
         return self.__out_size
+
+
+class AIDCnn(CNNFtExtract):
+
+    def __init__(self, f: int) -> None:
+        super().__init__()
+
+        self.__seq_conv = nn.Sequential(
+            nn.Conv2d(3, 8, (3, 3), padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(8, 16, (3, 3), padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(16, 32, (3, 3), padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(32, 64, (3, 3), padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(64, 128, (3, 3), padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Flatten(1, -1)
+        )
+
+        self.__out_size = 128 * (f // 32) ** 2
+
+    @property
+    def out_size(self) -> int:
+        return self.__out_size
+
+    def forward(self, o_t: th.Tensor) -> th.Tensor:
+        return self.__seq_conv(o_t)
 
 
 # Knee MRI stuff
@@ -129,10 +168,10 @@ class StateToFeatures(nn.Module):
         self.__d = d
         self.__n_d = n_d
 
-        self.seq_lin = nn.Sequential(
+        self.__seq_lin = nn.Sequential(
             nn.Linear(self.__d, self.__n_d),
             nn.ReLU()
         )
 
-    def forward(self, p_t):
-        return self.seq_lin(p_t)
+    def forward(self, p_t: th.Tensor) -> th.Tensor:
+        return self.__seq_lin(p_t)
