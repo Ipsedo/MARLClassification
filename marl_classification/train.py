@@ -20,7 +20,7 @@ from .environment import (
     episode
 )
 from .infer import visualize_steps
-from .metrics import ConfusionMeter
+from .metrics import ConfusionMeter, LossMeter
 from .networks import ModelsWrapper
 from .options import MainOptions, TrainOptions
 
@@ -57,12 +57,15 @@ def train(
         custom_tr.NormalNorm()
     ])
 
-    if train_options.ft_extr_str.startswith("resisc"):
-        dataset_constructor = RESISC45Dataset
-    elif train_options.ft_extr_str.startswith("mnist"):
-        dataset_constructor = MNISTDataset
-    else:
-        dataset_constructor = KneeMRIDataset
+    match train_options.ft_extr_str:
+        case ModelsWrapper.mnist:
+            dataset_constructor = MNISTDataset
+        case ModelsWrapper.resisc:
+            dataset_constructor = RESISC45Dataset
+        case ModelsWrapper.knee_mri:
+            dataset_constructor = KneeMRIDataset
+        case _:
+            raise ValueError("Unrecognized dataset")
 
     nn_models = ModelsWrapper(
         train_options.ft_extr_str,
@@ -78,7 +81,10 @@ def train(
         train_options.hidden_size_linear_action
     )
 
-    dataset = dataset_constructor(img_pipeline)
+    dataset = dataset_constructor(
+        train_options.resources_dir,
+        img_pipeline
+    )
 
     marl_m = MultiAgent(
         main_options.nb_agent,
@@ -155,7 +161,7 @@ def train(
         shuffle=True, num_workers=6, drop_last=False, pin_memory=True
     )
 
-    test_dataloader = DataLoader(
+    test_dataset = DataLoader(
         test_dataset, batch_size=train_options.batch_size,
         shuffle=True, num_workers=6, drop_last=False, pin_memory=True
     )
@@ -169,19 +175,21 @@ def train(
         window_size=64
     )
 
+    path_loss_meter = LossMeter(window_size=64)
+    reward_meter = LossMeter(window_size=64)
+    loss_meter = LossMeter(window_size=64)
+
     for e in range(train_options.nb_epoch):
         nn_models.train()
 
-        sum_loss = 0.
-
         tqdm_bar = tqdm(train_dataloader)
-        for i, (x_train, y_train) in enumerate(tqdm_bar):
+        for x_train, y_train in tqdm_bar:
             x_train, y_train = x_train.to(th.device(device_str)), \
                                y_train.to(th.device(device_str))
 
             # pred = [Ns, Nb, Nc]
             # prob = [Ns, Nb]
-            preds, probs, _ = detailed_episode(
+            pred, log_proba, _ = detailed_episode(
                 marl_m, x_train, epsilon,
                 main_options.step,
                 device_str,
@@ -189,25 +197,23 @@ def train(
             )
 
             # select last step
-            pred = preds[-1, :, :]
+            last_pred = pred[-1, :, :]
 
-            # Update confusion meter
-            # mean between retries
-            conf_meter_train.add(
-                pred.detach(),
-                y_train
+            # maximize(reward) -> maximize(-error)
+            reward = -th_fun.cross_entropy(
+                last_pred, y_train,
+                reduction="none"
             )
 
-            # reward = -error(y_pred, y_true)
-            r = -th_fun.cross_entropy(pred, y_train)
+            # Path loss
+            # sum log-probabilities (on steps), then exponential
+            # maximize(probability * reward)
+            path_sum = log_proba.sum(dim=0)
+            path_loss = path_sum.exp() * reward.detach()
 
-            # Compute loss
-            # sum log proba (on steps), then pass to exponential
-            losses = probs.sum(dim=0).exp() * r.detach() + r
-
-            # Losses mean on images batch and retries
+            # Losses mean on images batch
             # maximize(E[reward]) -> minimize(-E[reward])
-            loss = -losses.mean()
+            loss = -(path_loss + reward).mean()
 
             # Reset gradient
             optim.zero_grad()
@@ -218,8 +224,15 @@ def train(
             # Update weights
             optim.step()
 
-            # Update epoch loss sum
-            sum_loss += loss.item()
+            # Update confusion meter and epoch loss sum
+            conf_meter_train.add(
+                last_pred.detach(),
+                y_train
+            )
+
+            path_loss_meter.add(path_sum.mean().item())
+            reward_meter.add(reward.mean().item())
+            loss_meter.add(loss.item())
 
             # Compute global score
             precs, recs = (
@@ -229,6 +242,8 @@ def train(
 
             if curr_step % 100 == 0:
                 mlflow.log_metrics(step=curr_step, metrics={
+                    "reward": reward.mean().item(),
+                    "path_loss": path_sum.mean().item(),
                     "loss": loss.item(),
                     "train_prec": precs.mean().item(),
                     "train_rec": recs.mean().item(),
@@ -239,7 +254,9 @@ def train(
                 f"Epoch {e} - Train, "
                 f"train_prec = {precs.mean().item():.3f}, "
                 f"train_rec = {recs.mean().item():.3f}, "
-                f"loss = {sum_loss / (i + 1):.4f}, "
+                f"loss = {loss_meter.loss():.4f}, "
+                f"reward = {reward_meter.loss():.4f}, "
+                f"path = {path_loss_meter.loss():.4f}, "
                 f"eps = {epsilon:.4f}"
             )
 
@@ -248,20 +265,18 @@ def train(
 
             curr_step += 1
 
-        sum_loss /= len(train_dataloader)
-
         nn_models.eval()
         conf_meter_eval = ConfusionMeter(train_options.nb_class, None)
 
         with th.no_grad():
-            tqdm_bar = tqdm(test_dataloader)
+            tqdm_bar = tqdm(test_dataset)
             for x_test, y_test in tqdm_bar:
                 x_test, y_test = x_test.to(th.device(device_str)), \
                                  y_test.to(th.device(device_str))
 
-                preds, _ = episode(marl_m, x_test, 0., main_options.step)
+                pred, _ = episode(marl_m, x_test, 0., main_options.step)
 
-                conf_meter_eval.add(preds.detach(), y_test)
+                conf_meter_eval.add(pred.detach(), y_test)
 
                 # Compute score
                 precs, recs = (
@@ -303,16 +318,19 @@ def train(
         tr.ToTensor()
     ])
 
-    dataset_tmp = dataset_constructor(empty_pipe)
+    dataset_tmp = dataset_constructor(
+        train_options.resources_dir,
+        empty_pipe
+    )
 
-    test_dataloader_ori = Subset(dataset_tmp, idx_test)
-    test_dataloader = Subset(dataset, idx_test)
+    test_dataset_ori = Subset(dataset_tmp, idx_test)
+    test_dataset = Subset(dataset, idx_test)
 
-    test_idx = randint(0, len(test_dataloader_ori))
+    test_idx = randint(0, len(test_dataset_ori))
 
     visualize_steps(
-        marl_m, test_dataloader[test_idx][0],
-        test_dataloader_ori[test_idx][0],
+        marl_m, test_dataset[test_idx][0],
+        test_dataset_ori[test_idx][0],
         main_options.step, train_options.window_size,
         output_dir, train_options.nb_class, device_str,
         dataset.class_to_idx
