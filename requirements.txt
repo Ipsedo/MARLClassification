@@ -6,6 +6,7 @@ torchvision
 tqdm
 matplotlib
 numpy
+Pillow
 
 # other stuff
 pandas
