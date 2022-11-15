@@ -7,7 +7,7 @@ if ! [[ -f "${SCRIPT_DIR}/downloaded/NWPU-RESISC45.rar" ]]; then
   echo "Download NWPU-RESISC45.rar on the opened web page"
   firefox https://1drv.ms/u/s!AmgKYzARBl5ca3HNaHIlzp_IXjs
 
-  echo "Then place it at /path/to/MARLClassification/res/downloaded folder and re-run this script"
+  echo "Then place it at ${SCRIPT_DIR}/downloaded folder and re-run this script"
 else
   echo "Assume you have correctly downloaded and copied NWPU-RESISC45.rar to /path/to/MARLClassification/res/downloaded folder"
 
