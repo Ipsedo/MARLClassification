@@ -97,7 +97,8 @@ def main() -> None:
         choices=[
             ModelsWrapper.mnist,
             ModelsWrapper.resisc,
-            ModelsWrapper.knee_mri
+            ModelsWrapper.knee_mri,
+            ModelsWrapper.aid
         ],
         default="mnist", dest="ft_extractor",
         help="Choose features extractor (CNN)"

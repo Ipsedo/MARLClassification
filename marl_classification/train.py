@@ -10,7 +10,12 @@ import torchvision.transforms as tr
 from torch.utils.data import Subset, DataLoader
 from tqdm import tqdm
 
-from .data import KneeMRIDataset, MNISTDataset, RESISC45Dataset
+from .data import (
+    KneeMRIDataset,
+    MNISTDataset,
+    RESISC45Dataset,
+    AIDDataset
+)
 from .data import transforms as custom_tr
 from .environment import (
     MultiAgent,
@@ -64,6 +69,8 @@ def train(
             dataset_constructor = RESISC45Dataset
         case ModelsWrapper.knee_mri:
             dataset_constructor = KneeMRIDataset
+        case ModelsWrapper.aid:
+            dataset_constructor = AIDDataset
         case _:
             raise ValueError("Unrecognized dataset")
 
