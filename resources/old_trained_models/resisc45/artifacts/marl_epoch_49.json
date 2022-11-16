@@ -1,1 +1,0 @@
-{"ft_extr_str": "resisc45", "window_size": 10, "hidden_size_belief": 1536, "hidden_size_action": 1536, "hidden_size_msg": 256, "hidden_size_state": 8, "state_dim": 2, "nb_action": 4, "class_number": 45, "hidden_size_linear_belief": 2048, "hidden_size_linear_action": 2048}

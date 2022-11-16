@@ -1,0 +1,1 @@
+{"ft_extr_str": "mnist", "window_size": 6, "hidden_size_belief": 64, "hidden_size_action": 64, "hidden_size_msg": 16, "hidden_size_state": 8, "state_dim": 2, "actions": [[1, 0], [-1, 0], [0, 1], [0, -1]], "class_number": 10, "hidden_size_linear_belief": 96, "hidden_size_linear_action": 96}
