@@ -76,7 +76,7 @@ def evaluation(
     for x, y in tqdm(data_loader):
         x, y = x.to(th.device(device_str)), y.to(th.device(device_str))
 
-        preds, probas = episode(marl_m, x, 0., main_options.step)
+        preds, _ = episode(marl_m, x, 0., main_options.step)
 
         conf_meter.add(preds.detach(), y)
 
