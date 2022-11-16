@@ -30,7 +30,7 @@ class Meter(Generic[T], ABC):
         self.__results: List[T] = []
 
     @abstractmethod
-    def process_value(self, *args) -> T:
+    def _process_value(self, *args) -> T:
         pass
 
     @property
@@ -41,7 +41,7 @@ class Meter(Generic[T], ABC):
         if self.__window_size is not None and len(self.__results) >= self.__window_size:
             self.__results.pop(0)
 
-        self.__results.append(self.process_value(*args))
+        self.__results.append(self._process_value(*args))
 
     def set_window_size(self, new_window_size: Union[int, None]) -> None:
         if new_window_size is not None:
@@ -59,7 +59,7 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
         super(ConfusionMeter, self).__init__(window_size)
         self.__nb_class = nb_class
 
-    def process_value(self, y_proba: th.Tensor, y_true: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+    def _process_value(self, y_proba: th.Tensor, y_true: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         return y_proba.argmax(dim=1), y_true
 
     def conf_mat(self) -> th.Tensor:
@@ -127,7 +127,7 @@ class LossMeter(Meter[float]):
     def __init__(self, window_size: Optional[int]) -> None:
         super(LossMeter, self).__init__(window_size)
 
-    def process_value(self, value: float) -> T:
+    def _process_value(self, value: float) -> float:
         return value
 
     def loss(self) -> float:
