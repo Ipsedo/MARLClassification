@@ -16,7 +16,7 @@ from .ft_extractor import (
 from .messages import MessageSender
 from .policy import Policy
 from .prediction import Prediction
-from .recurrents import LSTMCellWrapper
+from .units import Unit
 
 
 #####################
@@ -30,7 +30,7 @@ class ModelsWrapper(nn.Module):
     evaluate_msg: str = "m_theta_4"
 
     belief_unit: str = "belief_unit"
-    action_unit: str = "action_unit"
+    #action_unit: str = "action_unit"
 
     policy: str = "pi_theta_3"
     predict: str = "q_theta_8"
@@ -40,7 +40,6 @@ class ModelsWrapper(nn.Module):
         map_pos,
         evaluate_msg,
         belief_unit,
-        action_unit,
         policy,
         predict
     }
@@ -72,13 +71,10 @@ class ModelsWrapper(nn.Module):
             self.map_obs: map_obs_module,
             self.map_pos: StateToFeatures(d, n_d),
             self.evaluate_msg: MessageSender(n_b, n_m, hidden_size_belief),
-            self.belief_unit: LSTMCellWrapper(
+            self.belief_unit: Unit(
                 map_obs_module.out_size + n_d + n_m, n_b
             ),
-            self.action_unit: LSTMCellWrapper(
-                map_obs_module.out_size + n_d + n_m, n_a
-            ),
-            self.policy: Policy(len(actions), n_a, hidden_size_action),
+            self.policy: Policy(len(actions), n_b, hidden_size_action),
             self.predict: Prediction(n_b, nb_class, hidden_size_belief)
         })
 

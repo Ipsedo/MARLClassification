@@ -181,7 +181,7 @@ def main() -> None:
             ModelsWrapper.map_pos,
             ModelsWrapper.evaluate_msg,
             ModelsWrapper.belief_unit,
-            ModelsWrapper.action_unit,
+            #ModelsWrapper.action_unit,
             ModelsWrapper.predict,
             ModelsWrapper.policy],
         help="Choose module(s) to be frozen during training"

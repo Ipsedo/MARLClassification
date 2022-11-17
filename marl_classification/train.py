@@ -1,6 +1,7 @@
 import json
 from os import mkdir
 from os.path import exists, isdir, join
+from math import log
 from random import randint
 
 import mlflow
@@ -207,20 +208,18 @@ def train(
             last_pred = pred[-1, :, :]
 
             # maximize(reward) -> maximize(-error)
-            reward = -th_fun.cross_entropy(
+            reward = log(train_options.nb_class) - th_fun.cross_entropy(
                 last_pred, y_train,
                 reduction="none"
             )
 
             # Path loss
-            # sum log-probabilities (on steps), then exponential
-            # maximize(probability * reward)
-            path_sum = log_proba.sum(dim=0)
-            path_loss = path_sum.exp() * reward.detach()
+            # sum log-probabilities (on steps)
+            path_loss = log_proba.sum(dim=0)
 
             # Losses mean on images batch
             # maximize(E[reward]) -> minimize(-E[reward])
-            loss = -(path_loss + reward).mean()
+            loss = -(path_loss * reward.detach() + reward).mean()
 
             # Reset gradient
             optim.zero_grad()
@@ -237,7 +236,7 @@ def train(
                 y_train
             )
 
-            path_loss_meter.add(path_sum.mean().item())
+            path_loss_meter.add(path_loss.mean().item())
             reward_meter.add(reward.mean().item())
             loss_meter.add(loss.item())
 
@@ -250,7 +249,7 @@ def train(
             if curr_step % 100 == 0:
                 mlflow.log_metrics(step=curr_step, metrics={
                     "reward": reward.mean().item(),
-                    "path_loss": path_sum.mean().item(),
+                    "path_loss": path_loss.mean().item(),
                     "loss": loss.item(),
                     "train_prec": precs.mean().item(),
                     "train_rec": recs.mean().item(),
