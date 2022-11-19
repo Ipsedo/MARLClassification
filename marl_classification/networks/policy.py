@@ -19,10 +19,6 @@ class Policy(nn.Module):
             nn.Softmax(dim=-1)
         )
 
-        for m in self.__seq_lin:
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
         return self.__seq_lin(h_caret_t_next)
 
@@ -36,10 +32,6 @@ class Critic(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, 1)
         )
-
-        for m in self.__seq_lin:
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
         return self.__seq_lin(h_caret_t_next)

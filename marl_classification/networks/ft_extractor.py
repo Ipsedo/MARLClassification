@@ -38,10 +38,6 @@ class MNISTCnn(CNNFtExtract):
 
         self.__out_size = 32 * (f // 4) ** 2
 
-        for m in self.__seq_conv:
-            if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform_(m.weight)
-
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         o_t = o_t[:, 0, None, :, :]  # grey scale
         return self.__seq_conv(o_t)
@@ -72,10 +68,6 @@ class RESISC45Cnn(CNNFtExtract):
         )
 
         self.__out_size = 64 * (f // 8) ** 2
-
-        for m in self.__seq_conv:
-            if isinstance(m, nn.Conv2d):
-                nn.init.xavier_uniform_(m.weight)
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         return self.__seq_conv(o_t)

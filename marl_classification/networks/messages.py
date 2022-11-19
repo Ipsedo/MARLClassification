@@ -20,10 +20,6 @@ class MessageSender(nn.Module):
             nn.Linear(self.__n_e, self.__n_m)
         )
 
-        for m in self.__seq_lin:
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-
     def forward(self, h_t: th.Tensor) -> th.Tensor:
         return self.__seq_lin(h_t)
 
@@ -42,10 +38,6 @@ class MessageReceiver(nn.Module):
             nn.Linear(self.__n_m, self.__n),
             nn.ReLU()
         )
-
-        for m in self.__seq_lin:
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
 
     def forward(self, m_t: th.Tensor) -> th.Tensor:
         return self.__seq_lin(m_t)

@@ -36,9 +36,10 @@ def visualize_steps(
     color_map = None
 
     preds, _, _, pos = detailed_episode(
-        agents, img.unsqueeze(0), 0.,
+        agents, img.unsqueeze(0),
         max_it, device_str, nb_class
     )
+    # mean over agents
     preds, pos = preds.mean(dim=1).cpu(), pos.cpu()
     img_ori = img_ori.permute(1, 2, 0).cpu()
 
@@ -60,20 +61,23 @@ def visualize_steps(
     for t in range(max_it):
 
         for i in range(len(agents)):
+            # agent coordinates
+            x = pos[t][i][img_idx][0]
+            y = pos[t][i][img_idx][1]
+
             # Color
-            curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-            pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :3] = \
-                img_ori[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-                pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, :]
+            curr_img[x:x + f, y:y + f, :3] = img_ori[x:x + f, y:y + f, :]
+
             # Alpha
-            curr_img[pos[t][i][img_idx][0]:pos[t][i][img_idx][0] + f,
-            pos[t][i][img_idx][1]:pos[t][i][img_idx][1] + f, 3] = 1
+            curr_img[x:x + f, y:y + f, 3] = 1
 
         fig = plt.figure()
         plt.imshow(curr_img, cmap=color_map)
+
         pred_softmax = th_fun.softmax(preds[t][img_idx], dim=-1)
         pred_max = pred_softmax.argmax(dim=-1).item()
         pred_proba = pred_softmax[pred_max].item()
+
         plt.title(
             f"Step = {t}, step_pred_class = "
             f"{idx_to_class[pred_max]} ({pred_proba * 100.:.1f}%)"

@@ -13,27 +13,6 @@ class MultiAgent:
             obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
             trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor]
     ) -> None:
-        """
-
-        :param nb_agents:
-        :type nb_agents:
-        :param model_wrapper:
-        :type model_wrapper:
-        :param n_b:
-        :type n_b:
-        :param n_a:
-        :type n_a:
-        :param f:
-        :type f:
-        :param n_m:
-        :type n_m:
-        :param action:
-        :type action:
-        :param obs:
-        :type obs:
-        :param trans:
-        :type trans:
-        """
 
         # Agent info
         self.__nb_agents = nb_agents
@@ -72,15 +51,6 @@ class MultiAgent:
         self.__device_str = "cpu"
 
     def new_episode(self, batch_size: int, img_size: List[int]) -> None:
-        """
-
-        :param batch_size:
-        :type batch_size:
-        :param img_size:
-        :type img_size:
-        :return:
-        :rtype:
-        """
 
         self.__batch_size = batch_size
 
@@ -113,16 +83,7 @@ class MultiAgent:
                 device=th.device(self.__device_str))
             for i_s in img_size], dim=-1)
 
-    def step(self, img: th.Tensor, eps: float) -> None:
-        """
-
-        :param img:
-        :type img:
-        :param eps:
-        :type eps:
-        :return:
-        :rtype:
-        """
+    def step(self, img: th.Tensor) -> None:
 
         img_sizes = [s for s in img.size()[2:]]
         nb_agent = len(self)
@@ -199,35 +160,10 @@ class MultiAgent:
         # Greedy policy
         prob, policy_actions = action_scores.max(dim=-1)
 
-        # Random policy
-        random_actions = th.randint(
-            0, actions.size()[0],
-            (nb_agent, self.__batch_size),
-            device=th.device(self.__device_str)
-        )
-
-        # Compute epsilon-greedy policy
-        use_greedy = th.gt(
-            th.rand(
-                (nb_agent, self.__batch_size),
-                device=th.device(self.__device_str)
-            ),
-            eps
-        ).to(th.int)
-
-        final_actions = (
-                use_greedy * policy_actions +
-                (1 - use_greedy) * random_actions
-        )
-
-        a_t_next = actions[final_actions]
+        a_t_next = actions[policy_actions]
 
         # Append probability
-        self.__action_probas.append(
-            action_scores
-            .gather(-1, final_actions.unsqueeze(-1))
-            .squeeze(-1)
-        )
+        self.__action_probas.append(prob)
 
         # Apply action / Upgrade agent state
         self.__pos = self.__trans(
@@ -239,18 +175,6 @@ class MultiAgent:
         self.__t += 1
 
     def predict(self) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
-        """
-        return prediction for the current episode
-
-        prediction : th.Tensor with size == (batch_size, nb_class)
-        action probabilities : th.Tensor with size == (batch_size,)
-
-        prediction : mean on agents
-        probas : sum of log proba between agents
-
-        :return: tuple <predictions, action_probabilities>
-        """
-
         return (
             self.__networks(
                 self.__networks.predict,
@@ -260,7 +184,7 @@ class MultiAgent:
             self.__networks(
                 self.__networks.critic,
                 self.__action_h[-1]
-            ).flatten(-2, -1)
+            ).squeeze(-1)
         )
 
     @property
@@ -268,11 +192,6 @@ class MultiAgent:
         return self.__is_cuda
 
     def cuda(self) -> None:
-        """
-
-        :return:
-        :rtype:
-        """
         self.__is_cuda = True
         self.__device_str = "cuda"
 
@@ -285,11 +204,6 @@ class MultiAgent:
         return self.__pos
 
     def __len__(self) -> int:
-        """
-
-        :return:
-        :rtype:
-        """
         return self.__nb_agents
 
     @classmethod

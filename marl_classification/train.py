@@ -122,8 +122,6 @@ def train(
             train_options.hidden_size_linear_action,
         "nb_agent": main_options.nb_agent,
         "frozen_modules": train_options.frozen_modules,
-        "epsilon": train_options.epsilon,
-        "epsilon_decay": train_options.epsilon_decay,
         "nb_epoch": train_options.nb_epoch,
         "learning_rate": train_options.learning_rate,
         "img_size": train_options.img_size,
@@ -169,12 +167,10 @@ def train(
         shuffle=True, num_workers=6, drop_last=False, pin_memory=True
     )
 
-    test_dataset = DataLoader(
+    test_dataloader = DataLoader(
         test_dataset, batch_size=train_options.batch_size,
         shuffle=True, num_workers=6, drop_last=False, pin_memory=True
     )
-
-    epsilon = train_options.epsilon
 
     curr_step = 0
 
@@ -201,7 +197,7 @@ def train(
             # prob = [Ns, Na, Nb]
             # values = [Ns, Na, Nb]
             pred, log_proba, values, _ = detailed_episode(
-                marl_m, x_train, epsilon,
+                marl_m, x_train,
                 main_options.step,
                 device_str,
                 train_options.nb_class
@@ -209,18 +205,24 @@ def train(
 
             gamma = 0.99
             # [Nb, Ns, Na]
-            tmp_y_train = y_train[:, None, None].repeat(1, main_options.step, len(marl_m))
+            tmp_y_train = (
+                y_train[:, None, None]
+                .repeat(1, main_options.step, len(marl_m))
+            )
             # [Nc, Nc, Ns, Na]
             tmp_pred = pred.permute(2, 3, 0, 1)
 
+            # error bound of a random prediction
+            # reward = (error_bound - error) / error_bound
+            error_bound = log(train_options.nb_class)
             # [Ns, Na, Nb]
             rewards = (
-                log(train_options.nb_class) -
+                error_bound -
                 th_fun.cross_entropy(
                     tmp_pred, tmp_y_train,
                     reduction="none"
                 ).permute(1, 2, 0)
-            ) / log(train_options.nb_class)
+            ) / error_bound
 
             # [Ns, Na, 1]
             t_steps = (
@@ -257,6 +259,7 @@ def train(
             # sum over steps, mean over batch
             loss = policy_loss.mean() + critic_loss.mean()
 
+            # backward and update weights
             optim.zero_grad()
             loss.backward()
             optim.step()
@@ -285,7 +288,6 @@ def train(
                     "loss": loss.item(),
                     "train_prec": precs.mean().item(),
                     "train_rec": recs.mean().item(),
-                    "epsilon": epsilon,
                     "critic_loss": critic_loss.mean().item(),
                     "actor_loss": policy_loss.mean().item()
                 })
@@ -297,12 +299,8 @@ def train(
                 f"c_loss = {critic_loss_meter.loss():.4f}, "
                 f"a_loss = {policy_loss_meter.loss():.4f}, "
                 f"reward = {reward_meter.loss():.4f}, "
-                f"path = {path_loss_meter.loss():.4f}, "
-                f"eps = {epsilon:.4f}"
+                f"path = {path_loss_meter.loss():.4f}"
             )
-
-            epsilon *= train_options.epsilon_decay
-            epsilon = max(epsilon, 0.)
 
             curr_step += 1
 
@@ -310,12 +308,12 @@ def train(
         conf_meter_eval = ConfusionMeter(train_options.nb_class, None)
 
         with th.no_grad():
-            tqdm_bar = tqdm(test_dataset)
+            tqdm_bar = tqdm(test_dataloader)
             for x_test, y_test in tqdm_bar:
                 x_test, y_test = x_test.to(th.device(device_str)), \
                                  y_test.to(th.device(device_str))
 
-                pred, _ = episode(marl_m, x_test, 0., main_options.step)
+                pred, _ = episode(marl_m, x_test, main_options.step)
 
                 conf_meter_eval.add(pred.mean(dim=0).detach(), y_test)
 
@@ -365,12 +363,12 @@ def train(
     )
 
     test_dataset_ori = Subset(dataset_tmp, idx_test)
-    test_dataset = Subset(dataset, idx_test)
+    test_dataloader = Subset(dataset, idx_test)
 
     test_idx = randint(0, len(test_dataset_ori))
 
     visualize_steps(
-        marl_m, test_dataset[test_idx][0],
+        marl_m, test_dataloader[test_idx][0],
         test_dataset_ori[test_idx][0],
         main_options.step, train_options.window_size,
         output_dir, train_options.nb_class, device_str,

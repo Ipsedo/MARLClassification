@@ -100,6 +100,14 @@ class ModelsWrapper(nn.Module):
         self.__actions = actions
         self.__nb_class = nb_class
 
+        def __init_weights(m: nn.Module) -> None:
+            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d):
+                nn.init.xavier_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+
+        self.apply(__init_weights)
+
     def forward(self, op: str, *args):
         return self.__networks_dict[op](*args)
 

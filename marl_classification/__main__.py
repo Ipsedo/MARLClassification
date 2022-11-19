@@ -162,18 +162,6 @@ def main() -> None:
         help="Number of training epochs"
     )
     train_parser.add_argument(
-        "--eps", type=float, default=0.,
-        dest="epsilon_greedy",
-        help="Threshold from which apply "
-             "greedy policy (random otherwise)"
-    )
-    train_parser.add_argument(
-        "--eps-dec", type=float, default=0.,
-        dest="epsilon_decay",
-        help="Epsilon decay, at each forward "
-             "eps <- eps * eps_decay"
-    )
-    train_parser.add_argument(
         "--freeze", type=str, default=[], nargs="+",
         dest="frozen_modules", action=SetAppendAction,
         choices=[
@@ -181,7 +169,7 @@ def main() -> None:
             ModelsWrapper.map_pos,
             ModelsWrapper.evaluate_msg,
             ModelsWrapper.belief_unit,
-            #ModelsWrapper.action_unit,
+            ModelsWrapper.action_unit,
             ModelsWrapper.predict,
             ModelsWrapper.policy],
         help="Choose module(s) to be frozen during training"
@@ -283,8 +271,6 @@ def main() -> None:
                 action,
                 args.nb_epoch,
                 args.learning_rate,
-                args.epsilon_greedy,
-                args.epsilon_decay,
                 args.batch_size,
                 args.res_folder,
                 args.output_dir,

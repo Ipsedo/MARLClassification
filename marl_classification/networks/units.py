@@ -15,9 +15,5 @@ class Unit(nn.Module):
             nn.ReLU(),
         )
 
-        for m in self.__seq_lin:
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-
     def forward(self, u: th.Tensor) -> th.Tensor:
         return self.__seq_lin(u)

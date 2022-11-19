@@ -24,8 +24,6 @@ TrainOptions = NamedTuple(
      ("action", List[List[int]]),
      ("nb_epoch", int),
      ("learning_rate", float),
-     ("epsilon", float),
-     ("epsilon_decay", float),
      ("batch_size", int),
      ("resources_dir", str),
      ("output_dir", str),
