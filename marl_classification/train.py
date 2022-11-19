@@ -232,7 +232,7 @@ def train(
                 .unsqueeze(1)
             )
 
-            # discounting returns
+            # discounting reward
             returns = rewards * gamma ** t_steps
             returns = (
                     returns.flip(dims=(0,))
@@ -240,6 +240,7 @@ def train(
                     .flip(dims=(0,)) /
                     gamma ** t_steps
             )
+            returns = (returns - returns.mean()) / (returns.std() + 1e-8)
 
             # actor advantage
             advantage = returns - values
@@ -247,10 +248,10 @@ def train(
             path_loss = -log_proba * advantage.detach()
 
             # add -reward -> optimize classifier
-            policy_loss = path_loss - rewards
+            policy_loss = path_loss - rewards[-1]
 
-            # critic loss : difference between values and returns
-            critic_loss = th_fun.smooth_l1_loss(values, rewards.detach())
+            # critic loss : difference between values and rewards
+            critic_loss = th_fun.smooth_l1_loss(values, returns.detach())
 
             # sum over steps, mean over batch
             loss = policy_loss.sum(dim=0).mean() + critic_loss.sum(dim=0).mean()
