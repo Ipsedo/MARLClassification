@@ -1,13 +1,13 @@
 import json
 from os import mkdir
 from os.path import exists, isdir, join
-from math import log
 from random import randint
 
 import mlflow
 import torch as th
 import torch.nn.functional as th_fun
 import torchvision.transforms as tr
+from math import log
 from torch.utils.data import Subset, DataLoader
 from tqdm import tqdm
 
@@ -238,10 +238,10 @@ def train(
             # discounting reward
             returns = rewards * gamma ** t_steps
             returns = (
-                    returns.flip(dims=(0,))
-                    .cumsum(0)
-                    .flip(dims=(0,)) /
-                    gamma ** t_steps
+                returns.flip(dims=(0,))
+                .cumsum(0)
+                .flip(dims=(0,)) /
+                gamma ** t_steps
             )
             returns = (returns - returns.mean()) / (returns.std() + 1e-8)
 
@@ -250,13 +250,13 @@ def train(
             # actor loss
             path_loss = -log_proba * advantage.detach()
 
-            # add -reward[last_step] -> optimize classifier
+            # add -reward.mean(agent_dim) -> optimize classifier
             policy_loss = path_loss - rewards.mean(dim=1, keepdim=True)
 
             # critic loss : difference between values and rewards
             critic_loss = th_fun.smooth_l1_loss(values, returns.detach())
 
-            # sum over steps, mean over batch
+            # mean over steps, mean over batch
             loss = policy_loss.mean() + critic_loss.mean()
 
             # backward and update weights
