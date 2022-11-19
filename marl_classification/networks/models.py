@@ -30,7 +30,7 @@ class ModelsWrapper(nn.Module):
     evaluate_msg: str = "m_theta_4"
 
     belief_unit: str = "belief_unit"
-    #action_unit: str = "action_unit"
+    action_unit: str = "action_unit"
 
     policy: str = "pi_theta_3"
     predict: str = "q_theta_8"
@@ -40,6 +40,7 @@ class ModelsWrapper(nn.Module):
         map_pos,
         evaluate_msg,
         belief_unit,
+        action_unit,
         policy,
         predict
     }
@@ -74,7 +75,10 @@ class ModelsWrapper(nn.Module):
             self.belief_unit: Unit(
                 map_obs_module.out_size + n_d + n_m, n_b
             ),
-            self.policy: Policy(len(actions), n_b, hidden_size_action),
+            self.action_unit: Unit(
+                map_obs_module.out_size + n_d + n_m, n_a
+            ),
+            self.policy: Policy(len(actions), n_a, hidden_size_action),
             self.predict: Prediction(n_b, nb_class, hidden_size_belief)
         })
 

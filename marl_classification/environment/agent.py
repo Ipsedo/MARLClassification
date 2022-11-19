@@ -171,10 +171,16 @@ class MultiAgent:
             self.__belief_h[self.__t + 1])
         )
 
+        # Action unit
+        action_h = self.__networks(
+            self.__networks.action_unit,
+            u_t
+        )
+
         # Get action probabilities
         action_scores = self.__networks(
             self.__networks.policy,
-            self.__belief_h[self.__t + 1]
+            action_h
         )
 
         # Create actions tensor

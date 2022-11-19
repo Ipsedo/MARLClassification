@@ -214,7 +214,7 @@ def train(
             )
 
             # Path loss
-            # sum log-probabilities (on steps)
+            # sum log-probabilities on steps
             path_loss = log_proba.sum(dim=0)
 
             # Losses mean on images batch
