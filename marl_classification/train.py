@@ -254,10 +254,13 @@ def train(
             policy_loss = path_loss - rewards.mean(dim=1, keepdim=True)
 
             # critic loss : difference between values and rewards
-            critic_loss = th_fun.smooth_l1_loss(values, returns.detach())
+            critic_loss = th_fun.smooth_l1_loss(
+                values, returns.detach(),
+                reduction="none"
+            )
 
-            # mean over steps, mean over batch
-            loss = policy_loss.mean() + critic_loss.mean()
+            # sum over steps, mean over agents and batch
+            loss = (policy_loss + critic_loss).sum(dim=0).mean()
 
             # backward and update weights
             optim.zero_grad()
