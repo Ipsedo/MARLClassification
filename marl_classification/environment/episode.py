@@ -72,30 +72,30 @@ def detailed_episode(
     )
 
     step_preds = th.zeros(
-        max_it, batch_size, nb_class,
+        max_it, len(agents), batch_size, nb_class,
         device=th.device(device_str)
     )
 
     step_probas = th.zeros(
-        max_it, batch_size,
+        max_it, len(agents), batch_size,
         device=th.device(device_str)
     )
 
     step_values = th.zeros(
-        max_it, batch_size,
+        max_it, len(agents), batch_size,
         device=th.device(device_str)
     )
 
     for t in range(max_it):
         agents.step(img_batch, eps)
 
-        step_pos[t, :, :] = agents.pos
+        step_pos[t, :, :, :] = agents.pos
 
         preds, probas, values = agents.predict()
 
-        step_preds[t, :, :] = preds
-        step_probas[t, :] = probas
-        step_values[t, :] = values
+        step_preds[t, :, :, :] = preds
+        step_probas[t, :, :] = probas
+        step_values[t, :, :] = values
 
     return step_preds, step_probas, step_values, step_pos
 

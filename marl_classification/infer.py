@@ -39,7 +39,7 @@ def visualize_steps(
         agents, img.unsqueeze(0), 0.,
         max_it, device_str, nb_class
     )
-    preds, pos = preds.cpu(), pos.cpu()
+    preds, pos = preds.mean(dim=1).cpu(), pos.cpu()
     img_ori = img_ori.permute(1, 2, 0).cpu()
 
     h, w, c = img_ori.size()

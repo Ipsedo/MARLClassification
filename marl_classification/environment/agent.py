@@ -255,12 +255,12 @@ class MultiAgent:
             self.__networks(
                 self.__networks.predict,
                 self.__belief_h[-1]
-            ).mean(dim=0),
-            self.__action_probas[-1].log().sum(dim=0),
+            ),
+            self.__action_probas[-1].log(),
             self.__networks(
                 self.__networks.critic,
                 self.__action_h[-1]
-            ).mean(dim=0).view(-1)
+            ).flatten(-2, -1)
         )
 
     @property

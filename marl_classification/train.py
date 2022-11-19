@@ -197,9 +197,9 @@ def train(
             x_train, y_train = x_train.to(th.device(device_str)), \
                                y_train.to(th.device(device_str))
 
-            # pred = [Ns, Nb, Nc]
-            # prob = [Ns, Nb]
-            # values = [Ns, Nb]
+            # pred = [Ns, Na, Nb, Nc]
+            # prob = [Ns, Na, Nb]
+            # values = [Ns, Na, Nb]
             pred, log_proba, values, _ = detailed_episode(
                 marl_m, x_train, epsilon,
                 main_options.step,
@@ -208,28 +208,29 @@ def train(
             )
 
             gamma = 0.99
-            # [Nb, Ns]
-            tmp_y_train = y_train.unsqueeze(1).repeat(1, main_options.step)
-            # [Nc, Nc, Ns]
-            tmp_pred = pred.permute(1, 2, 0)
+            # [Nb, Ns, Na]
+            tmp_y_train = y_train[:, None, None].repeat(1, main_options.step, len(marl_m))
+            # [Nc, Nc, Ns, Na]
+            tmp_pred = pred.permute(2, 3, 0, 1)
 
-            # [Ns, Nb]
+            # [Ns, Na, Nb]
             rewards = (
                 log(train_options.nb_class) -
                 th_fun.cross_entropy(
                     tmp_pred, tmp_y_train,
                     reduction="none"
-                ).permute(1, 0)
+                ).permute(1, 2, 0)
             ) / log(train_options.nb_class)
 
-            # [Ns, 1]
+            # [Ns, Na, 1]
             t_steps = (
                 th.arange(
                     rewards.size(0),
                     device=th.device(device_str)
-                )
+                )[:, None]
+                .repeat(1, len(marl_m))
                 .to(th.float)
-                .unsqueeze(1)
+                .unsqueeze(-1)
             )
 
             # discounting reward
@@ -247,14 +248,14 @@ def train(
             # actor loss
             path_loss = -log_proba * advantage.detach()
 
-            # add -reward -> optimize classifier
-            policy_loss = path_loss - rewards[-1]
+            # add -reward[last_step] -> optimize classifier
+            policy_loss = path_loss - rewards.mean(dim=1, keepdim=True)
 
             # critic loss : difference between values and rewards
             critic_loss = th_fun.smooth_l1_loss(values, returns.detach())
 
             # sum over steps, mean over batch
-            loss = policy_loss.sum(dim=0).mean() + critic_loss.sum(dim=0).mean()
+            loss = policy_loss.mean() + critic_loss.mean()
 
             optim.zero_grad()
             loss.backward()
@@ -262,7 +263,7 @@ def train(
 
             # Update confusion meter and epoch loss sum
             conf_meter_train.add(
-                pred[-1].detach(),
+                pred[-1].mean(dim=0).detach(),
                 y_train
             )
 
@@ -316,7 +317,7 @@ def train(
 
                 pred, _ = episode(marl_m, x_test, 0., main_options.step)
 
-                conf_meter_eval.add(pred.detach(), y_test)
+                conf_meter_eval.add(pred.mean(dim=0).detach(), y_test)
 
                 # Compute score
                 precs, recs = (
