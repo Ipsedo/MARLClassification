@@ -250,7 +250,7 @@ def train(
             policy_loss = path_loss - rewards
 
             # critic loss : difference between values and returns
-            critic_loss = th_fun.smooth_l1_loss(values, returns.detach()) # TODO reward or returns ?
+            critic_loss = th_fun.smooth_l1_loss(values, rewards.detach())
 
             # sum over steps, mean over batch
             loss = policy_loss.sum(dim=0).mean() + critic_loss.sum(dim=0).mean()
