@@ -31,7 +31,7 @@ def episode(
     for t in range(max_it):
         agents.step(img_batch, eps)
 
-    q, probas = agents.predict()
+    q, probas, _ = agents.predict()
 
     return q, probas
 
@@ -40,7 +40,7 @@ def detailed_episode(
         agents: MultiAgent, img_batch: th.Tensor,
         eps: float,
         max_it: int, device_str: str, nb_class: int
-) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
     """
 
     :param agents:
@@ -81,17 +81,23 @@ def detailed_episode(
         device=th.device(device_str)
     )
 
+    step_values = th.zeros(
+        max_it, batch_size,
+        device=th.device(device_str)
+    )
+
     for t in range(max_it):
         agents.step(img_batch, eps)
 
         step_pos[t, :, :] = agents.pos
 
-        preds, probas = agents.predict()
+        preds, probas, values = agents.predict()
 
         step_preds[t, :, :] = preds
         step_probas[t, :] = probas
+        step_values[t, :] = values
 
-    return step_preds, step_probas, step_pos
+    return step_preds, step_probas, step_values, step_pos
 
 
 def episode_retry(
@@ -133,7 +139,7 @@ def episode_retry(
     )
 
     for r in range(max_retry):
-        pred, prob, _ = detailed_episode(
+        pred, prob, _, _ = detailed_episode(
             agents, img_batch, eps, max_it, device_str, nb_class
         )
 

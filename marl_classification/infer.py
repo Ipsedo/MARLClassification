@@ -35,7 +35,7 @@ def visualize_steps(
 
     color_map = None
 
-    preds, _, pos = detailed_episode(
+    preds, _, _, pos = detailed_episode(
         agents, img.unsqueeze(0), 0.,
         max_it, device_str, nb_class
     )

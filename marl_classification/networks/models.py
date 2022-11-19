@@ -14,7 +14,7 @@ from .ft_extractor import (
     AIDCnn
 )
 from .messages import MessageSender
-from .policy import Policy
+from .policy import Policy, Critic
 from .prediction import Prediction
 from .units import Unit
 
@@ -35,6 +35,8 @@ class ModelsWrapper(nn.Module):
     policy: str = "pi_theta_3"
     predict: str = "q_theta_8"
 
+    critic: str = "critic"
+
     module_list: Set[str] = {
         map_obs,
         map_pos,
@@ -42,6 +44,7 @@ class ModelsWrapper(nn.Module):
         belief_unit,
         action_unit,
         policy,
+        critic,
         predict
     }
 
@@ -79,6 +82,7 @@ class ModelsWrapper(nn.Module):
                 map_obs_module.out_size + n_d + n_m, n_a
             ),
             self.policy: Policy(len(actions), n_a, hidden_size_action),
+            self.critic: Critic(n_a, hidden_size_action),
             self.predict: Prediction(n_b, nb_class, hidden_size_belief)
         })
 

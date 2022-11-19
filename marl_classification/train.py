@@ -185,7 +185,9 @@ def train(
 
     path_loss_meter = LossMeter(window_size=64)
     reward_meter = LossMeter(window_size=64)
-    loss_meter = LossMeter(window_size=64)
+
+    policy_loss_meter = LossMeter(window_size=64)
+    critic_loss_meter = LossMeter(window_size=64)
 
     for e in range(train_options.nb_epoch):
         nn_models.train()
@@ -197,48 +199,76 @@ def train(
 
             # pred = [Ns, Nb, Nc]
             # prob = [Ns, Nb]
-            pred, log_proba, _ = detailed_episode(
+            # values = [Ns, Nb]
+            pred, log_proba, values, _ = detailed_episode(
                 marl_m, x_train, epsilon,
                 main_options.step,
                 device_str,
                 train_options.nb_class
             )
 
-            # select last step
-            last_pred = pred[-1, :, :]
+            gamma = 0.99
+            # [Nb, Ns]
+            tmp_y_train = y_train.unsqueeze(1).repeat(1, main_options.step)
+            # [Nc, Nc, Ns]
+            tmp_pred = pred.permute(1, 2, 0)
 
-            # maximize(reward) -> maximize(-error)
-            reward = log(train_options.nb_class) - th_fun.cross_entropy(
-                last_pred, y_train,
-                reduction="none"
+            # [Ns, Nb]
+            rewards = (
+                log(train_options.nb_class) -
+                th_fun.cross_entropy(
+                    tmp_pred, tmp_y_train,
+                    reduction="none"
+                ).permute(1, 0)
+            ) / log(train_options.nb_class)
+
+            # [Ns, 1]
+            t_steps = (
+                th.arange(
+                    rewards.size(0),
+                    device=th.device(device_str)
+                )
+                .to(th.float)
+                .unsqueeze(1)
             )
 
-            # Path loss
-            # sum log-probabilities on steps
-            path_loss = log_proba.sum(dim=0)
+            # discounting returns
+            returns = rewards * gamma ** t_steps
+            returns = (
+                    returns.flip(dims=(0,))
+                    .cumsum(0)
+                    .flip(dims=(0,)) /
+                    gamma ** t_steps
+            )
 
-            # Losses mean on images batch
-            # maximize(E[reward]) -> minimize(-E[reward])
-            loss = -(path_loss * reward.detach() + reward).mean()
+            # actor advantage
+            advantage = returns - values
+            # actor loss
+            path_loss = -log_proba * advantage.detach()
 
-            # Reset gradient
+            # add -reward -> optimize classifier
+            policy_loss = path_loss - rewards
+
+            # critic loss : difference between values and returns
+            critic_loss = th_fun.smooth_l1_loss(values, returns.detach()) # TODO reward or returns ?
+
+            # sum over steps, mean over batch
+            loss = policy_loss.sum(dim=0).mean() + critic_loss.sum(dim=0).mean()
+
             optim.zero_grad()
-
-            # Backward on compute graph
             loss.backward()
-
-            # Update weights
             optim.step()
 
             # Update confusion meter and epoch loss sum
             conf_meter_train.add(
-                last_pred.detach(),
+                pred[-1].detach(),
                 y_train
             )
 
             path_loss_meter.add(path_loss.mean().item())
-            reward_meter.add(reward.mean().item())
-            loss_meter.add(loss.item())
+            reward_meter.add(rewards.mean().item())
+            policy_loss_meter.add(policy_loss.mean().item())
+            critic_loss_meter.add(critic_loss.mean().item())
 
             # Compute global score
             precs, recs = (
@@ -248,19 +278,22 @@ def train(
 
             if curr_step % 100 == 0:
                 mlflow.log_metrics(step=curr_step, metrics={
-                    "reward": reward.mean().item(),
+                    "reward": rewards.mean().item(),
                     "path_loss": path_loss.mean().item(),
                     "loss": loss.item(),
                     "train_prec": precs.mean().item(),
                     "train_rec": recs.mean().item(),
-                    "epsilon": epsilon
+                    "epsilon": epsilon,
+                    "critic_loss": critic_loss.mean().item(),
+                    "actor_loss": policy_loss.mean().item()
                 })
 
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
                 f"train_prec = {precs.mean().item():.3f}, "
                 f"train_rec = {recs.mean().item():.3f}, "
-                f"loss = {loss_meter.loss():.4f}, "
+                f"c_loss = {critic_loss_meter.loss():.4f}, "
+                f"a_loss = {policy_loss_meter.loss():.4f}, "
                 f"reward = {reward_meter.loss():.4f}, "
                 f"path = {path_loss_meter.loss():.4f}, "
                 f"eps = {epsilon:.4f}"

@@ -61,6 +61,7 @@ class MultiAgent:
 
         # Hidden vectors
         self.__belief_h = None
+        self.__action_h = None
 
         self.__msg = None
 
@@ -87,6 +88,10 @@ class MultiAgent:
 
         self.__belief_h = [
             th.zeros(self.__nb_agents, batch_size, self.__n_b,
+                     device=th.device(self.__device_str))
+        ]
+        self.__action_h = [
+            th.zeros(self.__nb_agents, batch_size, self.__n_a,
                      device=th.device(self.__device_str))
         ]
 
@@ -177,6 +182,8 @@ class MultiAgent:
             u_t
         )
 
+        self.__action_h.append(action_h)
+
         # Get action probabilities
         action_scores = self.__networks(
             self.__networks.policy,
@@ -231,7 +238,7 @@ class MultiAgent:
 
         self.__t += 1
 
-    def predict(self) -> Tuple[th.Tensor, th.Tensor]:
+    def predict(self) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """
         return prediction for the current episode
 
@@ -249,7 +256,11 @@ class MultiAgent:
                 self.__networks.predict,
                 self.__belief_h[-1]
             ).mean(dim=0),
-            self.__action_probas[-1].log().sum(dim=0)
+            self.__action_probas[-1].log().sum(dim=0),
+            self.__networks(
+                self.__networks.critic,
+                self.__action_h[-1]
+            ).mean(dim=0).view(-1)
         )
 
     @property
