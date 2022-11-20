@@ -212,12 +212,12 @@ def train(
             # [Ns, Na, Nb, Nc] -> [Nb, Nc, Ns, Na]
             tmp_pred = pred.permute(2, 3, 0, 1)
 
-            # error bound of a random prediction
+            # random prediction error bound
             error_bound = log(train_options.nb_class)
             # [Nb, Ns, Na] -> [Ns, Na, Nb]
             rewards = -th_fun.cross_entropy(
-                    tmp_pred, tmp_y_train,
-                    reduction="none"
+                tmp_pred, tmp_y_train,
+                reduction="none"
             ).permute(1, 2, 0)
             # bound rewards for actor-critic part
             # reward = (error_bound - error) / error_bound
@@ -228,10 +228,9 @@ def train(
                 th.arange(
                     rewards_bound.size(0),
                     device=th.device(device_str)
-                )[:, None]
-                .repeat(1, len(marl_m))
+                )[:, None, None]
+                .repeat(1, len(marl_m), 1)
                 .to(th.float)
-                .unsqueeze(-1)
             )
 
             # discounting reward

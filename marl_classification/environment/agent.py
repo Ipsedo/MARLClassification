@@ -105,21 +105,24 @@ class MultiAgent:
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
         d_bar_t = (
-                (d_bar_t_mean * nb_agent - d_bar_t_tmp) /
-                (nb_agent - 1)
+            (d_bar_t_mean * nb_agent - d_bar_t_tmp) /
+            (nb_agent - 1)
         )
 
         # Map pos in feature space
         norm_pos = (
-                self.pos.to(th.float) /
-                th.tensor([[img_sizes]], device=th.device(self.__device_str))
+            self.pos.to(th.float) /
+            th.tensor(
+                [[img_sizes]],
+                device=th.device(self.__device_str)
+            )
         )
         lambda_t = self.__networks(
             self.__networks.map_pos,
             norm_pos
         )
 
-        # LSTMs input
+        # Unit input
         u_t = th.cat((b_t, d_bar_t, lambda_t), dim=2)
 
         # Belief
@@ -127,8 +130,6 @@ class MultiAgent:
             self.__networks.belief_unit,
             u_t
         )
-
-        # Append new h and c (t + 1 step)
         self.__belief_h.append(belief_h)
 
         # Evaluate message
@@ -142,13 +143,12 @@ class MultiAgent:
             self.__networks.action_unit,
             u_t
         )
-
         self.__action_h.append(action_h)
 
         # Get action probabilities
         action_scores = self.__networks(
             self.__networks.policy,
-            action_h
+            self.__action_h[self.__t + 1]
         )
 
         # Create actions tensor
