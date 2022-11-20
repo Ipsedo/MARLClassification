@@ -204,30 +204,29 @@ def train(
             )
 
             gamma = 0.99
-            # [Nb, Ns, Na]
+            # [Nb] -> [Nb, 1, 1] -> [Nb, Ns, Na]
             tmp_y_train = (
                 y_train[:, None, None]
                 .repeat(1, main_options.step, len(marl_m))
             )
-            # [Nc, Nc, Ns, Na]
+            # [Ns, Na, Nb, Nc] -> [Nb, Nc, Ns, Na]
             tmp_pred = pred.permute(2, 3, 0, 1)
 
             # error bound of a random prediction
-            # reward = (error_bound - error) / error_bound
             error_bound = log(train_options.nb_class)
-            # [Ns, Na, Nb]
-            rewards = (
-                error_bound -
-                th_fun.cross_entropy(
+            # [Nb, Ns, Na] -> [Ns, Na, Nb]
+            rewards = -th_fun.cross_entropy(
                     tmp_pred, tmp_y_train,
                     reduction="none"
-                ).permute(1, 2, 0)
-            ) / error_bound
+            ).permute(1, 2, 0)
+            # bound rewards for actor-critic part
+            # reward = (error_bound - error) / error_bound
+            rewards_bound = (error_bound + rewards) / error_bound
 
             # [Ns, Na, 1]
             t_steps = (
                 th.arange(
-                    rewards.size(0),
+                    rewards_bound.size(0),
                     device=th.device(device_str)
                 )[:, None]
                 .repeat(1, len(marl_m))
@@ -236,7 +235,7 @@ def train(
             )
 
             # discounting reward
-            returns = rewards * gamma ** t_steps
+            returns = rewards_bound * gamma ** t_steps
             returns = (
                 returns.flip(dims=(0,))
                 .cumsum(0)
@@ -250,7 +249,7 @@ def train(
             # actor loss
             path_loss = -log_proba * advantage.detach()
 
-            # add -reward.mean(agent_dim) -> optimize classifier
+            # add agent's votes : -reward.mean(agent_dim) -> optimize classifier
             policy_loss = path_loss - rewards.mean(dim=1, keepdim=True)
 
             # critic loss : difference between values and rewards
@@ -267,16 +266,21 @@ def train(
             loss.backward()
             optim.step()
 
-            # Update confusion meter and epoch loss sum
+            # Update meters
+            path_loss = path_loss.sum(dim=0).mean().item()
+            rewards = rewards.mean().item()
+            policy_loss = policy_loss.sum(dim=0).mean().item()
+            critic_loss = critic_loss.sum(dim=0).mean().item()
+
             conf_meter_train.add(
+                # select last step, mean over agents
                 pred[-1].mean(dim=0).detach(),
                 y_train
             )
-
-            path_loss_meter.add(path_loss.mean().item())
-            reward_meter.add(rewards.mean().item())
-            policy_loss_meter.add(policy_loss.mean().item())
-            critic_loss_meter.add(critic_loss.mean().item())
+            path_loss_meter.add(path_loss)
+            reward_meter.add(rewards)
+            policy_loss_meter.add(policy_loss)
+            critic_loss_meter.add(critic_loss)
 
             # Compute global score
             precs, recs = (
@@ -284,17 +288,19 @@ def train(
                 conf_meter_train.recall()
             )
 
+            # log metrics to mlflow
             if curr_step % 100 == 0:
                 mlflow.log_metrics(step=curr_step, metrics={
-                    "reward": rewards.mean().item(),
-                    "path_loss": path_loss.mean().item(),
+                    "reward": rewards,
+                    "path_loss": path_loss,
                     "loss": loss.item(),
                     "train_prec": precs.mean().item(),
                     "train_rec": recs.mean().item(),
-                    "critic_loss": critic_loss.mean().item(),
-                    "actor_loss": policy_loss.mean().item()
+                    "critic_loss": critic_loss,
+                    "actor_loss": policy_loss
                 })
 
+            # update tqdm bar wit metrics
             tqdm_bar.set_description(
                 f"Epoch {e} - Train, "
                 f"train_prec = {precs.mean().item():.3f}, "
@@ -318,6 +324,7 @@ def train(
 
                 pred, _ = episode(marl_m, x_test, main_options.step)
 
+                # mean over agents
                 conf_meter_eval.add(pred.mean(dim=0).detach(), y_test)
 
                 # Compute score
