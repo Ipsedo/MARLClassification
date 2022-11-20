@@ -39,8 +39,11 @@ class MultiAgent:
         self.__t = 0
 
         # Hidden vectors
-        self.__belief_h = None
-        self.__action_h = None
+        self.__h = None
+        self.__c = None
+
+        self.__h_caret = None
+        self.__c_caret = None
 
         self.__msg = None
 
@@ -56,11 +59,20 @@ class MultiAgent:
 
         self.__t = 0
 
-        self.__belief_h = [
+        self.__h = [
             th.zeros(self.__nb_agents, batch_size, self.__n_b,
                      device=th.device(self.__device_str))
         ]
-        self.__action_h = [
+        self.__c = [
+            th.zeros(self.__nb_agents, batch_size, self.__n_b,
+                     device=th.device(self.__device_str))
+        ]
+
+        self.__h_caret = [
+            th.zeros(self.__nb_agents, batch_size, self.__n_a,
+                     device=th.device(self.__device_str))
+        ]
+        self.__c_caret = [
             th.zeros(self.__nb_agents, batch_size, self.__n_a,
                      device=th.device(self.__device_str))
         ]
@@ -122,33 +134,43 @@ class MultiAgent:
             norm_pos
         )
 
-        # Unit input
+        # LSTMs input
         u_t = th.cat((b_t, d_bar_t, lambda_t), dim=2)
 
-        # Belief
-        belief_h = self.__networks(
+        # Belief LSTM
+        h_t_next, c_t_next = self.__networks(
             self.__networks.belief_unit,
+            self.__h[self.__t],
+            self.__c[self.__t],
             u_t
         )
-        self.__belief_h.append(belief_h)
+
+        # Append new h and c (t + 1 step)
+        self.__h.append(h_t_next)
+        self.__c.append(c_t_next)
 
         # Evaluate message
         self.__msg.append(self.__networks(
             self.__networks.evaluate_msg,
-            self.__belief_h[self.__t + 1])
+            self.__h[self.__t + 1])
         )
 
-        # Action unit
-        action_h = self.__networks(
+        # Action unit LSTM
+        h_caret_t_next, c_caret_t_next = self.__networks(
             self.__networks.action_unit,
+            self.__h_caret[self.__t],
+            self.__c_caret[self.__t],
             u_t
         )
-        self.__action_h.append(action_h)
+
+        # Append ĥ et ĉ (t + 1 step)
+        self.__h_caret.append(h_caret_t_next)
+        self.__c_caret.append(c_caret_t_next)
 
         # Get action probabilities
         action_scores = self.__networks(
             self.__networks.policy,
-            self.__action_h[self.__t + 1]
+            self.__h_caret[self.__t + 1]
         )
 
         # Create actions tensor
@@ -159,7 +181,6 @@ class MultiAgent:
 
         # Greedy policy
         prob, policy_actions = action_scores.max(dim=-1)
-
         a_t_next = actions[policy_actions]
 
         # Append probability
@@ -178,12 +199,12 @@ class MultiAgent:
         return (
             self.__networks(
                 self.__networks.predict,
-                self.__belief_h[-1]
+                self.__h[-1]
             ),
             self.__action_probas[-1].log(),
             self.__networks(
                 self.__networks.critic,
-                self.__action_h[-1]
+                self.__h_caret[-1]
             ).squeeze(-1)
         )
 

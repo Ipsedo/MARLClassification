@@ -13,10 +13,10 @@ from .ft_extractor import (
     KneeMRICnn,
     AIDCnn
 )
-from .messages import MessageSender
+from .message import MessageSender
 from .policy import Policy, Critic
 from .prediction import Prediction
-from .units import Unit
+from .recurrent import LSTMCellWrapper
 
 
 #####################
@@ -75,10 +75,10 @@ class ModelsWrapper(nn.Module):
             self.map_obs: map_obs_module,
             self.map_pos: StateToFeatures(d, n_d),
             self.evaluate_msg: MessageSender(n_b, n_m, hidden_size_belief),
-            self.belief_unit: Unit(
+            self.belief_unit: LSTMCellWrapper(
                 map_obs_module.out_size + n_d + n_m, n_b
             ),
-            self.action_unit: Unit(
+            self.action_unit: LSTMCellWrapper(
                 map_obs_module.out_size + n_d + n_m, n_a
             ),
             self.policy: Policy(len(actions), n_a, hidden_size_action),
