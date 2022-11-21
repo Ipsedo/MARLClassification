@@ -129,6 +129,8 @@ def train(
         "batch_size": train_options.batch_size
     })
 
+    nn_models.json_args(join(output_dir, "marl.json"))
+
     json_f = open(join(output_dir, "class_to_idx.json"), "w")
     json.dump(dataset.class_to_idx, json_f)
     json_f.close()
@@ -361,11 +363,6 @@ def train(
             "eval_recs": recs.mean().item()
         })
 
-        nn_models.json_args(
-            join(output_dir,
-                 model_dir,
-                 f"marl_epoch_{e}.json")
-        )
         th.save(
             nn_models.state_dict(),
             join(output_dir, model_dir,
