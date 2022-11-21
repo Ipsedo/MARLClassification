@@ -180,7 +180,7 @@ def train(
     )
 
     path_loss_meter = LossMeter(window_size=64)
-    reward_meter = LossMeter(window_size=64)
+    error_meter = LossMeter(window_size=64)
 
     policy_loss_meter = LossMeter(window_size=64)
     critic_loss_meter = LossMeter(window_size=64)
@@ -203,7 +203,15 @@ def train(
                 train_options.nb_class
             )
 
+            # compute error : last step prediction and mean over agents
+            error = th_fun.cross_entropy(
+                pred[-1].mean(dim=0), y_train,
+                reduction="none"
+            )
+            
+            # discount factor
             gamma = 0.99
+            
             # [Nb] -> [Nb, 1, 1] -> [Nb, Ns, Na]
             tmp_y_train = (
                 y_train[:, None, None]
@@ -212,21 +220,23 @@ def train(
             # [Ns, Na, Nb, Nc] -> [Nb, Nc, Ns, Na]
             tmp_pred = pred.permute(2, 3, 0, 1)
 
-            # random prediction error bound
-            error_bound = log(train_options.nb_class)
+            # random prediction error
+            # make reward positive if better than random, else negative
+            random_error = log(train_options.nb_class)
+            # reward = (random_error - error) / random_error
+            # reward per agent and step
             # [Nb, Ns, Na] -> [Ns, Na, Nb]
-            rewards = -th_fun.cross_entropy(
-                tmp_pred, tmp_y_train,
-                reduction="none"
-            ).permute(1, 2, 0)
-            # bound rewards for actor-critic part
-            # reward = (error_bound - error) / error_bound
-            rewards_bound = (error_bound + rewards) / error_bound
+            rewards = (
+                random_error - th_fun.cross_entropy(
+                    tmp_pred, tmp_y_train,
+                    reduction="none"
+                ).permute(1, 2, 0)
+            ) / random_error
 
             # [Ns, Na, 1]
             t_steps = (
                 th.arange(
-                    rewards_bound.size(0),
+                    rewards.size(0),
                     device=th.device(device_str)
                 )[:, None, None]
                 .repeat(1, len(marl_m), 1)
@@ -234,7 +244,7 @@ def train(
             )
 
             # discounting reward
-            returns = rewards_bound * gamma ** t_steps
+            returns = rewards * gamma ** t_steps
             returns = (
                 returns.flip(dims=(0,))
                 .cumsum(0)
@@ -245,11 +255,11 @@ def train(
 
             # actor advantage
             advantage = returns - values
-            # actor loss
+            # actor loss, maximize(log_proba * advantage)
             path_loss = -log_proba * advantage.detach()
 
-            # add agent's votes : -reward.mean(agent_dim) -> optimize classifier
-            policy_loss = path_loss - rewards.mean(dim=1, keepdim=True)
+            # add agent's votes -> train classifier
+            policy_loss = path_loss + error
 
             # critic loss : difference between values and rewards
             critic_loss = th_fun.smooth_l1_loss(
@@ -267,7 +277,7 @@ def train(
 
             # Update meters
             path_loss = path_loss.sum(dim=0).mean().item()
-            rewards = rewards.mean().item()
+            error = error.mean().item()
             policy_loss = policy_loss.sum(dim=0).mean().item()
             critic_loss = critic_loss.sum(dim=0).mean().item()
 
@@ -277,7 +287,7 @@ def train(
                 y_train
             )
             path_loss_meter.add(path_loss)
-            reward_meter.add(rewards)
+            error_meter.add(error)
             policy_loss_meter.add(policy_loss)
             critic_loss_meter.add(critic_loss)
 
@@ -290,7 +300,7 @@ def train(
             # log metrics to mlflow
             if curr_step % 100 == 0:
                 mlflow.log_metrics(step=curr_step, metrics={
-                    "reward": rewards,
+                    "error": error,
                     "path_loss": path_loss,
                     "loss": loss.item(),
                     "train_prec": precs.mean().item(),
@@ -306,7 +316,7 @@ def train(
                 f"train_rec = {recs.mean().item():.3f}, "
                 f"c_loss = {critic_loss_meter.loss():.4f}, "
                 f"a_loss = {policy_loss_meter.loss():.4f}, "
-                f"reward = {reward_meter.loss():.4f}, "
+                f"error = {error_meter.loss():.4f}, "
                 f"path = {path_loss_meter.loss():.4f}"
             )
 
