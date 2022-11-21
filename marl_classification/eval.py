@@ -76,9 +76,10 @@ def evaluation(
     for x, y in tqdm(data_loader):
         x, y = x.to(th.device(device_str)), y.to(th.device(device_str))
 
-        preds, _ = episode(marl_m, x, 0., main_options.step)
+        preds, _ = episode(marl_m, x, main_options.step)
 
-        conf_meter.add(preds.detach(), y)
+        # mean over agents
+        conf_meter.add(preds.mean(dim=0).detach(), y)
 
     print(conf_meter.conf_mat())
 
