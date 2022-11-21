@@ -1,7 +1,8 @@
+from datetime import datetime
 import glob
 import json
 from os import mkdir
-from os.path import join, exists, isfile
+from os.path import join, exists, isfile, getmtime
 from typing import Mapping, Any
 
 import matplotlib.pyplot as plt
@@ -101,6 +102,13 @@ def infer(
         f"State dict path {infer_options.state_dict_path} does not exist"
     assert isfile(infer_options.state_dict_path), \
         f"{infer_options.state_dict_path} is not a file"
+
+    print(
+        f"Will use :\n"
+        f"- JSON of : {datetime.fromtimestamp(getmtime(infer_options.json_path))}\n"
+        f"- state_dict of : {datetime.fromtimestamp(getmtime(infer_options.state_dict_path))}\n"
+        f"- class_to_idx of : {datetime.fromtimestamp(getmtime(infer_options.class_to_idx))}"
+    )
 
     json_f = open(infer_options.class_to_idx, "r")
     class_to_idx = json.load(json_f)
