@@ -248,6 +248,7 @@ class MultiAgent:
                     obs, trans
                 )
             except Exception as e:
-                print(f"Exception during loading MultiAgent "
-                      f"from file !\nRaised Exception :")
-                raise e
+                raise Exception(
+                    "Exception during loading MultiAgent "
+                    "from file"
+                ) from e

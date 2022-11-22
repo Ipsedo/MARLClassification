@@ -175,6 +175,7 @@ class ModelsWrapper(nn.Module):
                 args_d["hidden_size_linear_action"]
             )
         except Exception as e:
-            print(f"Error while parsing {json_path} "
-                  f"and creating {cls.__name__}")
-            raise e
+            raise Exception(
+                f"Error while parsing {json_path} "
+                f"and creating {cls.__name__}"
+            ) from e
