@@ -60,20 +60,20 @@ class MultiAgent:
         self.__t = 0
 
         self.__h = [
-            th.zeros(self.__nb_agents, batch_size, self.__n_b,
+            th.randn(self.__nb_agents, batch_size, self.__n_b,
                      device=th.device(self.__device_str))
         ]
         self.__c = [
-            th.zeros(self.__nb_agents, batch_size, self.__n_b,
+            th.randn(self.__nb_agents, batch_size, self.__n_b,
                      device=th.device(self.__device_str))
         ]
 
         self.__h_caret = [
-            th.zeros(self.__nb_agents, batch_size, self.__n_a,
+            th.randn(self.__nb_agents, batch_size, self.__n_a,
                      device=th.device(self.__device_str))
         ]
         self.__c_caret = [
-            th.zeros(self.__nb_agents, batch_size, self.__n_a,
+            th.randn(self.__nb_agents, batch_size, self.__n_a,
                      device=th.device(self.__device_str))
         ]
 
