@@ -30,7 +30,8 @@ class Critic(nn.Module):
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, 1)
+            nn.Linear(hidden_size, 1),
+            nn.Flatten(-2, -1)
         )
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
