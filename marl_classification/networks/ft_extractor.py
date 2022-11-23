@@ -83,11 +83,7 @@ class AIDCnn(CNNFtExtract):
         super().__init__()
 
         self.__seq_conv = nn.Sequential(
-            nn.Conv2d(3, 8, (3, 3), padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-
-            nn.Conv2d(8, 16, (3, 3), padding=1),
+            nn.Conv2d(3, 16, (3, 3), padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
 
@@ -106,7 +102,7 @@ class AIDCnn(CNNFtExtract):
             nn.Flatten(1, -1)
         )
 
-        self.__out_size = 128 * (f // 32) ** 2
+        self.__out_size = 128 * (f // 16) ** 2
 
     @property
     def out_size(self) -> int:

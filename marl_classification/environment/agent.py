@@ -8,8 +8,14 @@ from ..networks.models import ModelsWrapper
 
 class MultiAgent:
     def __init__(
-            self, nb_agents: int, model_wrapper: ModelsWrapper,
-            n_b: int, n_a: int, f: int, n_m: int, action: List[List[int]],
+            self,
+            nb_agents: int,
+            model_wrapper: ModelsWrapper,
+            n_b: int,
+            n_a: int,
+            f: int,
+            n_m: int,
+            action: List[List[int]],
             obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
             trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor]
     ) -> None:
@@ -25,7 +31,7 @@ class MultiAgent:
         self.__actions: List[List[int]] = action
         self.__nb_action = len(self.__actions)
         self.__dim = len(self.__actions[0])
-        self.__batch_size = None
+        self.__batch_size = 1
 
         # Env info
         self.__obs = obs
@@ -34,20 +40,22 @@ class MultiAgent:
         # NNs wrapper
         self.__networks = model_wrapper
 
+        self.__hidden_initialized = False
+
         # initial state
-        self.__pos = None
+        self.__pos = th.zeros(nb_agents, self.__batch_size, *list(range(self.__dim)))
         self.__t = 0
 
         # Hidden vectors
-        self.__h = None
-        self.__c = None
+        self.__h: List[th.Tensor] = []
+        self.__c: List[th.Tensor] = []
 
-        self.__h_caret = None
-        self.__c_caret = None
+        self.__h_caret: List[th.Tensor] = []
+        self.__c_caret: List[th.Tensor] = []
 
-        self.__msg = None
+        self.__msg: List[th.Tensor] = []
 
-        self.__action_probas = None
+        self.__action_probas: List[th.Tensor] = []
 
         # CPU vs GPU
         self.__is_cuda = False
@@ -60,59 +68,78 @@ class MultiAgent:
         self.__t = 0
 
         self.__h = [
-            th.randn(self.__nb_agents, batch_size, self.__n_b,
-                     device=th.device(self.__device_str))
+            th.randn(
+                self.__nb_agents, batch_size, self.__n_b,
+                device=th.device(self.__device_str)
+            )
         ]
         self.__c = [
-            th.randn(self.__nb_agents, batch_size, self.__n_b,
-                     device=th.device(self.__device_str))
+            th.randn(
+                self.__nb_agents, batch_size, self.__n_b,
+                device=th.device(self.__device_str)
+            )
         ]
 
         self.__h_caret = [
-            th.randn(self.__nb_agents, batch_size, self.__n_a,
-                     device=th.device(self.__device_str))
+            th.randn(
+                self.__nb_agents, batch_size, self.__n_a,
+                device=th.device(self.__device_str)
+            )
         ]
         self.__c_caret = [
-            th.randn(self.__nb_agents, batch_size, self.__n_a,
-                     device=th.device(self.__device_str))
+            th.randn(
+                self.__nb_agents, batch_size, self.__n_a,
+                device=th.device(self.__device_str)
+            )
         ]
 
         self.__msg = [
-            th.zeros(self.__nb_agents, batch_size, self.__n_m,
-                     device=th.device(self.__device_str))
+            th.zeros(
+                self.__nb_agents, batch_size, self.__n_m,
+                device=th.device(self.__device_str)
+            )
         ]
 
         self.__action_probas = [
-            th.ones(self.__nb_agents, batch_size,
-                    device=th.device(self.__device_str))
-            / self.__nb_action
+            th.ones(
+                self.__nb_agents, batch_size,
+                device=th.device(self.__device_str)
+            ) / self.__nb_action
         ]
 
         self.__pos = th.stack([
             th.randint(
                 i_s - self.__f,
                 (self.__nb_agents, batch_size),
-                device=th.device(self.__device_str))
-            for i_s in img_size], dim=-1)
+                device=th.device(self.__device_str)
+            )
+            for i_s in img_size
+        ], dim=-1)
+
+        self.__hidden_initialized = True
 
     def step(self, img: th.Tensor) -> None:
 
-        img_sizes = [s for s in img.size()[2:]]
+        img_sizes = list(img.size()[2:])
         nb_agent = len(self)
+
+        if not self.__hidden_initialized:
+            batch_size = img.size()[0]
+            self.new_episode(batch_size, img_sizes)
 
         # Observation
         o_t = self.__obs(img, self.pos, self.__f)
 
         # Feature space
-        # CNN need (N, C, S1, S2, ..., Sd) got (Na, Nb, C, S1, S2, ..., Sd) => flatten agent and batch dims
+        # CNN need (N, C, S1, S2, ..., Sd)
+        # got (Na, Nb, C, S1, S2, ..., Sd)
+        # => flatten agent and batch dims
         b_t = self.__networks(
             self.__networks.map_obs,
             o_t.flatten(0, 1)
         ).view(nb_agent, self.__batch_size, -1)
 
         # Get messages
-        # d_bar_t_tmp = self.__networks(self.__networks.decode_msg,
-        #                              self.msg[self.__t])
         d_bar_t_tmp = self.__msg[self.__t]
         # Mean on agent
         d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
@@ -205,7 +232,7 @@ class MultiAgent:
             self.__networks(
                 self.__networks.critic,
                 self.__h_caret[-1]
-            ).squeeze(-1)
+            )
         )
 
     @property
@@ -222,6 +249,8 @@ class MultiAgent:
 
     @property
     def pos(self) -> th.Tensor:
+        if self.__pos is None:
+            raise ValueError("new_episode(...) must be called before")
         return self.__pos
 
     def __len__(self) -> int:
