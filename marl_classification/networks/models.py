@@ -1,6 +1,6 @@
 import json
 from os.path import exists, isfile
-from typing import List, Set, Dict, Callable
+from typing import List, Set, Dict, Callable, Literal, get_args
 
 import torch as th
 import torch.nn as nn
@@ -50,10 +50,21 @@ class ModelsWrapper(nn.Module):
 
     # Features extractors - CNN
 
-    mnist: str = "mnist"
-    resisc: str = "resisc45"
-    knee_mri: str = "kneemri"
-    aid: str = "aid"
+    FtExtractorsLiteral = Literal[
+        "mnist",
+        "resisc45",
+        "kneemri",
+        "aid"
+    ]
+
+    __ft_extractor_list = list(get_args(
+        FtExtractorsLiteral
+    ))
+
+    mnist: str = __ft_extractor_list[0]
+    resisc: str = __ft_extractor_list[1]
+    knee_mri: str = __ft_extractor_list[2]
+    aid: str = __ft_extractor_list[3]
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
         mnist: MNISTCnn,
@@ -62,11 +73,19 @@ class ModelsWrapper(nn.Module):
         aid: AIDCnn
     }
 
-    def __init__(self, ft_extr_str: str, f: int,
-                 n_b: int, n_a: int, n_m: int, n_d: int, d: int,
-                 actions: List[List[int]], nb_class: int,
-                 hidden_size_belief: int,
-                 hidden_size_action: int) -> None:
+    def __init__(
+            self,
+            ft_extr_str: FtExtractorsLiteral,
+            f: int,
+            n_b: int,
+            n_a: int,
+            n_m: int,
+            n_d: int,
+            d: int,
+            actions: List[List[int]],
+            nb_class: int,
+            hidden_size_belief: int,
+            hidden_size_action: int) -> None:
         super().__init__()
 
         map_obs_module = self.ft_extractors[ft_extr_str](f)
@@ -131,51 +150,47 @@ class ModelsWrapper(nn.Module):
         ]
 
     def json_args(self, out_json_path: str) -> None:
-        json_f = open(out_json_path, "w")
+        with open(out_json_path, "w") as json_f:
+            args_d = {
+                "ft_extr_str": self.__ft_extr_str,
+                "window_size": self.__f,
+                "hidden_size_belief": self.__n,
+                "hidden_size_action": self.__n_a,
+                "hidden_size_msg": self.__n_m,
+                "hidden_size_state": self.__n_d,
+                "state_dim": self.__d,
+                "actions": self.__actions,
+                "class_number": self.__nb_class,
+                "hidden_size_linear_belief": self.__n_l_b,
+                "hidden_size_linear_action": self.__n_l_a,
+            }
 
-        args_d = {
-            "ft_extr_str": self.__ft_extr_str,
-            "window_size": self.__f,
-            "hidden_size_belief": self.__n,
-            "hidden_size_action": self.__n_a,
-            "hidden_size_msg": self.__n_m,
-            "hidden_size_state": self.__n_d,
-            "state_dim": self.__d,
-            "actions": self.__actions,
-            "class_number": self.__nb_class,
-            "hidden_size_linear_belief": self.__n_l_b,
-            "hidden_size_linear_action": self.__n_l_a,
-        }
-
-        json.dump(args_d, json_f)
-
-        json_f.close()
+            json.dump(args_d, json_f)
 
     @classmethod
     def from_json(cls, json_path: str) -> 'ModelsWrapper':
         assert exists(json_path) and isfile(json_path), \
             f"\"{json_path}\" does not exist or is not a file"
 
-        json_f = open(json_path, "r")
-        args_d = json.load(json_f)
-        json_f.close()
+        with open(json_path, "r") as json_f:
+            args_d = json.load(json_f)
 
-        try:
-            return cls(
-                args_d["ft_extr_str"],
-                args_d["window_size"],
-                args_d["hidden_size_belief"],
-                args_d["hidden_size_action"],
-                args_d["hidden_size_msg"],
-                args_d["hidden_size_state"],
-                args_d["state_dim"],
-                args_d["actions"],
-                args_d["class_number"],
-                args_d["hidden_size_linear_belief"],
-                args_d["hidden_size_linear_action"]
-            )
-        except Exception as e:
-            raise Exception(
-                f"Error while parsing {json_path} "
-                f"and creating {cls.__name__}"
-            ) from e
+            try:
+                return cls(
+                    args_d["ft_extr_str"],
+                    args_d["window_size"],
+                    args_d["hidden_size_belief"],
+                    args_d["hidden_size_action"],
+                    args_d["hidden_size_msg"],
+                    args_d["hidden_size_state"],
+                    args_d["state_dim"],
+                    args_d["actions"],
+                    args_d["class_number"],
+                    args_d["hidden_size_linear_belief"],
+                    args_d["hidden_size_linear_action"]
+                )
+            except Exception as e:
+                raise Exception(
+                    f"Error while parsing {json_path} "
+                    f"and creating {cls.__name__}"
+                ) from e
