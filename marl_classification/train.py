@@ -210,10 +210,10 @@ def train(
                 pred[-1].mean(dim=0), y_train,
                 reduction="none"
             )
-            
+
             # discount factor
             gamma = 0.99
-            
+
             # [Nb] -> [Nb, 1, 1] -> [Nb, Ns, Na]
             tmp_y_train = (
                 y_train[:, None, None]
