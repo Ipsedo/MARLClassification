@@ -36,4 +36,3 @@ class Critic(nn.Module):
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
         return self.__seq_lin(h_caret_t_next)
-
