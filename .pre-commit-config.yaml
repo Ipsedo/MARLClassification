@@ -1,16 +1,27 @@
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
-    -   id: end-of-file-fixer
-        files: "./marl_classification/*"
-    -   id: trailing-whitespace
-        files: "./marl_classification/*"
-- repo: local
-  hooks:
-    - id: mypy
-      name: mypy
-      language: system
-      entry: mypy
-      types:
-        - python
+      - id: end-of-file-fixer
+        exclude: resources
+      - id: trailing-whitespace
+        exclude: resources
+  - repo: local
+    hooks:
+      - id: unittest
+        name: unittest
+        language: system
+        entry: python
+        args:
+          - "-m"
+          - unittest
+          - discover
+          - tests
+        pass_filenames: false
+        require_serial: true
+#    - id: mypy
+#      name: mypy
+#      language: system
+#      entry: mypy
+#      types:
+#        - python
