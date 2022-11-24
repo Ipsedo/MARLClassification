@@ -28,14 +28,16 @@ class TestEpisode(unittest.TestCase):
         n_a = 22
         n_m = 21
 
+        f = 12
+
         model_wrapper = ModelsWrapper(
-            "mnist", 12, n_b, n_a, n_m, 20, self.__dim,
+            "mnist", f, n_b, n_a, n_m, 20, self.__dim,
             action, self.__nb_class, 24, 25
         )
 
         self.__marl = MultiAgent(
             self.__nb_agent, model_wrapper,
-            n_b, n_a, 12, n_m, action,
+            n_b, n_a, f, n_m, action,
             obs_generic, trans_generic
         )
 
@@ -49,19 +51,23 @@ class TestEpisode(unittest.TestCase):
             self.__marl, x, self.__step, "cpu", self.__nb_class
         )
 
+        assert len(pred.size()) == 4
         assert pred.size()[0] == self.__step
         assert pred.size()[1] == self.__nb_agent
         assert pred.size()[2] == self.__batch_size
         assert pred.size()[3] == self.__nb_class
 
+        assert len(log_proba.size()) == 3
         assert log_proba.size()[0] == self.__step
         assert log_proba.size()[1] == self.__nb_agent
         assert log_proba.size()[2] == self.__batch_size
 
+        assert len(values.size()) == 3
         assert values.size()[0] == self.__step
         assert values.size()[1] == self.__nb_agent
         assert values.size()[2] == self.__batch_size
 
+        assert len(pos.size()) == 4
         assert pos.size()[0] == self.__step
         assert pos.size()[1] == self.__nb_agent
         assert pos.size()[2] == self.__batch_size

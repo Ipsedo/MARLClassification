@@ -14,7 +14,7 @@ class Policy(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(hidden_size, nb_action),
             nn.Softmax(dim=-1)
         )
@@ -29,7 +29,7 @@ class Critic(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(hidden_size, 1),
             nn.Flatten(-2, -1)
         )

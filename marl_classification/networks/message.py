@@ -16,7 +16,7 @@ class MessageSender(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(self.__n_e, self.__n_m)
         )
 
@@ -36,7 +36,7 @@ class MessageReceiver(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(self.__n_m, self.__n),
-            nn.ReLU()
+            nn.GELU()
         )
 
     def forward(self, m_t: th.Tensor) -> th.Tensor:

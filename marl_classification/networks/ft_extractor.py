@@ -28,10 +28,10 @@ class MNISTCnn(CNNFtExtract):
 
         self.__seq_conv = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=(3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Conv2d(16, 32, kernel_size=(3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Flatten(1, -1)
         )
@@ -56,13 +56,13 @@ class RESISC45Cnn(CNNFtExtract):
 
         self.__seq_conv = nn.Sequential(
             nn.Conv2d(3, 16, kernel_size=(3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Conv2d(16, 32, kernel_size=(3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Conv2d(32, 64, kernel_size=(3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Flatten(1, -1)
         )
@@ -84,19 +84,19 @@ class AIDCnn(CNNFtExtract):
 
         self.__seq_conv = nn.Sequential(
             nn.Conv2d(3, 16, (3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
 
             nn.Conv2d(16, 32, (3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
 
             nn.Conv2d(32, 64, (3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
 
             nn.Conv2d(64, 128, (3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool2d(2, 2),
 
             nn.Flatten(1, -1)
@@ -120,13 +120,13 @@ class KneeMRICnn(CNNFtExtract):
 
         self.__seq_conv = nn.Sequential(
             nn.Conv3d(1, 8, kernel_size=(3, 3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool3d(2, 2),
             nn.Conv3d(8, 16, kernel_size=(3, 3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool3d(2, 2),
             nn.Conv3d(16, 32, kernel_size=(3, 3, 3), padding=1),
-            nn.ReLU(),
+            nn.GELU(),
             nn.MaxPool3d(2, 2),
             nn.Flatten(1, -1)
         )
@@ -158,7 +158,7 @@ class StateToFeatures(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(self.__d, self.__n_d),
-            nn.ReLU()
+            nn.GELU()
         )
 
     def forward(self, p_t: th.Tensor) -> th.Tensor:
