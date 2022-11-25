@@ -13,7 +13,6 @@ from .options import (
     InferOptions
 )
 from .train import train
-from .utils import SetAppendAction
 
 
 def main() -> None:
@@ -163,7 +162,7 @@ def main() -> None:
     )
     train_parser.add_argument(
         "--freeze", type=str, default=[], nargs="+",
-        dest="frozen_modules", action=SetAppendAction,
+        dest="frozen_modules", action="append",
         choices=[
             ModelsWrapper.map_obs,
             ModelsWrapper.map_pos,
@@ -254,8 +253,8 @@ def main() -> None:
             )
 
             reg_action = re.compile(r"] *, *\[")
-            action = reg_action.split(args.action[2:-2])
-            action = [[int(i) for i in act.split(",")] for act in action]
+            action_str = reg_action.split(args.action[2:-2])
+            action = [[int(i) for i in act.split(",")] for act in action_str]
 
             train_options = TrainOptions(
                 args.n_b,
@@ -274,7 +273,7 @@ def main() -> None:
                 args.batch_size,
                 args.res_folder,
                 args.output_dir,
-                args.frozen_modules,
+                list(set(args.frozen_modules)),
                 args.ft_extractor
             )
 

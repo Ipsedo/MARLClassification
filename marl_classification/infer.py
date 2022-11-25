@@ -63,8 +63,8 @@ def visualize_steps(
 
         for i in range(len(agents)):
             # agent coordinates
-            x = pos[t][i][img_idx][0]
-            y = pos[t][i][img_idx][1]
+            x = int(pos[t][i][img_idx][0].item())
+            y = int(pos[t][i][img_idx][1].item())
 
             # Color
             curr_img[x:x + f, y:y + f, :3] = img_ori[x:x + f, y:y + f, :]
@@ -76,7 +76,7 @@ def visualize_steps(
         plt.imshow(curr_img, cmap=color_map)
 
         pred_softmax = th_fun.softmax(preds[t][img_idx], dim=-1)
-        pred_max = pred_softmax.argmax(dim=-1).item()
+        pred_max = int(pred_softmax.argmax(dim=-1).item())
         pred_proba = pred_softmax[pred_max].item()
 
         plt.title(

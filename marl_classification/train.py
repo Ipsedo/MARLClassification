@@ -2,6 +2,7 @@ import json
 from os import mkdir
 from os.path import exists, isdir, join
 from random import randint
+from typing import Dict, Callable
 
 import mlflow
 import torch as th
@@ -9,6 +10,7 @@ import torch.nn.functional as th_fun
 import torchvision.transforms as tr
 from math import log
 from torch.utils.data import Subset, DataLoader
+from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
 from .data import (
@@ -63,17 +65,13 @@ def train(
         custom_tr.NormalNorm()
     ])
 
-    match train_options.ft_extr_str:
-        case ModelsWrapper.mnist:
-            dataset_constructor = MNISTDataset
-        case ModelsWrapper.resisc:
-            dataset_constructor = RESISC45Dataset
-        case ModelsWrapper.knee_mri:
-            dataset_constructor = KneeMRIDataset
-        case ModelsWrapper.aid:
-            dataset_constructor = AIDDataset
-        case _:
-            raise ValueError("Unrecognized dataset")
+    dataset_constructors: Dict[str, Callable[[str, tr.Compose], ImageFolder]] = {
+        ModelsWrapper.mnist: MNISTDataset,
+        ModelsWrapper.resisc: RESISC45Dataset,
+        ModelsWrapper.knee_mri: KneeMRIDataset,
+        ModelsWrapper.aid: AIDDataset
+    }
+    dataset_constructor = dataset_constructors[train_options.ft_extr_str]
 
     nn_models = ModelsWrapper(
         train_options.ft_extr_str,
@@ -158,8 +156,8 @@ def train(
 
     ratio_eval = 0.85
     idx = th.randperm(len(dataset))
-    idx_train = idx[:int(ratio_eval * idx.size()[0])]
-    idx_test = idx[int(ratio_eval * idx.size()[0]):]
+    idx_train = idx[:int(ratio_eval * idx.size()[0])].tolist()
+    idx_test = idx[int(ratio_eval * idx.size()[0]):].tolist()
 
     train_dataset = Subset(dataset, idx_train)
     test_dataset = Subset(dataset, idx_test)
@@ -278,20 +276,20 @@ def train(
             optim.step()
 
             # Update meters
-            path_loss = path_loss.sum(dim=0).mean().item()
-            error = error.mean().item()
-            policy_loss = policy_loss.sum(dim=0).mean().item()
-            critic_loss = critic_loss.sum(dim=0).mean().item()
+            path_loss_item = path_loss.sum(dim=0).mean().item()
+            error_item = error.mean().item()
+            policy_loss_item = policy_loss.sum(dim=0).mean().item()
+            critic_loss_item = critic_loss.sum(dim=0).mean().item()
 
             conf_meter_train.add(
                 # select last step, mean over agents
                 pred[-1].mean(dim=0).detach(),
                 y_train
             )
-            path_loss_meter.add(path_loss)
-            error_meter.add(error)
-            policy_loss_meter.add(policy_loss)
-            critic_loss_meter.add(critic_loss)
+            path_loss_meter.add(path_loss_item)
+            error_meter.add(error_item)
+            policy_loss_meter.add(policy_loss_item)
+            critic_loss_meter.add(critic_loss_item)
 
             # Compute global score
             precs, recs = (

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import pickle as pkl
 from os.path import exists, isdir, join
 from typing import Any, Tuple
@@ -10,9 +11,6 @@ import tqdm
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
-
-
-#RES_PATH = abspath(join(dirname(abspath(__file__)), "..", "..", "resources"))
 
 
 def my_pil_loader(path: str) -> Image.Image:
@@ -108,7 +106,7 @@ class KneeMRIDataset(Dataset):
         x = pkl.load(f)
         f.close()
 
-        x = th.from_numpy(x.astype(np.float)).to(th.float)
+        x = th.from_numpy(x).to(th.float)
 
         # depth
         curr_depth = x.size(0)

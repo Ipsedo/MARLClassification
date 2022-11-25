@@ -8,12 +8,11 @@ repos:
         exclude: resources
   - repo: local
     hooks:
-#      - id: mypy
-#        name: mypy
-#        language: system
-#        entry: mypy
-#        types:
-#          - python
+      - id: mypy
+        name: mypy
+        language: system
+        entry: mypy
+        types: [python]
       - id: unittest
         name: unittest
         language: system

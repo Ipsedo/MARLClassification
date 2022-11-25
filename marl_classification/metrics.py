@@ -59,7 +59,9 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
         super(ConfusionMeter, self).__init__(window_size)
         self.__nb_class = nb_class
 
-    def _process_value(self, y_proba: th.Tensor, y_true: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+    def _process_value(self, *args: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+        y_proba = args[0]
+        y_true = args[1]
         return y_proba.argmax(dim=1), y_true
 
     def conf_mat(self) -> th.Tensor:
@@ -127,8 +129,8 @@ class LossMeter(Meter[float]):
     def __init__(self, window_size: Optional[int]) -> None:
         super(LossMeter, self).__init__(window_size)
 
-    def _process_value(self, value: float) -> float:
-        return value
+    def _process_value(self, *args: float) -> float:
+        return args[0]
 
     def loss(self) -> float:
         return mean(self._results)

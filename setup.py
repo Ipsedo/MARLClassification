@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="marl_classification",
-    version="1.0.0",
+    version="1.1.0",
     author="Samuel Berrien",
     url="https://github.com/Ipsedo/MARLClassification",
     packages=[

@@ -7,7 +7,7 @@ import torch as th
 def obs_generic(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     x_sizes = x.size()
     b_img, c = x_sizes[0], x_sizes[1]
-    sizes = [s for s in x_sizes[2:]]
+    sizes = list(x_sizes[2:])
 
     nb_a, _, _ = pos.size()
 

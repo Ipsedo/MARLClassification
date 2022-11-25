@@ -40,8 +40,6 @@ class MultiAgent:
         # NNs wrapper
         self.__networks = model_wrapper
 
-        self.__hidden_initialized = False
-
         # initial state
         self.__pos = th.zeros(nb_agents, self.__batch_size, *list(range(self.__dim)))
         self.__t = 0
@@ -116,16 +114,10 @@ class MultiAgent:
             for i_s in img_size
         ], dim=-1)
 
-        self.__hidden_initialized = True
-
     def step(self, img: th.Tensor) -> None:
 
         img_sizes = list(img.size()[2:])
         nb_agent = len(self)
-
-        if not self.__hidden_initialized:
-            batch_size = img.size()[0]
-            self.new_episode(batch_size, img_sizes)
 
         # Observation
         o_t = self.__obs(img, self.pos, self.__f)
@@ -141,10 +133,10 @@ class MultiAgent:
 
         # Get messages
         d_bar_t_tmp = self.__msg[self.__t]
-        # Mean on agent
-        d_bar_t_mean = d_bar_t_tmp.mean(dim=0)
+        # sum on agent
+        d_bar_t_sum = d_bar_t_tmp.sum(dim=0)
         d_bar_t = (
-            (d_bar_t_mean * nb_agent - d_bar_t_tmp) /
+            (d_bar_t_sum - d_bar_t_tmp) /
             (nb_agent - 1)
         )
 
@@ -249,8 +241,6 @@ class MultiAgent:
 
     @property
     def pos(self) -> th.Tensor:
-        if self.__pos is None:
-            raise ValueError("new_episode(...) must be called before")
         return self.__pos
 
     def __len__(self) -> int:

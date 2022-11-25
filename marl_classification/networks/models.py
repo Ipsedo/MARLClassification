@@ -49,22 +49,10 @@ class ModelsWrapper(nn.Module):
     }
 
     # Features extractors - CNN
-
-    FtExtractorsLiteral = Literal[
-        "mnist",
-        "resisc45",
-        "kneemri",
-        "aid"
-    ]
-
-    __ft_extractor_list = list(get_args(
-        FtExtractorsLiteral
-    ))
-
-    mnist: str = __ft_extractor_list[0]
-    resisc: str = __ft_extractor_list[1]
-    knee_mri: str = __ft_extractor_list[2]
-    aid: str = __ft_extractor_list[3]
+    mnist: str = "mnist"
+    resisc: str = "resisc45"
+    knee_mri: str = "kneemri"
+    aid: str = "aid"
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
         mnist: MNISTCnn,
@@ -75,7 +63,7 @@ class ModelsWrapper(nn.Module):
 
     def __init__(
             self,
-            ft_extr_str: FtExtractorsLiteral,
+            ft_extr_str: str,
             f: int,
             n_b: int,
             n_a: int,
