@@ -8,20 +8,16 @@ repos:
         exclude: resources
   - repo: local
     hooks:
+#      - id: mypy
+#        name: mypy
+#        language: system
+#        entry: mypy
+#        types:
+#          - python
       - id: unittest
         name: unittest
         language: system
         entry: python
-        args:
-          - "-m"
-          - unittest
-          - discover
-          - tests
+        args: ["-m", "unittest", "discover", "tests"]
         pass_filenames: false
         require_serial: true
-      - id: mypy
-        name: mypy
-        language: system
-        entry: mypy
-        types:
-          - python
