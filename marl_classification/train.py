@@ -379,12 +379,12 @@ def train(
     )
 
     test_dataset_ori = Subset(dataset_tmp, idx_test)
-    test_dataloader = Subset(dataset, idx_test)
+    test_dataset = Subset(dataset, idx_test)
 
     test_idx = randint(0, len(test_dataset_ori))
 
     visualize_steps(
-        marl_m, test_dataloader[test_idx][0],
+        marl_m, test_dataset[test_idx][0],
         test_dataset_ori[test_idx][0],
         main_options.step, train_options.window_size,
         output_dir, train_options.nb_class, device_str,
