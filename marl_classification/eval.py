@@ -1,5 +1,5 @@
 from os import mkdir
-from os.path import exists, isfile, isdir
+from os.path import exists, isdir, isfile
 
 import torch as th
 import torchvision.transforms as tr
@@ -8,15 +8,10 @@ from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
 from .data import transforms as custom_tr
-from .environment import (
-    MultiAgent,
-    obs_generic,
-    trans_generic,
-    episode
-)
+from .environment import MultiAgent, episode, obs_generic, trans_generic
 from .metrics import ConfusionMeter, format_metric
 from .networks import ModelsWrapper
-from .options import MainOptions, EvalOptions
+from .options import EvalOptions, MainOptions
 
 
 def evaluation(

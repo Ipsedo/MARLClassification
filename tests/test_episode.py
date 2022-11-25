@@ -2,8 +2,12 @@ import unittest
 
 import torch as th
 
-from marl_classification.environment import detailed_episode, obs_generic, trans_generic
-from marl_classification.environment import MultiAgent
+from marl_classification.environment import (
+    MultiAgent,
+    detailed_episode,
+    obs_generic,
+    trans_generic
+)
 from marl_classification.networks import ModelsWrapper
 
 

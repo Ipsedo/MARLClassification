@@ -1,31 +1,26 @@
 import json
+from math import log
 from os import mkdir
 from os.path import exists, isdir, join
 from random import randint
-from typing import Dict, Callable
+from typing import Callable, Dict
 
 import mlflow
 import torch as th
 import torch.nn.functional as th_fun
 import torchvision.transforms as tr
-from math import log
-from torch.utils.data import Subset, DataLoader
+from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
-from .data import (
-    KneeMRIDataset,
-    MNISTDataset,
-    RESISC45Dataset,
-    AIDDataset
-)
+from .data import AIDDataset, KneeMRIDataset, MNISTDataset, RESISC45Dataset
 from .data import transforms as custom_tr
 from .environment import (
     MultiAgent,
-    obs_generic,
-    trans_generic,
     detailed_episode,
-    episode
+    episode,
+    obs_generic,
+    trans_generic
 )
 from .infer import visualize_steps
 from .metrics import ConfusionMeter, LossMeter

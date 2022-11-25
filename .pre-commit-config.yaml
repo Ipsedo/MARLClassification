@@ -6,13 +6,24 @@ repos:
         exclude: resources
       - id: trailing-whitespace
         exclude: resources
+  - repo: https://github.com/hadialqattan/pycln
+    rev: v2.1.2
+    hooks:
+      - id: pycln
+        args: [--config=pyproject.toml]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        files: "\\.(py)$"
+        args: [--settings-path=pyproject.toml]
   - repo: local
     hooks:
       - id: mypy
         name: mypy
         language: system
         entry: mypy
-        args: [marl_classification]
+        args: [marl_classification, --config-file=pyproject.toml]
         types: [python]
         pass_filenames: false
         require_serial: true

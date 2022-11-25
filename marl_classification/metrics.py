@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from os.path import join
 from statistics import mean
-from typing import Optional, List, Tuple, Union, Mapping, Any, Generic, TypeVar
+from typing import Any, Generic, List, Mapping, Optional, Tuple, TypeVar, Union
 
 import matplotlib.pyplot as plt
 import torch as th

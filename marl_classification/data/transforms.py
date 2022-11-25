@@ -4,8 +4,6 @@ from typing import Tuple
 import torch as th
 
 
-# All the transforms here are based on .dataset.ImgDataset
-
 class ImgTransform(metaclass=ABCMeta):
     @abstractmethod
     def __call__(self, img_data: th.Tensor) -> th.Tensor:

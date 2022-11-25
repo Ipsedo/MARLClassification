@@ -17,4 +17,5 @@ jupyter
 kaggle
 
 # pre-commit
+pre-commit
 mypy

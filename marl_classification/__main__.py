@@ -1,17 +1,12 @@
 import argparse
 import re
 from os import makedirs
-from os.path import exists, isdir, dirname, abspath, join
+from os.path import abspath, dirname, exists, isdir, join
 
 from .eval import evaluation
 from .infer import infer
 from .networks import ModelsWrapper
-from .options import (
-    TrainOptions,
-    EvalOptions,
-    MainOptions,
-    InferOptions
-)
+from .options import EvalOptions, InferOptions, MainOptions, TrainOptions
 from .train import train
 
 

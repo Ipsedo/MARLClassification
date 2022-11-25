@@ -1,9 +1,9 @@
-from datetime import datetime
 import glob
 import json
+from datetime import datetime
 from os import mkdir
-from os.path import join, exists, isfile, getmtime
-from typing import Mapping, Any
+from os.path import exists, getmtime, isfile, join
+from typing import Any, Mapping
 
 import matplotlib.pyplot as plt
 import torch as th
@@ -12,17 +12,15 @@ import torchvision.transforms as tr
 from tqdm import tqdm
 
 from .data import transforms as custom_tr
-from .data.dataset import (
-    my_pil_loader
-)
+from .data.dataset import my_pil_loader
 from .environment import (
     MultiAgent,
+    detailed_episode,
     obs_generic,
-    trans_generic,
-    detailed_episode
+    trans_generic
 )
 from .networks.models import ModelsWrapper
-from .options import MainOptions, InferOptions
+from .options import InferOptions, MainOptions
 
 
 def visualize_steps(

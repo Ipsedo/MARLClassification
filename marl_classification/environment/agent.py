@@ -1,5 +1,5 @@
 import json
-from typing import Callable, Tuple, List
+from typing import Callable, List, Tuple
 
 import torch as th
 

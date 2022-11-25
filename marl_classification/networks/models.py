@@ -1,20 +1,20 @@
 import json
 from os.path import exists, isfile
-from typing import List, Set, Dict, Callable, Literal, get_args
+from typing import Callable, Dict, List, Set
 
 import torch as th
 import torch.nn as nn
 
 from .ft_extractor import (
-    MNISTCnn,
-    RESISC45Cnn,
-    StateToFeatures,
+    AIDCnn,
     CNNFtExtract,
     KneeMRICnn,
-    AIDCnn
+    MNISTCnn,
+    RESISC45Cnn,
+    StateToFeatures
 )
 from .message import MessageSender
-from .policy import Policy, Critic
+from .policy import Critic, Policy
 from .prediction import Prediction
 from .recurrent import LSTMCellWrapper
 
