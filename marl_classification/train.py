@@ -295,13 +295,13 @@ def train(
             # log metrics to mlflow
             if curr_step % 100 == 0:
                 mlflow.log_metrics(step=curr_step, metrics={
-                    "error": error,
-                    "path_loss": path_loss,
+                    "error": error_item,
+                    "path_loss": path_loss_item,
                     "loss": loss.item(),
                     "train_prec": precs.mean().item(),
                     "train_rec": recs.mean().item(),
-                    "critic_loss": critic_loss,
-                    "actor_loss": policy_loss
+                    "critic_loss": critic_loss_item,
+                    "actor_loss": policy_loss_item
                 })
 
             # update tqdm bar wit metrics
