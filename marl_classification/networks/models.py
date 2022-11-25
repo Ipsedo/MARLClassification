@@ -73,7 +73,8 @@ class ModelsWrapper(nn.Module):
             actions: List[List[int]],
             nb_class: int,
             hidden_size_belief: int,
-            hidden_size_action: int) -> None:
+            hidden_size_action: int
+    ) -> None:
         super().__init__()
 
         map_obs_module = self.ft_extractors[ft_extr_str](f)
@@ -108,12 +109,12 @@ class ModelsWrapper(nn.Module):
         self.__nb_class = nb_class
 
         def __init_weights(m: nn.Module) -> None:
-            if (
-                isinstance(m, nn.Linear) or
-                isinstance(m, nn.Conv1d) or
-                isinstance(m, nn.Conv2d) or
-                isinstance(m, nn.Conv3d)
-            ):
+            if isinstance(m, (
+                nn.Linear,
+                nn.Conv1d,
+                nn.Conv2d,
+                nn.Conv3d
+            )):
                 nn.init.xavier_normal_(m.weight)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
@@ -179,6 +180,6 @@ class ModelsWrapper(nn.Module):
                 )
             except Exception as e:
                 raise Exception(
-                    f"Error while parsing {json_path} "
+                    f"Error while parsing \"{json_path}\" "
                     f"and creating {cls.__name__}"
                 ) from e

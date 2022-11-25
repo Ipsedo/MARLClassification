@@ -41,7 +41,11 @@ class MultiAgent:
         self.__networks = model_wrapper
 
         # initial state
-        self.__pos = th.zeros(nb_agents, self.__batch_size, *list(range(self.__dim)))
+        self.__pos = th.zeros(
+            nb_agents,
+            self.__batch_size,
+            *list(range(self.__dim))
+        )
         self.__t = 0
 
         # Hidden vectors
@@ -248,7 +252,9 @@ class MultiAgent:
 
     @classmethod
     def load_from(
-            cls, models_wrapper_json_file: str, nb_agent: int,
+            cls,
+            models_wrapper_json_file: str,
+            nb_agent: int,
             model_wrapper: ModelsWrapper,
             obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
             trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor]
@@ -258,16 +264,18 @@ class MultiAgent:
             j_obj = json.load(f_json)
             try:
                 return cls(
-                    nb_agent, model_wrapper,
+                    nb_agent,
+                    model_wrapper,
                     j_obj["hidden_size_belief"],
                     j_obj["hidden_size_action"],
                     j_obj["window_size"],
                     j_obj["hidden_size_msg"],
                     j_obj["actions"],
-                    obs, trans
+                    obs,
+                    trans
                 )
             except Exception as e:
                 raise Exception(
                     "Exception during loading MultiAgent "
-                    "from file"
+                    f"from file \"{models_wrapper_json_file}\""
                 ) from e
