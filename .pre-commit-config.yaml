@@ -19,9 +19,9 @@ repos:
           - tests
         pass_filenames: false
         require_serial: true
-#    - id: mypy
-#      name: mypy
-#      language: system
-#      entry: mypy
-#      types:
-#        - python
+      - id: mypy
+        name: mypy
+        language: system
+        entry: mypy
+        types:
+          - python
