@@ -11,12 +11,7 @@ from .train import train
 
 
 def main() -> None:
-    """
-    TODO
 
-    :return:
-    :rtype:
-    """
     main_parser = argparse.ArgumentParser(
         "Multi agent reinforcement learning "
         "for image classification - Main"
@@ -92,7 +87,8 @@ def main() -> None:
             ModelsWrapper.mnist,
             ModelsWrapper.resisc,
             ModelsWrapper.knee_mri,
-            ModelsWrapper.aid
+            ModelsWrapper.aid,
+            ModelsWrapper.world_strat
         ],
         default="mnist", dest="ft_extractor",
         help="Choose features extractor (CNN)"
@@ -128,7 +124,7 @@ def main() -> None:
     train_parser.add_argument(
         "--res-folder", type=str,
         required=False,
-        default=abspath(join(dirname(abspath(__file__)), "..", "resources")), # TODO test it with package
+        default=abspath(join(dirname(abspath(__file__)), "..", "resources")),  # TODO test it with package
         help="The resources path containing the download folder with datasets"
     )
     train_parser.add_argument(
@@ -165,7 +161,9 @@ def main() -> None:
             ModelsWrapper.belief_unit,
             ModelsWrapper.action_unit,
             ModelsWrapper.predict,
-            ModelsWrapper.policy],
+            ModelsWrapper.policy,
+            ModelsWrapper.critic
+        ],
         help="Choose module(s) to be frozen during training"
     )
 

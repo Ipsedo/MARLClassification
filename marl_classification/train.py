@@ -13,7 +13,13 @@ from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
-from .data import AIDDataset, KneeMRIDataset, MNISTDataset, RESISC45Dataset
+from .data import (
+    AIDDataset,
+    KneeMRIDataset,
+    MNISTDataset,
+    RESISC45Dataset,
+    WorldStratDataset
+)
 from .data import transforms as custom_tr
 from .environment import (
     MultiAgent,
@@ -64,7 +70,8 @@ def train(
         ModelsWrapper.mnist: MNISTDataset,
         ModelsWrapper.resisc: RESISC45Dataset,
         ModelsWrapper.knee_mri: KneeMRIDataset,
-        ModelsWrapper.aid: AIDDataset
+        ModelsWrapper.aid: AIDDataset,
+        ModelsWrapper.world_strat: WorldStratDataset
     }
     dataset_constructor = dataset_constructors[train_options.ft_extr_str]
 
@@ -228,13 +235,12 @@ def train(
                 ).permute(1, 2, 0)
             ) / random_error
 
-            # [Ns, Na, 1]
+            # [Ns, 1, 1]
             t_steps = (
                 th.arange(
                     rewards.size(0),
                     device=th.device(device_str)
                 )[:, None, None]
-                .repeat(1, len(marl_m), 1)
                 .to(th.float)
             )
 
@@ -323,8 +329,10 @@ def train(
         with th.no_grad():
             tqdm_bar = tqdm(test_dataloader)
             for x_test, y_test in tqdm_bar:
-                x_test, y_test = x_test.to(th.device(device_str)), \
-                                 y_test.to(th.device(device_str))
+                x_test, y_test = (
+                    x_test.to(th.device(device_str)),
+                    y_test.to(th.device(device_str))
+                )
 
                 pred, _ = episode(marl_m, x_test, main_options.step)
 
