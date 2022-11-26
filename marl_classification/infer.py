@@ -3,12 +3,13 @@ import json
 from datetime import datetime
 from os import mkdir
 from os.path import exists, getmtime, isfile, join
-from typing import Any, Mapping
+from typing import Any, List, Mapping
 
 import matplotlib.pyplot as plt
 import torch as th
 import torch.nn.functional as th_fun
 import torchvision.transforms as tr
+from PIL import Image
 from tqdm import tqdm
 
 from .data import transforms as custom_tr
@@ -24,9 +25,14 @@ from .options import InferOptions, MainOptions
 
 
 def visualize_steps(
-        agents: MultiAgent, img: th.Tensor, img_ori: th.Tensor,
-        max_it: int, f: int, output_dir: str,
-        nb_class: int, device_str: str,
+        agents: MultiAgent,
+        img: th.Tensor,
+        img_ori: th.Tensor,
+        max_it: int,
+        f: int,
+        output_dir: str,
+        nb_class: int,
+        device_str: str,
         class_map: Mapping[Any, int]
 ) -> None:
 
@@ -50,11 +56,18 @@ def visualize_steps(
 
     img_idx = 0
 
+    frames: List[Image.Image] = []
+
     fig = plt.figure()
     plt.imshow(img_ori, cmap=color_map)
     plt.title("Original")
-    plt.savefig(join(output_dir, f"pred_original.png"))
+    frame_file_name = join(output_dir, f"pred_original.png")
+    plt.savefig(frame_file_name)
     plt.close(fig)
+
+    # for GIF : 5 * 200ms -> 1s
+    for _ in range(5):
+        frames.append(Image.open(frame_file_name))
 
     curr_img = th.zeros(h, w, 4)
     for t in range(max_it):
@@ -82,8 +95,19 @@ def visualize_steps(
             f"{idx_to_class[pred_max]} ({pred_proba * 100.:.1f}%)"
         )
 
-        plt.savefig(join(output_dir, f"pred_step_{t}.png"))
+        frame_file_name = join(output_dir, f"pred_step_{t}.png")
+        plt.savefig(frame_file_name)
         plt.close(fig)
+
+        frames.append(Image.open(frame_file_name))
+
+    frames[0].save(
+        join(output_dir, "animated_gif.gif"),
+        save_all=True,
+        append_images=frames[1:],
+        duration=200,
+        loop=0
+    )
 
 
 def infer(
@@ -102,7 +126,7 @@ def infer(
         f"{infer_options.state_dict_path} is not a file"
 
     print(
-        f"Will use :\n"
+        "Will use :\n"
         f"- JSON of : {datetime.fromtimestamp(getmtime(infer_options.json_path))}\n"
         f"- state_dict of : {datetime.fromtimestamp(getmtime(infer_options.state_dict_path))}\n"
         f"- class_to_idx of : {datetime.fromtimestamp(getmtime(infer_options.class_to_idx))}"
@@ -158,11 +182,11 @@ def infer(
             mkdir(curr_img_path)
 
         info_f = open(join(curr_img_path, "info.txt"), "w")
-        info_f.writelines(
-            [f"{img_path}\n",
-             f"{infer_options.json_path}\n",
-             f"{infer_options.state_dict_path}\n"]
-        )
+        info_f.writelines([
+            f"{img_path}\n",
+            f"{infer_options.json_path}\n",
+            f"{infer_options.state_dict_path}\n"
+        ])
         info_f.close()
 
         visualize_steps(
