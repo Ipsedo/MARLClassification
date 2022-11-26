@@ -27,10 +27,10 @@ class MNISTCnn(CNNFtExtract):
         super().__init__()
 
         self.__seq_conv = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=(3, 3), padding=1),
+            nn.Conv2d(1, 16, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(16, 32, kernel_size=(3, 3), padding=1),
+            nn.Conv2d(16, 32, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Flatten(1, -1)
@@ -55,13 +55,13 @@ class RESISC45Cnn(CNNFtExtract):
         super().__init__()
 
         self.__seq_conv = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=(3, 3), padding=1),
+            nn.Conv2d(3, 16, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(16, 32, kernel_size=(3, 3), padding=1),
+            nn.Conv2d(16, 32, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(32, 64, kernel_size=(3, 3), padding=1),
+            nn.Conv2d(32, 64, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.Flatten(1, -1)
@@ -112,6 +112,41 @@ class AIDCnn(CNNFtExtract):
         return self.__seq_conv(o_t)
 
 
+class WorldStratCnn(CNNFtExtract):
+
+    def __init__(self, f: int) -> None:
+        super().__init__()
+
+        self.__seq_conv = nn.Sequential(
+            nn.Conv2d(3, 16, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(16, 32, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(32, 64, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(64, 128, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Flatten(1, -1)
+        )
+
+        self.__out_size = 128 * (f // 32) ** 2
+
+    def forward(self, o_t: th.Tensor) -> th.Tensor:
+        return self.__seq_conv(o_t)
+
+    @property
+    def out_size(self) -> int:
+        return self.__out_size
+
+
 # Knee MRI stuff
 
 class KneeMRICnn(CNNFtExtract):
@@ -119,13 +154,13 @@ class KneeMRICnn(CNNFtExtract):
         super().__init__()
 
         self.__seq_conv = nn.Sequential(
-            nn.Conv3d(1, 8, kernel_size=(3, 3, 3), padding=1),
+            nn.Conv3d(1, 8, (3, 3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool3d(2, 2),
-            nn.Conv3d(8, 16, kernel_size=(3, 3, 3), padding=1),
+            nn.Conv3d(8, 16, (3, 3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool3d(2, 2),
-            nn.Conv3d(16, 32, kernel_size=(3, 3, 3), padding=1),
+            nn.Conv3d(16, 32, (3, 3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool3d(2, 2),
             nn.Flatten(1, -1)

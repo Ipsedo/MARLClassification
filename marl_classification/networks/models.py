@@ -11,7 +11,8 @@ from .ft_extractor import (
     KneeMRICnn,
     MNISTCnn,
     RESISC45Cnn,
-    StateToFeatures
+    StateToFeatures,
+    WorldStratCnn
 )
 from .message import MessageSender
 from .policy import Critic, Policy
@@ -53,12 +54,14 @@ class ModelsWrapper(nn.Module):
     resisc: str = "resisc45"
     knee_mri: str = "kneemri"
     aid: str = "aid"
+    world_strat: str = "worldstrat"
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
         mnist: MNISTCnn,
         resisc: RESISC45Cnn,
         knee_mri: KneeMRICnn,
-        aid: AIDCnn
+        aid: AIDCnn,
+        world_strat: WorldStratCnn
     }
 
     def __init__(
