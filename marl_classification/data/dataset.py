@@ -1,6 +1,6 @@
 import pickle as pkl
 from os.path import exists, isdir, join
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple
 
 import pandas as pd
 import torch as th
@@ -141,3 +141,49 @@ class KneeMRIDataset(Dataset):
 
     def __len__(self) -> int:
         return self.__nb_img
+
+
+class WorldStratDataset(Dataset):
+    def __init__(self, res_path: str, img_transform: Any):
+        super().__init__()
+
+        self.__root_path = join(res_path, "downloaded", "WorldStrat")
+
+        self.__class_column = "IPCC Class"
+
+        self.__metadata = (
+            pd.read_csv(join(self.__root_path, "metadata.csv"), sep=",", quotechar='"')
+            .dropna()
+            .rename(columns={"Unnamed: 0": "folder_name"})
+            .groupby("folder_name")[["folder_name", self.__class_column]]
+            .first()
+        )
+
+        self.__img_transform = img_transform
+        self.__img_loader = my_pil_loader
+
+        self.__class_to_idx = {
+            c: i for i, c in enumerate(sorted(
+                self.__metadata[self.__class_column]
+                .unique()
+            ))
+        }
+
+    @property
+    def class_to_idx(self) -> Dict[str, int]:
+        return self.__class_to_idx
+
+    def __getitem__(self, index: int) -> Tuple[th.Tensor, th.Tensor]:
+        folder_name = self.__metadata.iloc[index, 0]
+        png_name = join(self.__root_path, folder_name, f"{folder_name}_rgb.png")
+
+        png_class = self.__metadata[index, 1]
+        png_class_idx = self.class_to_idx[png_class]
+
+        img = self.__img_loader(png_name)
+        img_transformed = self.__img_transform(img)
+
+        return img_transformed, th.tensor(png_class_idx)
+
+    def __len__(self):
+        return len(self.__metadata)
