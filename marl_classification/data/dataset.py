@@ -177,7 +177,7 @@ class WorldStratDataset(Dataset):
         folder_name = self.__metadata.iloc[index, 0]
         png_name = join(self.__root_path, folder_name, f"{folder_name}_rgb.png")
 
-        png_class = self.__metadata[index, 1]
+        png_class = self.__metadata.iloc[index, 1]
         png_class_idx = self.class_to_idx[png_class]
 
         img = self.__img_loader(png_name)

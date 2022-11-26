@@ -134,10 +134,14 @@ class WorldStratCnn(CNNFtExtract):
             nn.GELU(),
             nn.MaxPool2d(2, 2),
 
+            nn.Conv2d(128, 256, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+
             nn.Flatten(1, -1)
         )
 
-        self.__out_size = 128 * (f // 32) ** 2
+        self.__out_size = 256 * (f // 32) ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         return self.__seq_conv(o_t)
