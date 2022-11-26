@@ -2,7 +2,7 @@ import glob
 import json
 from datetime import datetime
 from os import mkdir
-from os.path import exists, getmtime, isfile, join
+from os.path import exists, getmtime, isfile, join, split
 from typing import Any, List, Mapping
 
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ from .environment import (
     obs_generic,
     trans_generic
 )
-from .networks.models import ModelsWrapper
+from .networks import ModelsWrapper
 from .options import InferOptions, MainOptions
 
 
@@ -176,7 +176,7 @@ def infer(
         x_ori = img_ori_pipeline(img)
         x = img_pipeline(img)
 
-        curr_img_path = join(infer_options.output_dir, img_path.split("/")[-1])
+        curr_img_path = join(infer_options.output_dir, split(img_path)[-1])
 
         if not exists(curr_img_path):
             mkdir(curr_img_path)
