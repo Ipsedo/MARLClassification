@@ -26,24 +26,24 @@ class TestEpisode(unittest.TestCase):
             self.__model.nb_class
         )
 
-        assert len(pred.size()) == 4
-        assert pred.size()[0] == self.__model.step
-        assert pred.size()[1] == self.__model.nb_agent
-        assert pred.size()[2] == self.__model.batch_size
-        assert pred.size()[3] == self.__model.nb_class
+        self.assertEqual(4, len(pred.size()))
+        self.assertEqual(self.__model.step, pred.size()[0])
+        self.assertEqual(self.__model.nb_agent, pred.size()[1])
+        self.assertEqual(self.__model.batch_size, pred.size()[2])
+        self.assertEqual(self.__model.nb_class, pred.size()[3])
 
-        assert len(log_proba.size()) == 3
-        assert log_proba.size()[0] == self.__model.step
-        assert log_proba.size()[1] == self.__model.nb_agent
-        assert log_proba.size()[2] == self.__model.batch_size
+        self.assertEqual(3, len(log_proba.size()))
+        self.assertEqual(self.__model.step, log_proba.size()[0])
+        self.assertEqual(self.__model.nb_agent, log_proba.size()[1])
+        self.assertEqual(self.__model.batch_size, log_proba.size()[2])
 
-        assert len(values.size()) == 3
-        assert values.size()[0] == self.__model.step
-        assert values.size()[1] == self.__model.nb_agent
-        assert values.size()[2] == self.__model.batch_size
+        self.assertEqual(3, len(values.size()))
+        self.assertEqual(self.__model.step, values.size()[0])
+        self.assertEqual(self.__model.nb_agent, values.size()[1])
+        self.assertEqual(self.__model.batch_size, values.size()[2])
 
-        assert len(pos.size()) == 4
-        assert pos.size()[0] == self.__model.step
-        assert pos.size()[1] == self.__model.nb_agent
-        assert pos.size()[2] == self.__model.batch_size
-        assert pos.size()[3] == self.__model.dim
+        self.assertEqual(4, len(pos.size()))
+        self.assertEqual(self.__model.step, pos.size()[0])
+        self.assertEqual(self.__model.nb_agent, pos.size()[1])
+        self.assertEqual(self.__model.batch_size, pos.size()[2])
+        self.assertEqual(self.__model.dim, pos.size()[3])
