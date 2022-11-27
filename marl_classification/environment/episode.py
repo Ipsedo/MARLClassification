@@ -11,7 +11,7 @@ def episode(
         max_it: int
 ) -> Tuple[th.Tensor, th.Tensor]:
 
-    img_sizes = [s for s in img_batch.size()[2:]]
+    img_sizes = list(img_batch.size()[2:])
     agents.new_episode(img_batch.size(0), img_sizes)
 
     for t in range(max_it):
@@ -27,7 +27,7 @@ def detailed_episode(
         max_it: int, device_str: str, nb_class: int
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
 
-    img_sizes = [s for s in img_batch.size()[2:]]
+    img_sizes = list(img_batch.size()[2:])
     batch_size = img_batch.size(0)
 
     agents.new_episode(batch_size, img_sizes)
