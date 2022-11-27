@@ -114,7 +114,7 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
         ax = fig.add_subplot(111)
 
         conf_mat = self.conf_mat()
-        conf_mat_normalized = conf_mat / th.sum(conf_mat, dim=0, keepdim=True)
+        conf_mat_normalized = conf_mat / th.sum(conf_mat, dim=1, keepdim=True)
         cax = ax.matshow(conf_mat_normalized.tolist(), cmap="plasma")
         fig.colorbar(cax)
 
