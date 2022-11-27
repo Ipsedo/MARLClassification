@@ -6,9 +6,6 @@ from marl_classification.metrics import ConfusionMeter, LossMeter
 
 
 class TestMetrics(unittest.TestCase):
-    def setUp(self) -> None:
-        super().setUp()
-
     def test_confusion(self) -> None:
         nb_class = int(th.randint(2, 32, (1,)).item())
         y_pred = th.eye(nb_class).to(th.float)
