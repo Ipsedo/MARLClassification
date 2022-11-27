@@ -4,6 +4,7 @@ from statistics import mean
 from typing import Any, Generic, List, Mapping, Optional, Tuple, TypeVar, Union
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import torch as th
 
 
@@ -110,13 +111,19 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
             output_dir: str,
             stage: str
     ) -> None:
-        plt.matshow(self.conf_mat().tolist())
+        ax = plt.subplot()
 
-        plt.title(f"confusion matrix epoch {epoch} - {stage}")
-        plt.ylabel('True Label')
-        plt.xlabel('Predicated Label')
+        sns.heatmap(
+            self.conf_mat().tolist(),
+            annot=True,
+            fmt='g',
+            ax=ax,
+            cmap='rocket'
+        )
 
-        plt.colorbar()
+        ax.set_title(f"confusion matrix epoch {epoch} - {stage}")
+        ax.set_ylabel('True Label')
+        ax.set_xlabel('Predicated Label')
 
         plt.savefig(
             join(output_dir, f"confusion_matrix_epoch_{epoch}_{stage}.png")

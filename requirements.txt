@@ -5,6 +5,7 @@ torchvision
 # visu stuff
 tqdm
 matplotlib
+seaborn
 numpy
 Pillow
 
