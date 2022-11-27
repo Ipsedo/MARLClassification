@@ -8,3 +8,4 @@ venv/
 *.egg-info/
 build/
 .mypy_cache/
+tests/tmp/
