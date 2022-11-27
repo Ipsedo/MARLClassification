@@ -180,10 +180,13 @@ class WorldStratDataset(Dataset):
         png_class = self.__metadata.iloc[index, 1]
         png_class_idx = self.class_to_idx[png_class]
 
-        img = self.__img_loader(png_name)
-        img_transformed = self.__img_transform(img)
+        try:
+            img = self.__img_loader(png_name)
+            img_transformed = self.__img_transform(img)
 
-        return img_transformed, th.tensor(png_class_idx)
+            return img_transformed, th.tensor(png_class_idx)
+        except Exception as e:
+            raise Exception(f"file \"{png_name}\"") from e
 
     def __len__(self):
         return len(self.__metadata)
