@@ -144,7 +144,12 @@ def main() -> None:
         "--lr", "--learning-rate",
         type=float, default=1e-3,
         dest="learning_rate",
-        help=""
+        help="learning rate"
+    )
+    train_parser.add_argument(
+        "--gamma", type=float,
+        default=0.99,
+        help="discount factor"
     )
     train_parser.add_argument(
         "--nb-epoch", type=int,
@@ -267,7 +272,8 @@ def main() -> None:
                 args.res_folder,
                 args.output_dir,
                 list(set(args.frozen_modules)),
-                args.ft_extractor
+                args.ft_extractor,
+                args.gamma
             )
 
             if not exists(args.output_dir):

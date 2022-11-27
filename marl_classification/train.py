@@ -211,9 +211,6 @@ def train(
                 reduction="none"
             )
 
-            # discount factor
-            gamma = 0.99
-
             # [Nb] -> [Nb, 1, 1] -> [Nb, Ns, Na]
             tmp_y_train = (
                 y_train[:, None, None]
@@ -245,12 +242,12 @@ def train(
             )
 
             # discounting reward
-            returns = rewards * gamma ** t_steps
+            returns = rewards * train_options.gamma ** t_steps
             returns = (
                 returns.flip(dims=(0,))
                 .cumsum(0)
                 .flip(dims=(0,)) /
-                gamma ** t_steps
+                train_options.gamma ** t_steps
             )
             returns = (returns - returns.mean()) / (returns.std() + 1e-8)
 

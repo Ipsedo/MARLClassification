@@ -27,7 +27,8 @@ TrainOptions = NamedTuple(
      ("resources_dir", str),
      ("output_dir", str),
      ("frozen_modules", List[str]),
-     ("ft_extr_str", str)]
+     ("ft_extr_str", str),
+     ("gamma", float)]
 )
 
 EvalOptions = NamedTuple(
