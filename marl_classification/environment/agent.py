@@ -8,16 +8,16 @@ from ..networks.models import ModelsWrapper
 
 class MultiAgent:
     def __init__(
-            self,
-            nb_agents: int,
-            model_wrapper: ModelsWrapper,
-            n_b: int,
-            n_a: int,
-            f: int,
-            n_m: int,
-            action: List[List[int]],
-            obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
-            trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor]
+        self,
+        nb_agents: int,
+        model_wrapper: ModelsWrapper,
+        n_b: int,
+        n_a: int,
+        f: int,
+        n_m: int,
+        action: List[List[int]],
+        obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
+        trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor],
     ) -> None:
 
         # Agent info
@@ -42,9 +42,7 @@ class MultiAgent:
 
         # initial state
         self.__pos = th.zeros(
-            nb_agents,
-            self.__batch_size,
-            *list(range(self.__dim))
+            nb_agents, self.__batch_size, *list(range(self.__dim))
         )
         self.__t = 0
 
@@ -71,52 +69,67 @@ class MultiAgent:
 
         self.__h = [
             th.randn(
-                self.__nb_agents, batch_size, self.__n_b,
-                device=th.device(self.__device_str)
+                self.__nb_agents,
+                batch_size,
+                self.__n_b,
+                device=th.device(self.__device_str),
             )
         ]
         self.__c = [
             th.randn(
-                self.__nb_agents, batch_size, self.__n_b,
-                device=th.device(self.__device_str)
+                self.__nb_agents,
+                batch_size,
+                self.__n_b,
+                device=th.device(self.__device_str),
             )
         ]
 
         self.__h_caret = [
             th.randn(
-                self.__nb_agents, batch_size, self.__n_a,
-                device=th.device(self.__device_str)
+                self.__nb_agents,
+                batch_size,
+                self.__n_a,
+                device=th.device(self.__device_str),
             )
         ]
         self.__c_caret = [
             th.randn(
-                self.__nb_agents, batch_size, self.__n_a,
-                device=th.device(self.__device_str)
+                self.__nb_agents,
+                batch_size,
+                self.__n_a,
+                device=th.device(self.__device_str),
             )
         ]
 
         self.__msg = [
             th.zeros(
-                self.__nb_agents, batch_size, self.__n_m,
-                device=th.device(self.__device_str)
+                self.__nb_agents,
+                batch_size,
+                self.__n_m,
+                device=th.device(self.__device_str),
             )
         ]
 
         self.__action_probas = [
             th.ones(
-                self.__nb_agents, batch_size,
-                device=th.device(self.__device_str)
-            ) / self.__nb_action
+                self.__nb_agents,
+                batch_size,
+                device=th.device(self.__device_str),
+            )
+            / self.__nb_action
         ]
 
-        self.__pos = th.stack([
-            th.randint(
-                i_s - self.__f,
-                (self.__nb_agents, batch_size),
-                device=th.device(self.__device_str)
-            )
-            for i_s in img_size
-        ], dim=-1)
+        self.__pos = th.stack(
+            [
+                th.randint(
+                    i_s - self.__f,
+                    (self.__nb_agents, batch_size),
+                    device=th.device(self.__device_str),
+                )
+                for i_s in img_size
+            ],
+            dim=-1,
+        )
 
     def step(self, img: th.Tensor) -> None:
 
@@ -132,29 +145,23 @@ class MultiAgent:
         # => flatten agent and batch dims
         b_t = self.__networks(
             self.__networks.map_obs,
-            o_t.flatten(0, 1)
+            o_t.flatten(0, 1),
         ).view(nb_agent, self.__batch_size, -1)
 
         # Get messages
         d_bar_t_tmp = self.__msg[self.__t]
         # sum on agent
         d_bar_t_sum = d_bar_t_tmp.sum(dim=0)
-        d_bar_t = (
-            (d_bar_t_sum - d_bar_t_tmp) /
-            (nb_agent - 1)
-        )
+        d_bar_t = (d_bar_t_sum - d_bar_t_tmp) / (nb_agent - 1)
 
         # Map pos in feature space
-        norm_pos = (
-            self.pos.to(th.float) /
-            th.tensor(
-                [[img_sizes]],
-                device=th.device(self.__device_str)
-            )
+        norm_pos = self.pos.to(th.float) / th.tensor(
+            [[img_sizes]], device=th.device(self.__device_str)
         )
+
         lambda_t = self.__networks(
             self.__networks.map_pos,
-            norm_pos
+            norm_pos,
         )
 
         # LSTMs input
@@ -165,7 +172,7 @@ class MultiAgent:
             self.__networks.belief_unit,
             self.__h[self.__t],
             self.__c[self.__t],
-            u_t
+            u_t,
         )
 
         # Append new h and c (t + 1 step)
@@ -173,9 +180,11 @@ class MultiAgent:
         self.__c.append(c_t_next)
 
         # Evaluate message
-        self.__msg.append(self.__networks(
-            self.__networks.evaluate_msg,
-            self.__h[self.__t + 1])
+        self.__msg.append(
+            self.__networks(
+                self.__networks.evaluate_msg,
+                self.__h[self.__t + 1],
+            )
         )
 
         # Action unit LSTM
@@ -183,7 +192,7 @@ class MultiAgent:
             self.__networks.action_unit,
             self.__h_caret[self.__t],
             self.__c_caret[self.__t],
-            u_t
+            u_t,
         )
 
         # Append ĥ et ĉ (t + 1 step)
@@ -193,13 +202,13 @@ class MultiAgent:
         # Get action probabilities
         action_scores = self.__networks(
             self.__networks.policy,
-            self.__h_caret[self.__t + 1]
+            self.__h_caret[self.__t + 1],
         )
 
         # Create actions tensor
         actions = th.tensor(
             self.__actions,
-            device=th.device(self.__device_str)
+            device=th.device(self.__device_str),
         )
 
         # Greedy policy
@@ -212,23 +221,18 @@ class MultiAgent:
         # Apply action / Upgrade agent state
         self.__pos = self.__trans(
             self.pos.to(th.float),
-            a_t_next, self.__f,
-            img_sizes
+            a_t_next,
+            self.__f,
+            img_sizes,
         ).to(th.long)
 
         self.__t += 1
 
     def predict(self) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         return (
-            self.__networks(
-                self.__networks.predict,
-                self.__h[-1]
-            ),
+            self.__networks(self.__networks.predict, self.__h[-1]),
             self.__action_probas[-1].log(),
-            self.__networks(
-                self.__networks.critic,
-                self.__h_caret[-1]
-            )
+            self.__networks(self.__networks.critic, self.__h_caret[-1]),
         )
 
     @property
@@ -252,13 +256,13 @@ class MultiAgent:
 
     @classmethod
     def load_from(
-            cls,
-            models_wrapper_json_file: str,
-            nb_agent: int,
-            model_wrapper: ModelsWrapper,
-            obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
-            trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor]
-    ) -> 'MultiAgent':
+        cls,
+        models_wrapper_json_file: str,
+        nb_agent: int,
+        model_wrapper: ModelsWrapper,
+        obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
+        trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor],
+    ) -> "MultiAgent":
 
         with open(models_wrapper_json_file, "r") as f_json:
             j_obj = json.load(f_json)
@@ -272,10 +276,10 @@ class MultiAgent:
                     j_obj["hidden_size_msg"],
                     j_obj["actions"],
                     obs,
-                    trans
+                    trans,
                 )
             except Exception as e:
                 raise Exception(
                     "Exception during loading MultiAgent "
-                    f"from file \"{models_wrapper_json_file}\""
+                    f'from file "{models_wrapper_json_file}"'
                 ) from e

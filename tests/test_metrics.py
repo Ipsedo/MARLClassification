@@ -9,7 +9,6 @@ from marl_classification.metrics import ConfusionMeter, LossMeter
 
 
 class TestMetrics(unittest.TestCase):
-
     def setUp(self) -> None:
         super().setUp()
 
@@ -18,7 +17,7 @@ class TestMetrics(unittest.TestCase):
         if not exists(self.__tmp_path):
             mkdir(self.__tmp_path)
         elif not isdir(self.__tmp_path):
-            self.fail(f"\"{self.__tmp_path}\" is not a directory")
+            self.fail(f'"{self.__tmp_path}" is not a directory')
 
     def tearDown(self) -> None:
         super().tearDown()
@@ -30,8 +29,8 @@ class TestMetrics(unittest.TestCase):
         y_pred = th.eye(nb_class).to(th.float)
 
         # error at first index of batch
-        y_pred[0, 0] = 0.
-        y_pred[0, 1] = 1.
+        y_pred[0, 0] = 0.0
+        y_pred[0, 1] = 1.0
 
         y_true = th.arange(0, nb_class)
 

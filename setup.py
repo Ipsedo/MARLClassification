@@ -9,7 +9,7 @@ setup(
         "marl_classification",
         "marl_classification.data",
         "marl_classification.environment",
-        "marl_classification.networks"
+        "marl_classification.networks",
     ],
-    license='GPL-3.0 License'
+    license="GPL-3.0 License",
 )

@@ -12,7 +12,7 @@ from .ft_extractor import (
     MNISTCnn,
     RESISC45Cnn,
     StateToFeatures,
-    WorldStratCnn
+    WorldStratCnn,
 )
 from .message import MessageSender
 from .policy import Critic, Policy
@@ -46,7 +46,7 @@ class ModelsWrapper(nn.Module):
         action_unit,
         policy,
         critic,
-        predict
+        predict,
     }
 
     # Features extractors - CNN
@@ -61,41 +61,43 @@ class ModelsWrapper(nn.Module):
         resisc: RESISC45Cnn,
         knee_mri: KneeMRICnn,
         aid: AIDCnn,
-        world_strat: WorldStratCnn
+        world_strat: WorldStratCnn,
     }
 
     def __init__(
-            self,
-            ft_extr_str: str,
-            f: int,
-            n_b: int,
-            n_a: int,
-            n_m: int,
-            n_d: int,
-            d: int,
-            actions: List[List[int]],
-            nb_class: int,
-            hidden_size_belief: int,
-            hidden_size_action: int
+        self,
+        ft_extr_str: str,
+        f: int,
+        n_b: int,
+        n_a: int,
+        n_m: int,
+        n_d: int,
+        d: int,
+        actions: List[List[int]],
+        nb_class: int,
+        hidden_size_belief: int,
+        hidden_size_action: int,
     ) -> None:
         super().__init__()
 
         map_obs_module = self.ft_extractors[ft_extr_str](f)
 
-        self.__networks_dict = nn.ModuleDict({
-            self.map_obs: map_obs_module,
-            self.map_pos: StateToFeatures(d, n_d),
-            self.evaluate_msg: MessageSender(n_b, n_m, hidden_size_belief),
-            self.belief_unit: LSTMCellWrapper(
-                map_obs_module.out_size + n_d + n_m, n_b
-            ),
-            self.action_unit: LSTMCellWrapper(
-                map_obs_module.out_size + n_d + n_m, n_a
-            ),
-            self.policy: Policy(len(actions), n_a, hidden_size_action),
-            self.critic: Critic(n_a, hidden_size_action),
-            self.predict: Prediction(n_b, nb_class, hidden_size_belief)
-        })
+        self.__networks_dict = nn.ModuleDict(
+            {
+                self.map_obs: map_obs_module,
+                self.map_pos: StateToFeatures(d, n_d),
+                self.evaluate_msg: MessageSender(n_b, n_m, hidden_size_belief),
+                self.belief_unit: LSTMCellWrapper(
+                    map_obs_module.out_size + n_d + n_m, n_b
+                ),
+                self.action_unit: LSTMCellWrapper(
+                    map_obs_module.out_size + n_d + n_m, n_a
+                ),
+                self.policy: Policy(len(actions), n_a, hidden_size_action),
+                self.critic: Critic(n_a, hidden_size_action),
+                self.predict: Prediction(n_b, nb_class, hidden_size_belief),
+            }
+        )
 
         self.__ft_extr_str = ft_extr_str
 
@@ -112,12 +114,7 @@ class ModelsWrapper(nn.Module):
         self.__nb_class = nb_class
 
         def __init_weights(m: nn.Module) -> None:
-            if isinstance(m, (
-                nn.Linear,
-                nn.Conv1d,
-                nn.Conv2d,
-                nn.Conv3d
-            )):
+            if isinstance(m, (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)):
                 nn.init.xavier_normal_(m.weight)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
@@ -136,10 +133,7 @@ class ModelsWrapper(nn.Module):
         return self.__f
 
     def get_params(self, ops: List[str]) -> List[th.Tensor]:
-        return [
-            p for op in ops
-            for p in self.__networks_dict[op].parameters()
-        ]
+        return [p for op in ops for p in self.__networks_dict[op].parameters()]
 
     def json_args(self, out_json_path: str) -> None:
         with open(out_json_path, "w") as json_f:
@@ -160,9 +154,10 @@ class ModelsWrapper(nn.Module):
             json.dump(args_d, json_f)
 
     @classmethod
-    def from_json(cls, json_path: str) -> 'ModelsWrapper':
-        assert exists(json_path) and isfile(json_path), \
-            f"\"{json_path}\" does not exist or is not a file"
+    def from_json(cls, json_path: str) -> "ModelsWrapper":
+        assert exists(json_path) and isfile(
+            json_path
+        ), f'"{json_path}" does not exist or is not a file'
 
         with open(json_path, "r") as json_f:
             args_d = json.load(json_f)
@@ -179,10 +174,10 @@ class ModelsWrapper(nn.Module):
                     args_d["actions"],
                     args_d["class_number"],
                     args_d["hidden_size_linear_belief"],
-                    args_d["hidden_size_linear_action"]
+                    args_d["hidden_size_linear_action"],
                 )
             except Exception as e:
                 raise Exception(
-                    f"Error while parsing \"{json_path}\" "
+                    f'Error while parsing "{json_path}" '
                     f"and creating {cls.__name__}"
                 ) from e

@@ -5,7 +5,6 @@ import torch.nn as nn
 
 
 class CNNFtExtract(nn.Module, ABC):
-
     @property
     @abstractmethod
     def out_size(self) -> int:
@@ -17,6 +16,7 @@ class CNNFtExtract(nn.Module, ABC):
 ############################
 
 # MNIST Stuff
+
 
 class MNISTCnn(CNNFtExtract):
     """
@@ -33,7 +33,7 @@ class MNISTCnn(CNNFtExtract):
             nn.Conv2d(16, 32, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-            nn.Flatten(1, -1)
+            nn.Flatten(1, -1),
         )
 
         self.__out_size = 32 * (f // 4) ** 2
@@ -49,8 +49,8 @@ class MNISTCnn(CNNFtExtract):
 
 # RESISC-45 Stuff
 
-class RESISC45Cnn(CNNFtExtract):
 
+class RESISC45Cnn(CNNFtExtract):
     def __init__(self, f: int) -> None:
         super().__init__()
 
@@ -64,7 +64,7 @@ class RESISC45Cnn(CNNFtExtract):
             nn.Conv2d(32, 64, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-            nn.Flatten(1, -1)
+            nn.Flatten(1, -1),
         )
 
         self.__out_size = 64 * (f // 8) ** 2
@@ -78,7 +78,6 @@ class RESISC45Cnn(CNNFtExtract):
 
 
 class AIDCnn(CNNFtExtract):
-
     def __init__(self, f: int) -> None:
         super().__init__()
 
@@ -86,20 +85,16 @@ class AIDCnn(CNNFtExtract):
             nn.Conv2d(3, 16, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
             nn.Conv2d(16, 32, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
             nn.Conv2d(32, 64, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
             nn.Conv2d(64, 128, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
-            nn.Flatten(1, -1)
+            nn.Flatten(1, -1),
         )
 
         self.__out_size = 128 * (f // 16) ** 2
@@ -113,7 +108,6 @@ class AIDCnn(CNNFtExtract):
 
 
 class WorldStratCnn(CNNFtExtract):
-
     def __init__(self, f: int) -> None:
         super().__init__()
 
@@ -121,24 +115,19 @@ class WorldStratCnn(CNNFtExtract):
             nn.Conv2d(3, 16, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
             nn.Conv2d(16, 32, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
             nn.Conv2d(32, 64, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
             nn.Conv2d(64, 128, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
             nn.Conv2d(128, 256, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
-
-            nn.Flatten(1, -1)
+            nn.Flatten(1, -1),
         )
 
         self.__out_size = 256 * (f // 32) ** 2
@@ -152,6 +141,7 @@ class WorldStratCnn(CNNFtExtract):
 
 
 # Knee MRI stuff
+
 
 class KneeMRICnn(CNNFtExtract):
     def __init__(self, f: int = 16):
@@ -167,7 +157,7 @@ class KneeMRICnn(CNNFtExtract):
             nn.Conv3d(16, 32, (3, 3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool3d(2, 2),
-            nn.Flatten(1, -1)
+            nn.Flatten(1, -1),
         )
 
         self.__out_size = 32 * (f // 8) ** 3
@@ -197,7 +187,7 @@ class StateToFeatures(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(self.__d, self.__n_d),
-            nn.GELU()
+            nn.GELU(),
         )
 
     def forward(self, p_t: th.Tensor) -> th.Tensor:

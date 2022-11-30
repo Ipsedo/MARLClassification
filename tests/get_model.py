@@ -1,7 +1,7 @@
 from marl_classification.environment import (
     MultiAgent,
     obs_generic,
-    trans_generic
+    trans_generic,
 )
 from marl_classification.networks import ModelsWrapper
 
@@ -14,12 +14,7 @@ class GetModel:
         self._step = 7
         self._dim = 2
 
-        action = [
-            [1, 0],
-            [-1, 0],
-            [0, 1],
-            [0, -1]
-        ]
+        action = [[1, 0], [-1, 0], [0, 1], [0, -1]]
 
         n_b = 23
         n_a = 22
@@ -28,14 +23,29 @@ class GetModel:
         f = 12
 
         model_wrapper = ModelsWrapper(
-            "mnist", f, n_b, n_a, n_m, 20, self._dim,
-            action, self._nb_class, 24, 25
+            "mnist",
+            f,
+            n_b,
+            n_a,
+            n_m,
+            20,
+            self._dim,
+            action,
+            self._nb_class,
+            24,
+            25,
         )
 
         self._marl = MultiAgent(
-            self._nb_agent, model_wrapper,
-            n_b, n_a, f, n_m, action,
-            obs_generic, trans_generic
+            self._nb_agent,
+            model_wrapper,
+            n_b,
+            n_a,
+            f,
+            n_m,
+            action,
+            obs_generic,
+            trans_generic,
         )
 
     @property

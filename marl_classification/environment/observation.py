@@ -19,8 +19,9 @@ def obs_generic(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     for d, s in enumerate(sizes):
         values = th.arange(0, s, device=pos.device)
 
-        mask = (pos_min[:, :, d, None] <= values.view(1, 1, s)) & \
-               (values.view(1, 1, s) < pos_max[:, :, d, None])
+        mask = (pos_min[:, :, d, None] <= values.view(1, 1, s)) & (
+            values.view(1, 1, s) < pos_max[:, :, d, None]
+        )
 
         for n_unsq in range(len(sizes) - 1):
             mask = mask.unsqueeze(-2) if n_unsq < d else mask.unsqueeze(-1)
@@ -29,5 +30,8 @@ def obs_generic(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
     mask = reduce(op.and_, masks)
     mask = mask.unsqueeze(2)
 
-    return x.unsqueeze(0).masked_select(mask) \
+    return (
+        x.unsqueeze(0)
+        .masked_select(mask)
         .view(nb_a, b_img, c, *[f for _ in range(len(sizes))])
+    )

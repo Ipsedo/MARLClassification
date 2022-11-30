@@ -7,16 +7,15 @@ import matplotlib.pyplot as plt
 import torch as th
 
 
-def format_metric(
-        metric: th.Tensor,
-        class_map: Mapping[Any, int]
-) -> str:
+def format_metric(metric: th.Tensor, class_map: Mapping[Any, int]) -> str:
 
     idx_to_class = {class_map[k]: k for k in class_map}
 
     return ", ".join(
-        [f'\"{idx_to_class[curr_cls]}\" : {metric[curr_cls] * 100.:.1f}%'
-         for curr_cls in range(metric.size()[0])]
+        [
+            f'"{idx_to_class[curr_cls]}" : {metric[curr_cls] * 100.:.1f}%'
+            for curr_cls in range(metric.size()[0])
+        ]
     )
 
 
@@ -38,23 +37,28 @@ class Meter(Generic[T], ABC):
         return self.__results
 
     def add(self, *args) -> None:
-        if self.__window_size is not None and len(self.__results) >= self.__window_size:
+        if (
+            self.__window_size is not None
+            and len(self.__results) >= self.__window_size
+        ):
             self.__results.pop(0)
 
         self.__results.append(self._process_value(*args))
 
     def set_window_size(self, new_window_size: Union[int, None]) -> None:
         if new_window_size is not None:
-            assert new_window_size > 0, f"window size must be > 0 : {new_window_size}"
+            assert (
+                new_window_size > 0
+            ), f"window size must be > 0 : {new_window_size}"
 
         self.__window_size = new_window_size
 
 
 class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
     def __init__(
-            self,
-            nb_class: int,
-            window_size: Optional[int] = None,
+        self,
+        nb_class: int,
+        window_size: Optional[int] = None,
     ):
         super(ConfusionMeter, self).__init__(window_size)
         self.__nb_class = nb_class
@@ -69,10 +73,9 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
         y_true = th.cat([y_t for _, y_t in self._results], dim=0)
 
         conf_matrix_indices = th.multiply(y_true, self.__nb_class) + y_pred
-        conf_matrix = (
-            th.bincount(conf_matrix_indices, minlength=self.__nb_class ** 2)
-            .reshape(self.__nb_class, self.__nb_class)
-        )
+        conf_matrix = th.bincount(
+            conf_matrix_indices, minlength=self.__nb_class**2
+        ).reshape(self.__nb_class, self.__nb_class)
 
         return conf_matrix
 
@@ -105,10 +108,7 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
         return recs
 
     def save_conf_matrix(
-            self,
-            epoch: int,
-            output_dir: str,
-            stage: str
+        self, epoch: int, output_dir: str, stage: str
     ) -> None:
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -119,8 +119,8 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
         fig.colorbar(cax)
 
         ax.set_title(f"confusion matrix epoch {epoch} - {stage}")
-        ax.set_ylabel('True Label')
-        ax.set_xlabel('Predicated Label')
+        ax.set_ylabel("True Label")
+        ax.set_xlabel("Predicated Label")
 
         fig.savefig(
             join(output_dir, f"confusion_matrix_epoch_{epoch}_{stage}.png")

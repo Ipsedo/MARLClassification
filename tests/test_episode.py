@@ -13,17 +13,14 @@ class TestEpisode(unittest.TestCase):
         self.__model = GetModel()
 
     def test_episode(self):
-        x = th.randn(
-            self.__model.batch_size, 1,
-            28, 28
-        )
+        x = th.randn(self.__model.batch_size, 1, 28, 28)
 
         pred, log_proba, values, pos = detailed_episode(
             self.__model.marl,
             x,
             self.__model.step,
             "cpu",
-            self.__model.nb_class
+            self.__model.nb_class,
         )
 
         self.assertEqual(4, len(pred.size()))

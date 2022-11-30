@@ -8,15 +8,14 @@ class Policy(nn.Module):
     R^n : pas sûr, voir reccurents.ActionUnit
     """
 
-    def __init__(self, nb_action, n: int,
-                 hidden_size: int) -> None:
+    def __init__(self, nb_action, n: int, hidden_size: int) -> None:
         super().__init__()
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
             nn.GELU(),
             nn.Linear(hidden_size, nb_action),
-            nn.Softmax(dim=-1)
+            nn.Softmax(dim=-1),
         )
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
@@ -31,7 +30,7 @@ class Critic(nn.Module):
             nn.Linear(n, hidden_size),
             nn.GELU(),
             nn.Linear(hidden_size, 1),
-            nn.Flatten(-2, -1)
+            nn.Flatten(-2, -1),
         )
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:

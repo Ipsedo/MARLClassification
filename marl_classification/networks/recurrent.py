@@ -16,19 +16,21 @@ class LSTMCellWrapper(nn.Module):
 
         self.__lstm = nn.LSTMCell(input_size, n)
 
-    def forward(self, h: th.Tensor, c: th.Tensor, u: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+    def forward(
+        self, h: th.Tensor, c: th.Tensor, u: th.Tensor
+    ) -> Tuple[th.Tensor, th.Tensor]:
 
         nb_ag, batch_size, hidden_size = h.size()
 
         h, c, u = (
             h.flatten(0, 1),
             c.flatten(0, 1),
-            u.flatten(0, 1)
+            u.flatten(0, 1),
         )
 
         h_next, c_next = self.__lstm(u, (h, c))
 
         return (
             h_next.view(nb_ag, batch_size, -1),
-            c_next.view(nb_ag, batch_size, -1)
+            c_next.view(nb_ag, batch_size, -1),
         )

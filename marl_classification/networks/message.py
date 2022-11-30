@@ -7,8 +7,7 @@ class MessageSender(nn.Module):
     m_θ4 : R^n -> R^n_m
     """
 
-    def __init__(self, n: int, n_m: int,
-                 hidden_size: int) -> None:
+    def __init__(self, n: int, n_m: int, hidden_size: int) -> None:
         super().__init__()
         self.__n = n
         self.__n_m = n_m
@@ -17,7 +16,7 @@ class MessageSender(nn.Module):
         self.__seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
             nn.GELU(),
-            nn.Linear(self.__n_e, self.__n_m)
+            nn.Linear(self.__n_e, self.__n_m),
         )
 
     def forward(self, h_t: th.Tensor) -> th.Tensor:
@@ -36,7 +35,7 @@ class MessageReceiver(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(self.__n_m, self.__n),
-            nn.GELU()
+            nn.GELU(),
         )
 
     def forward(self, m_t: th.Tensor) -> th.Tensor:

@@ -8,8 +8,8 @@ class ImgTransform(metaclass=ABCMeta):
     @abstractmethod
     def __call__(self, img_data: th.Tensor) -> th.Tensor:
         raise NotImplementedError(
-            self.__class__.__name__ +
-            ".__call__ method is not implemented, must be overridden !"
+            self.__class__.__name__
+            + ".__call__ method is not implemented, must be overridden !"
         )
 
     def __repr__(self):
@@ -20,9 +20,9 @@ class ImgTransform(metaclass=ABCMeta):
 # Normal normalization
 #########################
 class UserNormalNorm(ImgTransform):
-
-    def __init__(self, mean: Tuple[float, float, float],
-                 std: Tuple[float, float, float]) -> None:
+    def __init__(
+        self, mean: Tuple[float, float, float], std: Tuple[float, float, float]
+    ) -> None:
         super().__init__()
 
         self.__mean = th.tensor(mean)
@@ -32,12 +32,13 @@ class UserNormalNorm(ImgTransform):
         return (x - self.__mean) / self.__std
 
     def __repr__(self):
-        return self.__class__.__name__ + \
-               f"(mean = {str(self.__mean)}, std = {str(self.__std)})"
+        return (
+            self.__class__.__name__
+            + f"(mean = {str(self.__mean)}, std = {str(self.__std)})"
+        )
 
 
 class ChannelNormalNorm(ImgTransform):
-
     def __call__(self, x: th.Tensor) -> th.Tensor:
         mean = x.view(3, -1).mean(dim=-1).view(3, 1, 1)
         std = x.view(3, -1).std(dim=-1).view(3, 1, 1)
@@ -46,7 +47,6 @@ class ChannelNormalNorm(ImgTransform):
 
 
 class NormalNorm(ImgTransform):
-
     def __call__(self, x: th.Tensor) -> th.Tensor:
         return (x - th.mean(x)) / th.std(x)
 
@@ -55,8 +55,11 @@ class NormalNorm(ImgTransform):
 # Uniform normalization
 #########################
 class UserMinMaxNorm(ImgTransform):
-    def __init__(self, min_value: Tuple[float, float, float],
-                 max_value: Tuple[float, float, float]):
+    def __init__(
+        self,
+        min_value: Tuple[float, float, float],
+        max_value: Tuple[float, float, float],
+    ):
         self.__min = th.tensor(min_value)
         self.__max = th.tensor(max_value)
 
@@ -64,12 +67,13 @@ class UserMinMaxNorm(ImgTransform):
         return (x - self.__min) / (self.__max - self.__min)
 
     def __repr__(self):
-        return self.__class__.__name__ + \
-               f"(min_value = {self.__min}, max_value = {self.__max})"
+        return (
+            self.__class__.__name__
+            + f"(min_value = {self.__min}, max_value = {self.__max})"
+        )
 
 
 class MinMaxNorm(ImgTransform):
-
     def __call__(self, x: th.Tensor) -> th.Tensor:
         x_max = x.max()
         x_min = x.min()

@@ -6,16 +6,19 @@ import torch as th
 
 
 def trans_generic(
-        pos: th.Tensor, a_t_next: th.Tensor,
-        f: int, img_size: List[int]
+    pos: th.Tensor,
+    a_t_next: th.Tensor,
+    f: int,
+    img_size: List[int],
 ) -> th.Tensor:
     new_pos = pos.clone()
     dim = new_pos.size(-1)
 
     idxs = []
     for d in range(dim):
-        idx = (new_pos[:, :, d] + a_t_next[:, :, d] >= 0) * \
-              (new_pos[:, :, d] + a_t_next[:, :, d] + f < img_size[d])
+        idx = (new_pos[:, :, d] + a_t_next[:, :, d] >= 0) * (
+            new_pos[:, :, d] + a_t_next[:, :, d] + f < img_size[d]
+        )
         idxs.append(idx)
 
     idx = reduce(op.mul, idxs)
