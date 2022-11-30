@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch as th
 
 from marl_classification.environment import MultiAgent, detailed_episode
@@ -10,8 +12,9 @@ def test_episode(
     nb_class: int,
     nb_agent: int,
     dim: int,
+    height_width: Tuple[int, int],
 ) -> None:
-    x = th.randn(batch_size, 1, 28, 28)
+    x = th.randn(batch_size, 1, *height_width)
 
     pred, log_proba, values, pos = detailed_episode(
         marl_m,

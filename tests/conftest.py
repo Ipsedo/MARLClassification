@@ -1,6 +1,7 @@
 import shutil
 from os import mkdir
 from os.path import abspath, exists, isdir, join
+from typing import Tuple
 
 import pytest
 from pytest import Session
@@ -40,8 +41,20 @@ def get_dim() -> int:
     return 2
 
 
+@pytest.fixture(scope="session", name="ft_extractor")
+def get_ft_extractor() -> str:
+    return "mnist"
+
+
+@pytest.fixture(scope="session", name="height_width")
+def get_height_width() -> Tuple[int, int]:
+    return 28, 28
+
+
 @pytest.fixture(scope="session", name="marl_m")
-def get_marl_m(dim: int, nb_class: int, nb_agent: int) -> MultiAgent:
+def get_marl_m(
+    dim: int, nb_class: int, nb_agent: int, ft_extractor: str
+) -> MultiAgent:
 
     action = [[1, 0], [-1, 0], [0, 1], [0, -1]]
 
@@ -52,7 +65,7 @@ def get_marl_m(dim: int, nb_class: int, nb_agent: int) -> MultiAgent:
     f = 12
 
     model_wrapper = ModelsWrapper(
-        "mnist",
+        ft_extractor,
         f,
         n_b,
         n_a,
