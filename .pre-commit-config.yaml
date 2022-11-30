@@ -10,7 +10,7 @@ repos:
     rev: 22.10.0
     hooks:
       - id: black
-        include: '\\.(py)$'
+        args: [ --config=pyproject.toml ]
   - repo: https://github.com/hadialqattan/pycln
     rev: v2.1.2
     hooks:
@@ -32,10 +32,10 @@ repos:
         types: [ python ]
         pass_filenames: false
         require_serial: true
-      - id: unittest
-        name: unittest
+      - id: pytest
+        name: pytest
         language: system
         entry: python
-        args: [ "-m", "unittest", "discover", "tests" ]
+        args: [ "-m", "pytest", "tests" ]
         pass_filenames: false
         require_serial: true

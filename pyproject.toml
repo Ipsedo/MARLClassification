@@ -14,3 +14,8 @@ ensure_newline_before_comments = true
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]

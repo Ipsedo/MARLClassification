@@ -19,3 +19,6 @@ kaggle
 # pre-commit
 pre-commit
 mypy
+
+# tests
+pytest

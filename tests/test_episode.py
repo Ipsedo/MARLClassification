@@ -1,46 +1,44 @@
-import unittest
-
 import torch as th
 
-from marl_classification.environment import detailed_episode
-from tests.get_model import GetModel
+from marl_classification.environment import MultiAgent, detailed_episode
 
 
-class TestEpisode(unittest.TestCase):
-    def setUp(self) -> None:
-        super().setUp()
+def test_episode(
+    batch_size: int,
+    marl_m: MultiAgent,
+    step: int,
+    nb_class: int,
+    nb_agent: int,
+    dim: int,
+) -> None:
+    x = th.randn(batch_size, 1, 28, 28)
 
-        self.__model = GetModel()
+    pred, log_proba, values, pos = detailed_episode(
+        marl_m,
+        x,
+        step,
+        "cpu",
+        nb_class,
+    )
 
-    def test_episode(self):
-        x = th.randn(self.__model.batch_size, 1, 28, 28)
+    assert 4 == len(pred.size())
+    assert step == pred.size()[0]
+    assert nb_agent == pred.size()[1]
+    assert batch_size == pred.size()[2]
+    assert nb_class == pred.size()[3]
 
-        pred, log_proba, values, pos = detailed_episode(
-            self.__model.marl,
-            x,
-            self.__model.step,
-            "cpu",
-            self.__model.nb_class,
-        )
+    assert 3 == len(log_proba.size())
+    assert step == log_proba.size()[0]
+    assert nb_agent == log_proba.size()[1]
+    assert batch_size == log_proba.size()[2]
 
-        self.assertEqual(4, len(pred.size()))
-        self.assertEqual(self.__model.step, pred.size()[0])
-        self.assertEqual(self.__model.nb_agent, pred.size()[1])
-        self.assertEqual(self.__model.batch_size, pred.size()[2])
-        self.assertEqual(self.__model.nb_class, pred.size()[3])
+    assert 3 == len(values.size())
+    assert step == values.size()[0]
+    assert nb_agent == values.size()[1]
+    assert batch_size == values.size()[2]
 
-        self.assertEqual(3, len(log_proba.size()))
-        self.assertEqual(self.__model.step, log_proba.size()[0])
-        self.assertEqual(self.__model.nb_agent, log_proba.size()[1])
-        self.assertEqual(self.__model.batch_size, log_proba.size()[2])
-
-        self.assertEqual(3, len(values.size()))
-        self.assertEqual(self.__model.step, values.size()[0])
-        self.assertEqual(self.__model.nb_agent, values.size()[1])
-        self.assertEqual(self.__model.batch_size, values.size()[2])
-
-        self.assertEqual(4, len(pos.size()))
-        self.assertEqual(self.__model.step, pos.size()[0])
-        self.assertEqual(self.__model.nb_agent, pos.size()[1])
-        self.assertEqual(self.__model.batch_size, pos.size()[2])
-        self.assertEqual(self.__model.dim, pos.size()[3])
+    assert 4 == len(pos.size())
+    assert step == pos.size()[0]
+    assert nb_agent == pos.size()[1]
+    assert batch_size == pos.size()[2]
+    assert dim == pos.size()[3]
