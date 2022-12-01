@@ -28,7 +28,7 @@ repos:
         name: mypy
         language: system
         entry: mypy
-        args: [ marl_classification, --config-file=pyproject.toml ]
+        args: [ marl_classification, tests, --config-file=pyproject.toml ]
         types: [ python ]
         pass_filenames: false
         require_serial: true
