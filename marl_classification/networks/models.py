@@ -1,6 +1,6 @@
 import json
 from os.path import exists, isfile
-from typing import Callable, Dict, List, Set
+from typing import Callable, Dict, List, Set, Tuple, Union, cast
 
 import torch as th
 import torch.nn as nn
@@ -121,8 +121,13 @@ class ModelsWrapper(nn.Module):
 
         self.apply(__init_weights)
 
-    def forward(self, op: str, *args):
-        return self.__networks_dict[op](*args)
+    def forward(
+        self, op: str, *args: th.Tensor
+    ) -> Union[th.Tensor, Tuple[th.Tensor, th.Tensor]]:
+        return cast(
+            Union[th.Tensor, Tuple[th.Tensor, th.Tensor]],
+            self.__networks_dict[op](*args),
+        )
 
     @property
     def nb_class(self) -> int:

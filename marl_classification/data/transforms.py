@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from typing import Tuple
+from typing import Tuple, cast
 
 import torch as th
 
@@ -12,7 +12,7 @@ class ImgTransform(metaclass=ABCMeta):
             + ".__call__ method is not implemented, must be overridden !"
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__class__.__name__ + "()"
 
 
@@ -31,7 +31,7 @@ class UserNormalNorm(ImgTransform):
     def __call__(self, x: th.Tensor) -> th.Tensor:
         return (x - self.__mean) / self.__std
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             self.__class__.__name__
             + f"(mean = {str(self.__mean)}, std = {str(self.__std)})"
@@ -66,7 +66,7 @@ class UserMinMaxNorm(ImgTransform):
     def __call__(self, x: th.Tensor) -> th.Tensor:
         return (x - self.__min) / (self.__max - self.__min)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             self.__class__.__name__
             + f"(min_value = {self.__min}, max_value = {self.__max})"
@@ -84,4 +84,4 @@ class ChannelMinMaxNorm(ImgTransform):
     def __call__(self, x: th.Tensor) -> th.Tensor:
         x_max = x.view(3, -1).max(dim=-1)[0].view(3, 1, 1)
         x_min = x.view(3, -1).min(dim=-1)[0].view(3, 1, 1)
-        return (x - x_min) / (x_max - x_min)
+        return cast(th.Tensor, (x - x_min) / (x_max - x_min))

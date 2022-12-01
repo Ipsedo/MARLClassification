@@ -1,6 +1,6 @@
 import operator as op
 from functools import reduce
-from typing import List
+from typing import List, cast
 
 import torch as th
 
@@ -16,13 +16,13 @@ def trans_generic(
 
     idxs = []
     for d in range(dim):
-        idx = (new_pos[:, :, d] + a_t_next[:, :, d] >= 0) * (
+        curr_idx = (new_pos[:, :, d] + a_t_next[:, :, d] >= 0) * (
             new_pos[:, :, d] + a_t_next[:, :, d] + f < img_size[d]
         )
-        idxs.append(idx)
+        idxs.append(curr_idx)
 
     idx = reduce(op.mul, idxs)
 
     idx = idx.unsqueeze(2).to(th.float)
 
-    return idx * (new_pos + a_t_next) + (1 - idx) * new_pos
+    return cast(th.Tensor, idx * (new_pos + a_t_next) + (1 - idx) * new_pos)

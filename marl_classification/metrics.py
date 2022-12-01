@@ -20,23 +20,24 @@ def format_metric(metric: th.Tensor, class_map: Mapping[Any, int]) -> str:
 
 
 T = TypeVar("T")
+I = TypeVar("I")
 
 
-class Meter(Generic[T], ABC):
+class Meter(Generic[I, T], ABC):
     def __init__(self, window_size: Optional[int]) -> None:
         self.__window_size = window_size
 
         self.__results: List[T] = []
 
     @abstractmethod
-    def _process_value(self, *args) -> T:
+    def _process_value(self, *args: I) -> T:
         pass
 
     @property
     def _results(self) -> List[T]:
         return self.__results
 
-    def add(self, *args) -> None:
+    def add(self, *args: I) -> None:
         if (
             self.__window_size is not None
             and len(self.__results) >= self.__window_size
@@ -54,7 +55,7 @@ class Meter(Generic[T], ABC):
         self.__window_size = new_window_size
 
 
-class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
+class ConfusionMeter(Meter[th.Tensor, Tuple[th.Tensor, th.Tensor]]):
     def __init__(
         self,
         nb_class: int,
@@ -129,7 +130,7 @@ class ConfusionMeter(Meter[Tuple[th.Tensor, th.Tensor]]):
         plt.close()
 
 
-class LossMeter(Meter[float]):
+class LossMeter(Meter[float, float]):
     def __init__(self, window_size: Optional[int]) -> None:
         super(LossMeter, self).__init__(window_size)
 

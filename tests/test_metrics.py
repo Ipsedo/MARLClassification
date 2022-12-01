@@ -32,7 +32,7 @@ def test_confusion(tmp_path: str) -> None:
         pytest.fail(str(e))
 
 
-def test_loss():
+def test_loss() -> None:
     loss_meter = LossMeter(None)
 
     for v in [0.5, 0.25, 0.75, 0.5]:

@@ -1,3 +1,5 @@
+from typing import cast
+
 import torch as th
 import torch.nn as nn
 
@@ -20,4 +22,4 @@ class Prediction(nn.Module):
         )
 
     def forward(self, c_t: th.Tensor) -> th.Tensor:
-        return self.__seq_lin(c_t)
+        return cast(th.Tensor, self.__seq_lin(c_t))

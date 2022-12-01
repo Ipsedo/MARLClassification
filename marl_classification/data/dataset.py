@@ -144,7 +144,7 @@ class KneeMRIDataset(Dataset):
 
         return fun.pad(x, [pad_6, pad_5, pad_4, pad_3, pad_2, pad_1], value=0)
 
-    def __getitem__(self, index) -> Tuple[th.Tensor, th.Tensor]:
+    def __getitem__(self, index: int) -> Tuple[th.Tensor, th.Tensor]:
         fn = self.__dataset[index][0]
 
         label = self.__dataset[index][1]
@@ -205,5 +205,5 @@ class WorldStratDataset(Dataset):
         except Exception as e:
             raise Exception(f'file "{png_name}"') from e
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.__metadata)

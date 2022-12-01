@@ -1,3 +1,5 @@
+from typing import cast
+
 import torch as th
 import torch.nn as nn
 
@@ -8,7 +10,7 @@ class Policy(nn.Module):
     R^n : pas sûr, voir reccurents.ActionUnit
     """
 
-    def __init__(self, nb_action, n: int, hidden_size: int) -> None:
+    def __init__(self, nb_action: int, n: int, hidden_size: int) -> None:
         super().__init__()
 
         self.__seq_lin = nn.Sequential(
@@ -19,7 +21,7 @@ class Policy(nn.Module):
         )
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
-        return self.__seq_lin(h_caret_t_next)
+        return cast(th.Tensor, self.__seq_lin(h_caret_t_next))
 
 
 class Critic(nn.Module):
@@ -34,4 +36,4 @@ class Critic(nn.Module):
         )
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
-        return self.__seq_lin(h_caret_t_next)
+        return cast(th.Tensor, self.__seq_lin(h_caret_t_next))

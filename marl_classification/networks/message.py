@@ -1,3 +1,5 @@
+from typing import cast
+
 import torch as th
 import torch.nn as nn
 
@@ -20,7 +22,7 @@ class MessageSender(nn.Module):
         )
 
     def forward(self, h_t: th.Tensor) -> th.Tensor:
-        return self.__seq_lin(h_t)
+        return cast(th.Tensor, self.__seq_lin(h_t))
 
 
 class MessageReceiver(nn.Module):
@@ -39,4 +41,4 @@ class MessageReceiver(nn.Module):
         )
 
     def forward(self, m_t: th.Tensor) -> th.Tensor:
-        return self.__seq_lin(m_t)
+        return cast(th.Tensor, self.__seq_lin(m_t))

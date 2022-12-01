@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import cast
 
 import torch as th
 import torch.nn as nn
@@ -40,7 +41,7 @@ class MNISTCnn(CNNFtExtract):
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         o_t = o_t[:, 0, None, :, :]  # grey scale
-        return self.__seq_conv(o_t)
+        return cast(th.Tensor, self.__seq_conv(o_t))
 
     @property
     def out_size(self) -> int:
@@ -70,7 +71,7 @@ class RESISC45Cnn(CNNFtExtract):
         self.__out_size = 64 * (f // 8) ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
-        return self.__seq_conv(o_t)
+        return cast(th.Tensor, self.__seq_conv(o_t))
 
     @property
     def out_size(self) -> int:
@@ -104,7 +105,7 @@ class AIDCnn(CNNFtExtract):
         return self.__out_size
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
-        return self.__seq_conv(o_t)
+        return cast(th.Tensor, self.__seq_conv(o_t))
 
 
 class WorldStratCnn(CNNFtExtract):
@@ -133,7 +134,7 @@ class WorldStratCnn(CNNFtExtract):
         self.__out_size = 256 * (f // 32) ** 2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
-        return self.__seq_conv(o_t)
+        return cast(th.Tensor, self.__seq_conv(o_t))
 
     @property
     def out_size(self) -> int:
@@ -163,7 +164,7 @@ class KneeMRICnn(CNNFtExtract):
         self.__out_size = 32 * (f // 8) ** 3
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
-        out = self.__seq_conv(o_t)
+        out = cast(th.Tensor, self.__seq_conv(o_t))
         return out
 
     @property
@@ -191,4 +192,4 @@ class StateToFeatures(nn.Module):
         )
 
     def forward(self, p_t: th.Tensor) -> th.Tensor:
-        return self.__seq_lin(p_t)
+        return cast(th.Tensor, self.__seq_lin(p_t))
