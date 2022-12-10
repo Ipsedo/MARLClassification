@@ -332,9 +332,21 @@ def main() -> None:
                 args.agents,
             )
 
-            reg_action = re.compile(r"] *, *\[")
-            action_str = reg_action.split(args.action[2:-2])
-            action = [[int(i) for i in act.split(",")] for act in action_str]
+            reg_actions = re.compile(
+                r"^\[(\[((-?\d+,?)+)],)+?\[((-?\d+,?)+)]]$"
+            )
+            reg_one_action = re.compile(r"\[((?:-?\d+,?)+)]")
+            action_list = reg_one_action.findall(args.action)
+
+            if not reg_actions.match(args.action):
+                main_parser.error(f"Wrong action(s) : {action_list}")
+
+            actions = [[int(i) for i in a.split(",")] for a in action_list]
+
+            for i, a in enumerate(actions):
+                assert (
+                    len(a) == args.dim
+                ), f"Wrong space for action at index {i}"
 
             train_options = TrainOptions(
                 args.n_b,
@@ -347,7 +359,7 @@ def main() -> None:
                 args.f,
                 args.img_size,
                 args.nb_class,
-                action,
+                actions,
                 args.nb_epoch,
                 args.learning_rate,
                 args.batch_size,
