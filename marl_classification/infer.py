@@ -12,7 +12,6 @@ import torchvision.transforms as tr
 from PIL import Image
 from tqdm import tqdm
 
-from .data import transforms as custom_tr
 from .data.dataset import my_pil_loader
 from .environment import (
     MultiAgent,
@@ -157,18 +156,7 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
         trans_generic,
     )
 
-    img_ori_pipeline = tr.Compose(
-        [
-            tr.ToTensor(),
-        ]
-    )
-
-    img_pipeline = tr.Compose(
-        [
-            tr.ToTensor(),
-            custom_tr.NormalNorm(),
-        ]
-    )
+    img_pipeline = tr.Compose([tr.ToTensor()])
 
     cuda = main_options.cuda
     device_str = "cpu"
@@ -190,7 +178,7 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
 
     for img_path in images:
         img = my_pil_loader(img_path)
-        x_ori = img_ori_pipeline(img)
+        x_ori = img_pipeline(img)
         x = img_pipeline(img)
 
         curr_img_path = join(infer_options.output_dir, split(img_path)[-1])

@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
-from .data import transforms as custom_tr
 from .environment import MultiAgent, episode, obs_generic, trans_generic
 from .metrics import ConfusionMeter, format_metric
 from .networks import ModelsWrapper
@@ -42,7 +41,7 @@ def evaluation(main_options: MainOptions, eval_options: EvalOptions) -> None:
         print(f'Create "{eval_options.output_dir}"')
         mkdir(eval_options.output_dir)
 
-    img_pipeline = tr.Compose([tr.ToTensor(), custom_tr.NormalNorm()])
+    img_pipeline = tr.Compose([tr.ToTensor()])
 
     test_dataset = ImageFolder(eval_options.image_root, transform=img_pipeline)
 

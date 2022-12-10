@@ -394,15 +394,9 @@ def train(main_options: MainOptions, train_options: TrainOptions) -> None:
             join(output_dir, model_dir, f"nn_models_epoch_{e}.pt"),
         )
 
-    empty_pipe = tr.Compose(
-        [
-            tr.ToTensor(),
-        ]
-    )
-
     dataset_tmp = dataset_constructor(
         train_options.resources_dir,
-        empty_pipe,
+        img_pipeline,
     )
 
     test_dataset_ori = Subset(dataset_tmp, idx_test)
