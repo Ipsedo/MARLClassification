@@ -20,7 +20,6 @@ from .data import (
     RESISC45Dataset,
     WorldStratDataset,
 )
-from .data import transforms as custom_tr
 from .environment import (
     MultiAgent,
     detailed_episode,
@@ -61,12 +60,7 @@ def train(main_options: MainOptions, train_options: TrainOptions) -> None:
     mlflow.log_param("output_dir", output_dir)
     mlflow.log_param("model_dir", join(output_dir, model_dir))
 
-    img_pipeline = tr.Compose(
-        [
-            tr.ToTensor(),
-            custom_tr.NormalNorm(),
-        ]
-    )
+    img_pipeline = tr.Compose([tr.ToTensor()])
 
     dataset_constructors: Dict[
         str, Callable[[str, tr.Compose], ImageFolder]

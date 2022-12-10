@@ -2,6 +2,7 @@ from typing import cast
 
 import torch as th
 import torch.nn as nn
+from torchvision.ops import Permute
 
 
 class Policy(nn.Module):
@@ -16,6 +17,9 @@ class Policy(nn.Module):
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
             nn.GELU(),
+            Permute([1, 2, 0]),
+            nn.BatchNorm1d(hidden_size),
+            Permute([2, 0, 1]),
             nn.Linear(hidden_size, nb_action),
             nn.Softmax(dim=-1),
         )
@@ -31,6 +35,9 @@ class Critic(nn.Module):
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
             nn.GELU(),
+            Permute([1, 2, 0]),
+            nn.BatchNorm1d(hidden_size),
+            Permute([2, 0, 1]),
             nn.Linear(hidden_size, 1),
             nn.Flatten(-2, -1),
         )

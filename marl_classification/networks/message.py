@@ -2,6 +2,7 @@ from typing import cast
 
 import torch as th
 import torch.nn as nn
+from torchvision.ops import Permute
 
 
 class MessageSender(nn.Module):
@@ -18,6 +19,9 @@ class MessageSender(nn.Module):
         self.__seq_lin = nn.Sequential(
             nn.Linear(self.__n, self.__n_e),
             nn.GELU(),
+            Permute([1, 2, 0]),
+            nn.BatchNorm1d(self.__n_e),
+            Permute([2, 0, 1]),
             nn.Linear(self.__n_e, self.__n_m),
         )
 
