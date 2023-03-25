@@ -1,0 +1,41 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: resources
+      - id: trailing-whitespace
+        exclude: resources
+  - repo: https://github.com/psf/black
+    rev: 22.10.0
+    hooks:
+      - id: black
+        args: [ --config=pyproject.toml ]
+  - repo: https://github.com/hadialqattan/pycln
+    rev: v2.1.2
+    hooks:
+      - id: pycln
+        args: [ --config=pyproject.toml ]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        files: "\\.(py)$"
+        args: [ --settings-path=pyproject.toml ]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        language: system
+        entry: mypy
+        args: [ marl_classification, tests, --config-file=pyproject.toml ]
+        types: [ python ]
+        pass_filenames: false
+        require_serial: true
+      - id: pytest
+        name: pytest
+        language: system
+        entry: python
+        args: [ "-m", "pytest", "tests" ]
+        pass_filenames: false
+        require_serial: true

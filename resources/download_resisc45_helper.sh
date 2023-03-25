@@ -2,6 +2,10 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+if ! [[ -d "${SCRIPT_DIR}/downloaded" ]]; then
+    mkdir "${SCRIPT_DIR}/downloaded"
+fi
+
 if ! [[ -f "${SCRIPT_DIR}/downloaded/NWPU-RESISC45.rar" ]]; then
   echo "NWPU-RESISC45.rar not found in /path/to/MARLClassification/res/downloaded"
   echo "Download NWPU-RESISC45.rar on the opened web page"

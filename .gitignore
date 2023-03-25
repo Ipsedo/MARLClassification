@@ -7,3 +7,6 @@ venv/
 .ipynb_checkpoints/
 *.egg-info/
 build/
+.mypy_cache/
+.pytest_cache/
+tests/tmp/

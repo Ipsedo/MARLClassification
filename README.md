@@ -43,11 +43,11 @@ To run training :
 ```bash
 $ cd /path/to/MARLClassification
 $ # train on MNIST
-$ python -m marl_classification -a 3 --step 5 --cuda --run-id train_mnist train --action [[1,0],[-1,0],[0,1],[0,-1]] --img-size 28 --nb-class 10 -d 2 --f 6 --ft-extr mnist --nb 64 --na 64 --nm 16 --nd 8 --nlb 96 --nla 96 --batch-size 32 --lr 1e-3 --nb-epoch 40 --eps 1. --eps-dec 0.99995 -o ./out/mnist
+$ python -m marl_classification -a 3 --step 5 --cuda --run-id train_mnist train --action [[1,0],[-1,0],[0,1],[0,-1]] --img-size 28 --nb-class 10 -d 2 --f 6 --ft-extr mnist --nb 64 --na 64 --nm 16 --nd 8 --nlb 96 --nla 96 --batch-size 32 --lr 1e-3 --nb-epoch 40 -o ./out/mnist_actor_critic
 $ # train on NWPU-RESISC45
-$ python -m marl_classification -a 10 --step 16 --cuda --run-id train_resisc45 train --action [[1,0],[-1,0],[0,1],[0,-1]] --ft-extr resisc45 --batch-size 8 --nb-class 45 --img-size 256 -d 2 --nb 192 --na 192 --nd 16 --f 12 --nm 64 --nlb 256 --nla 256 --nb-epoch 50 --learning-rate 1e-4 --eps 1.0 --eps-dec 0.99995 -o ./out/resisc45
+$ python -m marl_classification -a 16 --step 16 --cuda --run-id train_resisc45 train --action [[1,0],[-1,0],[0,1],[0,-1]] --ft-extr resisc45 --batch-size 8 --nb-class 45 --img-size 256 -d 2 --nb 256 --na 256 --nd 16 --f 12 --nm 64 --nlb 384 --nla 384 --nb-epoch 50 --lr 1e-4 -o ./out/resisc45_actor_critic
 $ # train on AID
-$ python -m marl_classification -a 16 --step 16 --cuda --run-id train_aid train --action [[4,0],[-4,0],[0,4],[0,-4]] --ft-extr aid --batch-size 8 --nb-class 30 --img-size 600 -d 2 --nb 256 --na 256 --nd 16 --f 32 --nm 64 --nlb 320 --nla 320 --nb-epoch 50 --learning-rate 1e-3 --eps 1.0 --eps-dec 0.99995 -o ./out/aid
+$ python -m marl_classification -a 16 --step 16 --cuda --run-id train_aid train --action [[3,0],[-3,0],[0,3],[0,-3]] --ft-extr aid --batch-size 8 --nb-class 30 --img-size 600 -d 2 --nb 256 --na 256 --nd 16 --f 24 --nm 64 --nlb 320 --nla 320 --nb-epoch 50 --lr 1e-4 -o ./out/aid_actor_critic
 ```
 
 ## Reference

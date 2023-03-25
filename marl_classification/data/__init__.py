@@ -1,2 +1,7 @@
-from . import transforms
-from .dataset import MNISTDataset, RESISC45Dataset, KneeMRIDataset, AIDDataset
+from .dataset import (
+    AIDDataset,
+    KneeMRIDataset,
+    MNISTDataset,
+    RESISC45Dataset,
+    WorldStratDataset,
+)
