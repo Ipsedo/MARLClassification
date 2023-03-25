@@ -11,7 +11,6 @@ from .train import train
 
 
 def main() -> None:
-
     main_parser = argparse.ArgumentParser(
         "Multi agent reinforcement learning for image classification - Main"
     )
@@ -107,6 +106,7 @@ def main() -> None:
             ModelsWrapper.knee_mri,
             ModelsWrapper.aid,
             ModelsWrapper.world_strat,
+            ModelsWrapper.skin_cancer,
         ],
         default="mnist",
         dest="ft_extractor",
@@ -237,11 +237,11 @@ def main() -> None:
         help="Image batch size for training and evaluation",
     )
     test_parser.add_argument(
-        "--image-path",
+        "--dataset-path",
         type=str,
         required=True,
-        dest="image_path",
-        help="Input image path for inference",
+        dest="dataset_path",
+        help="Input dataset path for inference",
     )
     test_parser.add_argument(
         "--img-size",
@@ -393,7 +393,7 @@ def main() -> None:
                 args.state_dict_path,
                 args.batch_size,
                 args.json_path,
-                args.image_path,
+                args.dataset_path,
                 args.output_dir,
             )
 

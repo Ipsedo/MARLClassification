@@ -3,5 +3,6 @@ from .dataset import (
     KneeMRIDataset,
     MNISTDataset,
     RESISC45Dataset,
+    SkinCancerDataset,
     WorldStratDataset,
 )

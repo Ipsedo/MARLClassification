@@ -14,7 +14,6 @@ from .options import EvalOptions, MainOptions
 
 
 def evaluation(main_options: MainOptions, eval_options: EvalOptions) -> None:
-
     assert exists(
         eval_options.json_path
     ), f'JSON path "{eval_options.json_path}" does not exist'
@@ -43,7 +42,9 @@ def evaluation(main_options: MainOptions, eval_options: EvalOptions) -> None:
 
     img_pipeline = tr.Compose([tr.ToTensor()])
 
-    test_dataset = ImageFolder(eval_options.image_root, transform=img_pipeline)
+    test_dataset = ImageFolder(
+        eval_options.dataset_path, transform=img_pipeline
+    )
 
     nn_models = ModelsWrapper.from_json(eval_options.json_path)
     nn_models.load_state_dict(th.load(eval_options.state_dict_path))

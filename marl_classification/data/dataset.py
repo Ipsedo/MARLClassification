@@ -207,3 +207,22 @@ class WorldStratDataset(Dataset):
 
     def __len__(self) -> int:
         return len(self.__metadata)
+
+
+class SkinCancerDataset(ImageFolder):
+    # https://github.com/Ipsedo/MARLClassification/issues/4
+    # https://drive.google.com/drive/folders/17g6zFSbCNXTV3VaDKop73W7Cn-NJlTO7?usp=sharing
+    def __init__(self, res_path: str, img_transform: Any) -> None:
+        mnist_root_path = join(res_path, "downloaded", "skin_cancer")
+
+        assert exists(mnist_root_path) and isdir(
+            mnist_root_path
+        ), f"{mnist_root_path} does not exist or is not a directory"
+
+        super().__init__(
+            mnist_root_path,
+            transform=img_transform,
+            target_transform=None,
+            loader=my_pil_loader,
+            is_valid_file=None,
+        )

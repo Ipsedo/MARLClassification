@@ -190,6 +190,39 @@ class KneeMRICnn(CNNFtExtract):
         return self.__out_size
 
 
+class SkinCancerCnn(CNNFtExtract):
+    # https://github.com/Ipsedo/MARLClassification/issues/4
+    # https://drive.google.com/drive/folders/17g6zFSbCNXTV3VaDKop73W7Cn-NJlTO7?usp=sharing
+    def __init__(self, f: int) -> None:
+        super().__init__()
+
+        self.__seq_conv = nn.Sequential(
+            nn.Conv2d(3, 8, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+            nn.BatchNorm2d(8),
+            nn.Conv2d(8, 16, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+            nn.BatchNorm2d(16),
+            nn.Conv2d(16, 32, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+            nn.BatchNorm2d(32),
+            nn.Flatten(1, -1),
+        )
+
+        self.__out_size = 32 * (f // 8) ** 2
+
+    @property
+    def out_size(self) -> int:
+        return self.__out_size
+
+    def forward(self, o_t: th.Tensor) -> th.Tensor:
+        out: th.Tensor = self.__seq_conv(o_t)
+        return out
+
+
 ############################
 # State to features stuff
 ############################

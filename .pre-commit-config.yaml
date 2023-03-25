@@ -1,3 +1,4 @@
+fail_fast: true
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
@@ -7,7 +8,7 @@ repos:
       - id: trailing-whitespace
         exclude: resources
   - repo: https://github.com/psf/black
-    rev: 22.10.0
+    rev: 23.1.0
     hooks:
       - id: black
         args: [ --config=pyproject.toml ]
@@ -17,7 +18,7 @@ repos:
       - id: pycln
         args: [ --config=pyproject.toml ]
   - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+    rev: 5.12.0
     hooks:
       - id: isort
         files: "\\.(py)$"

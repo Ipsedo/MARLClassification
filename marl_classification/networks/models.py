@@ -11,6 +11,7 @@ from .ft_extractor import (
     KneeMRICnn,
     MNISTCnn,
     RESISC45Cnn,
+    SkinCancerCnn,
     StateToFeatures,
     WorldStratCnn,
 )
@@ -55,6 +56,7 @@ class ModelsWrapper(nn.Module):
     knee_mri: str = "kneemri"
     aid: str = "aid"
     world_strat: str = "worldstrat"
+    skin_cancer: str = "skin_cancer"
 
     ft_extractors: Dict[str, Callable[[int], CNNFtExtract]] = {
         mnist: MNISTCnn,
@@ -62,6 +64,7 @@ class ModelsWrapper(nn.Module):
         knee_mri: KneeMRICnn,
         aid: AIDCnn,
         world_strat: WorldStratCnn,
+        skin_cancer: SkinCancerCnn,
     }
 
     def __init__(

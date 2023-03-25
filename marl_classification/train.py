@@ -18,6 +18,7 @@ from .data import (
     KneeMRIDataset,
     MNISTDataset,
     RESISC45Dataset,
+    SkinCancerDataset,
     WorldStratDataset,
 )
 from .environment import (
@@ -70,6 +71,7 @@ def train(main_options: MainOptions, train_options: TrainOptions) -> None:
         ModelsWrapper.knee_mri: KneeMRIDataset,
         ModelsWrapper.aid: AIDDataset,
         ModelsWrapper.world_strat: WorldStratDataset,
+        ModelsWrapper.skin_cancer: SkinCancerDataset,
     }
 
     dataset_constructor = dataset_constructors[train_options.ft_extr_str]

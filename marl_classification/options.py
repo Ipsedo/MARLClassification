@@ -42,7 +42,7 @@ EvalOptions = NamedTuple(
         ("state_dict_path", str),
         ("batch_size", int),
         ("json_path", str),
-        ("image_root", str),
+        ("dataset_path", str),
         ("output_dir", str),
     ],
 )
