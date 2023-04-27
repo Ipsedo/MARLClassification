@@ -19,7 +19,6 @@ class LSTMCellWrapper(nn.Module):
     def forward(
         self, h: th.Tensor, c: th.Tensor, u: th.Tensor
     ) -> Tuple[th.Tensor, th.Tensor]:
-
         nb_ag, batch_size, hidden_size = h.size()
 
         h, c, u = (

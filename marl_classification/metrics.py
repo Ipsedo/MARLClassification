@@ -8,7 +8,6 @@ import torch as th
 
 
 def format_metric(metric: th.Tensor, class_map: Mapping[Any, int]) -> str:
-
     idx_to_class = {class_map[k]: k for k in class_map}
 
     return ", ".join(
