@@ -19,7 +19,6 @@ class MultiAgent:
         obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
         trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor],
     ) -> None:
-
         # Agent info
         self.__nb_agents = nb_agents
 
@@ -62,7 +61,6 @@ class MultiAgent:
         self.__device_str = "cpu"
 
     def new_episode(self, batch_size: int, img_size: List[int]) -> None:
-
         self.__batch_size = batch_size
 
         self.__t = 0
@@ -132,7 +130,6 @@ class MultiAgent:
         )
 
     def step(self, img: th.Tensor) -> None:
-
         img_sizes = list(img.size()[2:])
         nb_agent = len(self)
 
@@ -263,7 +260,6 @@ class MultiAgent:
         obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
         trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor],
     ) -> "MultiAgent":
-
         with open(models_wrapper_json_file, "r") as f_json:
             j_obj = json.load(f_json)
             try:
