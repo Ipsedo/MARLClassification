@@ -197,11 +197,7 @@ class SkinCancerCnn(CNNFtExtract):
         super().__init__()
 
         self.__seq_conv = nn.Sequential(
-            nn.Conv2d(3, 8, (3, 3), padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(2, 2),
-            nn.BatchNorm2d(8),
-            nn.Conv2d(8, 16, (3, 3), padding=1),
+            nn.Conv2d(3, 16, (3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.BatchNorm2d(16),
@@ -209,10 +205,14 @@ class SkinCancerCnn(CNNFtExtract):
             nn.GELU(),
             nn.MaxPool2d(2, 2),
             nn.BatchNorm2d(32),
+            nn.Conv2d(32, 64, (3, 3), padding=1),
+            nn.GELU(),
+            nn.MaxPool2d(2, 2),
+            nn.BatchNorm2d(64),
             nn.Flatten(1, -1),
         )
 
-        self.__out_size = 32 * (f // 8) ** 2
+        self.__out_size = 64 * (f // 8) ** 2
 
     @property
     def out_size(self) -> int:
