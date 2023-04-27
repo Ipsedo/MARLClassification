@@ -6,11 +6,7 @@ from typing import Tuple
 import pytest
 from pytest import Session
 
-from marl_classification.environment import (
-    MultiAgent,
-    obs_generic,
-    trans_generic,
-)
+from marl_classification.core import MultiAgent, obs_generic, trans_generic
 from marl_classification.networks import ModelsWrapper
 
 __TMP_PATH = abspath(join(__file__, "..", "tmp"))
@@ -55,7 +51,6 @@ def get_height_width() -> Tuple[int, int]:
 def get_marl_m(
     dim: int, nb_class: int, nb_agent: int, ft_extractor: str
 ) -> MultiAgent:
-
     action = [[1, 0], [-1, 0], [0, 1], [0, -1]]
 
     n_b = 23

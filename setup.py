@@ -8,7 +8,7 @@ setup(
     packages=[
         "marl_classification",
         "marl_classification.data",
-        "marl_classification.environment",
+        "marl_classification.core",
         "marl_classification.networks",
     ],
     license="GPL-3.0 License",

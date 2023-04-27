@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
-from .environment import MultiAgent, episode, obs_generic, trans_generic
+from .core import MultiAgent, episode, obs_generic, trans_generic
 from .metrics import ConfusionMeter, format_metric
 from .networks import ModelsWrapper
 from .options import EvalOptions, MainOptions

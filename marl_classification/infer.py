@@ -12,13 +12,8 @@ import torchvision.transforms as tr
 from PIL import Image
 from tqdm import tqdm
 
+from .core import MultiAgent, detailed_episode, obs_generic, trans_generic
 from .data.dataset import my_pil_loader
-from .environment import (
-    MultiAgent,
-    detailed_episode,
-    obs_generic,
-    trans_generic,
-)
 from .networks import ModelsWrapper
 from .options import InferOptions, MainOptions
 
@@ -34,7 +29,6 @@ def visualize_steps(
     device_str: str,
     class_map: Mapping[Any, int],
 ) -> None:
-
     idx_to_class = {class_map[k]: k for k in class_map}
 
     color_map = None
@@ -73,7 +67,6 @@ def visualize_steps(
 
     curr_img = th.zeros(h, w, 4)
     for t in range(max_it):
-
         for i in range(len(agents)):
             # agent coordinates
             x = int(pos[t][i][img_idx][0].item())
@@ -119,7 +112,6 @@ def visualize_steps(
 
 
 def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
-
     assert exists(
         infer_options.json_path
     ), f'JSON path "{infer_options.json_path}" does not exist'

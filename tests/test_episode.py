@@ -2,11 +2,7 @@ from typing import Tuple
 
 import torch as th
 
-from marl_classification.environment import (
-    MultiAgent,
-    detailed_episode,
-    episode,
-)
+from marl_classification.core import MultiAgent, detailed_episode, episode
 
 
 def test_episode(

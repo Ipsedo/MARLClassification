@@ -13,6 +13,13 @@ from torch.utils.data import DataLoader, Subset
 from torchvision.datasets import ImageFolder
 from tqdm import tqdm
 
+from .core import (
+    MultiAgent,
+    detailed_episode,
+    episode,
+    obs_generic,
+    trans_generic,
+)
 from .data import (
     AIDDataset,
     KneeMRIDataset,
@@ -20,13 +27,6 @@ from .data import (
     RESISC45Dataset,
     SkinCancerDataset,
     WorldStratDataset,
-)
-from .environment import (
-    MultiAgent,
-    detailed_episode,
-    episode,
-    obs_generic,
-    trans_generic,
 )
 from .infer import visualize_steps
 from .metrics import ConfusionMeter, LossMeter

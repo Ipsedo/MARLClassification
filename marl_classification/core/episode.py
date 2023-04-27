@@ -8,7 +8,6 @@ from .agent import MultiAgent
 def episode(
     agents: MultiAgent, img_batch: th.Tensor, max_it: int
 ) -> Tuple[th.Tensor, th.Tensor]:
-
     img_sizes = list(img_batch.size()[2:])
     agents.new_episode(img_batch.size(0), img_sizes)
 
@@ -27,7 +26,6 @@ def detailed_episode(
     device_str: str,
     nb_class: int,
 ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
-
     img_sizes = list(img_batch.size()[2:])
     batch_size = img_batch.size(0)
 
@@ -86,7 +84,6 @@ def episode_retry(
     nb_class: int,
     device_str: str,
 ) -> Tuple[th.Tensor, th.Tensor]:
-
     img_batch = img_batch.to(th.device(device_str))
 
     retry_pred = th.zeros(
