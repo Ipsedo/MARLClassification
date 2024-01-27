@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from os import mkdir
 from os.path import exists, isdir, isfile
 
@@ -48,6 +49,7 @@ def evaluation(main_options: MainOptions, eval_options: EvalOptions) -> None:
 
     nn_models = ModelsWrapper.from_json(eval_options.json_path)
     nn_models.load_state_dict(th.load(eval_options.state_dict_path))
+    nn_models.eval()
 
     marl_m = MultiAgent.load_from(
         eval_options.json_path,
@@ -65,6 +67,7 @@ def evaluation(main_options: MainOptions, eval_options: EvalOptions) -> None:
         drop_last=False,
     )
 
+    # pylint: disable=duplicate-code
     cuda = main_options.cuda
     device_str = "cpu"
 
@@ -74,6 +77,7 @@ def evaluation(main_options: MainOptions, eval_options: EvalOptions) -> None:
         nn_models.cuda()
         marl_m.cuda()
         device_str = "cuda"
+    # pylint: enable=duplicate-code
 
     conf_meter = ConfusionMeter(nn_models.nb_class)
 

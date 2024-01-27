@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import glob
 import json
 from datetime import datetime
@@ -57,7 +58,7 @@ def visualize_steps(
     fig = plt.figure()
     plt.imshow(img_ori, cmap=color_map)
     plt.title("Original")
-    frame_file_name = join(output_dir, f"pred_original.png")
+    frame_file_name = join(output_dir, "pred_original.png")
     plt.savefig(frame_file_name)
     plt.close(fig)
 
@@ -128,17 +129,20 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
 
     print(
         "Will use :\n"
-        f"- JSON of : {datetime.fromtimestamp(getmtime(infer_options.json_path))}\n"
-        f"- state_dict of : {datetime.fromtimestamp(getmtime(infer_options.state_dict_path))}\n"
-        f"- class_to_idx of : {datetime.fromtimestamp(getmtime(infer_options.class_to_idx))}"
+        "- JSON of : "
+        f"{datetime.fromtimestamp(getmtime(infer_options.json_path))}\n"
+        "- state_dict of : "
+        f"{datetime.fromtimestamp(getmtime(infer_options.state_dict_path))}\n"
+        "- class_to_idx of : "
+        f"{datetime.fromtimestamp(getmtime(infer_options.class_to_idx))}"
     )
 
-    json_f = open(infer_options.class_to_idx, "r")
-    class_to_idx = json.load(json_f)
-    json_f.close()
+    with open(infer_options.class_to_idx, "r", encoding="utf-8") as json_f:
+        class_to_idx = json.load(json_f)
 
     nn_models = ModelsWrapper.from_json(infer_options.json_path)
     nn_models.load_state_dict(th.load(infer_options.state_dict_path))
+    nn_models.eval()
 
     marl_m = MultiAgent.load_from(
         infer_options.json_path,
@@ -150,6 +154,7 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
 
     img_pipeline = tr.Compose([tr.ToTensor()])
 
+    # pylint: disable=duplicate-code
     cuda = main_options.cuda
     device_str = "cpu"
 
@@ -159,6 +164,7 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
         nn_models.cuda()
         marl_m.cuda()
         device_str = "cuda"
+    # pylint: enable=duplicate-code
 
     images = tqdm(
         [
@@ -178,15 +184,16 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
         if not exists(curr_img_path):
             mkdir(curr_img_path)
 
-        info_f = open(join(curr_img_path, "info.txt"), "w")
-        info_f.writelines(
-            [
-                f"{img_path}\n",
-                f"{infer_options.json_path}\n",
-                f"{infer_options.state_dict_path}\n",
-            ]
-        )
-        info_f.close()
+        with open(
+            join(curr_img_path, "info.txt"), "w", encoding="utf-8"
+        ) as info_f:
+            info_f.writelines(
+                [
+                    f"{img_path}\n",
+                    f"{infer_options.json_path}\n",
+                    f"{infer_options.state_dict_path}\n",
+                ]
+            )
 
         visualize_steps(
             marl_m,

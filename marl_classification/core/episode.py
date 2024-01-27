@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from typing import Tuple
 
 import torch as th
@@ -11,7 +12,7 @@ def episode(
     img_sizes = list(img_batch.size()[2:])
     agents.new_episode(img_batch.size(0), img_sizes)
 
-    for t in range(max_it):
+    for _ in range(max_it):
         agents.step(img_batch)
 
     q, probas, _ = agents.predict()

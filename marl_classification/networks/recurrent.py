@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 from typing import Tuple
 
 import torch as th
-import torch.nn as nn
+from torch import nn
 
 
 class LSTMCellWrapper(nn.Module):
@@ -19,7 +20,7 @@ class LSTMCellWrapper(nn.Module):
     def forward(
         self, h: th.Tensor, c: th.Tensor, u: th.Tensor
     ) -> Tuple[th.Tensor, th.Tensor]:
-        nb_ag, batch_size, hidden_size = h.size()
+        nb_ag, batch_size, _ = h.size()
 
         h, c, u = (
             h.flatten(0, 1),

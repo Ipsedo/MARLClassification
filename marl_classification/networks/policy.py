@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 from typing import cast
 
 import torch as th
-import torch.nn as nn
+from torch import nn
 from torchvision.ops import Permute
 
 
@@ -30,7 +31,7 @@ class Policy(nn.Module):
 
 class Critic(nn.Module):
     def __init__(self, n: int, hidden_size: int):
-        super(Critic, self).__init__()
+        super().__init__()
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),

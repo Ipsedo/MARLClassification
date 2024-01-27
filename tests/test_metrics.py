@@ -1,4 +1,4 @@
-import pytest
+# -*- coding: utf-8 -*-
 import torch as th
 
 from marl_classification.metrics import ConfusionMeter, LossMeter
@@ -26,10 +26,7 @@ def test_confusion(tmp_path: str) -> None:
     assert (th.diag(conf_mat)[1:] == 1).all()
     assert nb_class == conf_mat.sum()
 
-    try:
-        conf_meter.save_conf_matrix(0, tmp_path, "unittest")
-    except Exception as e:
-        pytest.fail(str(e))
+    conf_meter.save_conf_matrix(0, tmp_path, "unittest")
 
 
 def test_loss() -> None:

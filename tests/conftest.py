@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import shutil
 from os import mkdir
 from os.path import abspath, exists, isdir, join
@@ -91,6 +92,7 @@ def get_tmp_path() -> str:
     return __TMP_PATH
 
 
+# pylint: disable=(unused-argument)
 def pytest_sessionstart(session: Session) -> None:
     if not exists(__TMP_PATH):
         mkdir(__TMP_PATH)
@@ -100,3 +102,6 @@ def pytest_sessionstart(session: Session) -> None:
 
 def pytest_sessionfinish(session: Session, exitstatus: int) -> None:
     shutil.rmtree(__TMP_PATH)
+
+
+# pylint: enable=(unused-argument)

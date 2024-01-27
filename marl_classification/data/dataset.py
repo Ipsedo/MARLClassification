@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import glob
 import pickle as pkl
 from os.path import basename, exists, isdir, join, splitext
@@ -16,8 +17,8 @@ from torchvision.datasets import ImageFolder
 def my_pil_loader(path: str) -> Image.Image:
     # open path as file to avoid ResourceWarning
     # (https://github.com/python-pillow/Pillow/issues/835)
-    f = open(path, "rb")
-    img = Image.open(f)
+    with open(path, "rb") as f:
+        img = Image.open(f)
     return img.convert("RGB")
 
 
@@ -79,14 +80,12 @@ class AIDDataset(ImageFolder):
 
 
 class KneeMRIDataset(Dataset):
-    def __init__(
-        self, res_path: str, img_transform: Callable[[Any], th.Tensor]
-    ):
+    def __init__(self, res_path: str, _: Callable[[Any], th.Tensor]):
         super().__init__()
 
         self.__knee_mri_root_path = join(res_path, "downloaded", "knee_mri")
 
-        self.__img_transform = img_transform
+        # self.__img_transform = img_transform
 
         metadata_csv = pd.read_csv(
             join(self.__knee_mri_root_path, "metadata.csv"), sep=","
@@ -100,9 +99,11 @@ class KneeMRIDataset(Dataset):
         self.__nb_img = 0
 
         def __open_pickle_size(fn: str) -> None:
-            f = open(join(self.__knee_mri_root_path, "extracted", fn), "rb")
-            x = pkl.load(f)
-            f.close()
+            with open(
+                join(self.__knee_mri_root_path, "extracted", fn), "rb"
+            ) as f:
+                x = pkl.load(f)
+
             self.__max_depth = max(self.__max_depth, x.shape[0])
             self.__max_width = max(self.__max_width, x.shape[1])
             self.__max_height = max(self.__max_height, x.shape[2])
@@ -125,9 +126,8 @@ class KneeMRIDataset(Dataset):
         }
 
     def __open_img(self, fn: str) -> th.Tensor:
-        f = open(join(self.__knee_mri_root_path, "extracted", fn), "rb")
-        x = pkl.load(f)
-        f.close()
+        with open(join(self.__knee_mri_root_path, "extracted", fn), "rb") as f:
+            x = pkl.load(f)
 
         x = th.from_numpy(x).to(th.float)
 
@@ -209,13 +209,10 @@ class WorldStratDataset(Dataset):
         png_class = self.__metadata.iloc[index, 1]
         png_class_idx = self.class_to_idx[png_class]
 
-        try:
-            img = self.__img_loader(png_name)
-            img_transformed = self.__img_transform(img)
+        img = self.__img_loader(png_name)
+        img_transformed = self.__img_transform(img)
 
-            return img_transformed, th.tensor(png_class_idx)
-        except Exception as e:
-            raise Exception(f'file "{png_name}"') from e
+        return img_transformed, th.tensor(png_class_idx)
 
     def __len__(self) -> int:
         return len(self.__metadata)

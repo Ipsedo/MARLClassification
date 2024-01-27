@@ -16,3 +16,19 @@ ensure_newline_before_comments = true
 ignore_missing_imports = true
 warn_return_any = true
 disallow_untyped_defs = true
+
+[tool.pylint]
+good-names-rgxs = "^[_a-z][_a-z0-9]?$"
+max-line-length = 100
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-many-instance-attributes",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-few-public-methods",
+    "too-many-statements",
+    "no-member",
+    "import-error"
+]

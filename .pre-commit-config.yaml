@@ -7,8 +7,16 @@ repos:
         exclude: resources
       - id: trailing-whitespace
         exclude: resources
+      - id: check-toml
+        exclude: resources
+      - id: check-yaml
+        exclude: resources
+      - id: fix-encoding-pragma
+        exclude: resources
+      - id: mixed-line-ending
+        exclude: resources
   - repo: https://github.com/psf/black
-    rev: 23.1.0
+    rev: 22.10.0
     hooks:
       - id: black
         args: [ --config=pyproject.toml ]
@@ -30,6 +38,14 @@ repos:
         language: system
         entry: mypy
         args: [ marl_classification, tests, --config-file=pyproject.toml ]
+        types: [ python ]
+        pass_filenames: false
+        require_serial: true
+      - id: pylint
+        name: pylint
+        language: system
+        entry: pylint
+        args: [ marl_classification, tests, --rcfile, pyproject.toml ]
         types: [ python ]
         pass_filenames: false
         require_serial: true

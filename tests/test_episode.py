@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from typing import Tuple
 
 import torch as th
@@ -11,7 +12,6 @@ def test_episode(
     step: int,
     nb_class: int,
     nb_agent: int,
-    dim: int,
     height_width: Tuple[int, int],
 ) -> None:
     x = th.randn(batch_size, 1, *height_width)

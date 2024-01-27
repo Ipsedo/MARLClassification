@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 from typing import Callable, List, Tuple
 
@@ -260,22 +261,17 @@ class MultiAgent:
         obs: Callable[[th.Tensor, th.Tensor, int], th.Tensor],
         trans: Callable[[th.Tensor, th.Tensor, int, List[int]], th.Tensor],
     ) -> "MultiAgent":
-        with open(models_wrapper_json_file, "r") as f_json:
+        with open(models_wrapper_json_file, "r", encoding="utf-8") as f_json:
             j_obj = json.load(f_json)
-            try:
-                return cls(
-                    nb_agent,
-                    model_wrapper,
-                    j_obj["hidden_size_belief"],
-                    j_obj["hidden_size_action"],
-                    j_obj["window_size"],
-                    j_obj["hidden_size_msg"],
-                    j_obj["actions"],
-                    obs,
-                    trans,
-                )
-            except Exception as e:
-                raise Exception(
-                    "Exception during loading MultiAgent "
-                    f'from file "{models_wrapper_json_file}"'
-                ) from e
+
+            return cls(
+                nb_agent,
+                model_wrapper,
+                j_obj["hidden_size_belief"],
+                j_obj["hidden_size_action"],
+                j_obj["window_size"],
+                j_obj["hidden_size_msg"],
+                j_obj["actions"],
+                obs,
+                trans,
+            )

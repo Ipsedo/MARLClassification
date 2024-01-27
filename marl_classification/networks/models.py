@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 import json
 from os.path import exists, isfile
 from typing import Callable, Dict, List, Set, Tuple, Union, cast
 
 import torch as th
-import torch.nn as nn
+from torch import nn
 
 from .ft_extractor import (
     AIDCnn,
@@ -144,7 +145,7 @@ class ModelsWrapper(nn.Module):
         return [p for op in ops for p in self.__networks_dict[op].parameters()]
 
     def json_args(self, out_json_path: str) -> None:
-        with open(out_json_path, "w") as json_f:
+        with open(out_json_path, "w", encoding="utf-8") as json_f:
             args_d = {
                 "ft_extr_str": self.__ft_extr_str,
                 "window_size": self.__f,
@@ -167,25 +168,19 @@ class ModelsWrapper(nn.Module):
             json_path
         ), f'"{json_path}" does not exist or is not a file'
 
-        with open(json_path, "r") as json_f:
+        with open(json_path, "r", encoding="utf-8") as json_f:
             args_d = json.load(json_f)
 
-            try:
-                return cls(
-                    args_d["ft_extr_str"],
-                    args_d["window_size"],
-                    args_d["hidden_size_belief"],
-                    args_d["hidden_size_action"],
-                    args_d["hidden_size_msg"],
-                    args_d["hidden_size_state"],
-                    args_d["state_dim"],
-                    args_d["actions"],
-                    args_d["class_number"],
-                    args_d["hidden_size_linear_belief"],
-                    args_d["hidden_size_linear_action"],
-                )
-            except Exception as e:
-                raise Exception(
-                    f'Error while parsing "{json_path}" '
-                    f"and creating {cls.__name__}"
-                ) from e
+            return cls(
+                args_d["ft_extr_str"],
+                args_d["window_size"],
+                args_d["hidden_size_belief"],
+                args_d["hidden_size_action"],
+                args_d["hidden_size_msg"],
+                args_d["hidden_size_state"],
+                args_d["state_dim"],
+                args_d["actions"],
+                args_d["class_number"],
+                args_d["hidden_size_linear_belief"],
+                args_d["hidden_size_linear_action"],
+            )

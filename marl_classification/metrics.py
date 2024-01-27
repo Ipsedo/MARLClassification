@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from abc import ABC, abstractmethod
 from os.path import join
 from statistics import mean
@@ -60,7 +61,7 @@ class ConfusionMeter(Meter[th.Tensor, Tuple[th.Tensor, th.Tensor]]):
         nb_class: int,
         window_size: Optional[int] = None,
     ):
-        super(ConfusionMeter, self).__init__(window_size)
+        super().__init__(window_size)
         self.__nb_class = nb_class
 
     def _process_value(self, *args: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
@@ -130,9 +131,6 @@ class ConfusionMeter(Meter[th.Tensor, Tuple[th.Tensor, th.Tensor]]):
 
 
 class LossMeter(Meter[float, float]):
-    def __init__(self, window_size: Optional[int]) -> None:
-        super(LossMeter, self).__init__(window_size)
-
     def _process_value(self, *args: float) -> float:
         return args[0]
 

@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 from abc import ABC, abstractmethod
 from typing import cast
 
 import torch as th
-import torch.nn as nn
+from torch import nn
 from torchvision.ops import Permute
 
 

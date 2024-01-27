@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 from math import log
 from os import mkdir
@@ -35,7 +36,7 @@ from .options import MainOptions, TrainOptions
 
 
 def train(main_options: MainOptions, train_options: TrainOptions) -> None:
-    assert train_options.dim == 2 or train_options.dim == 3, (
+    assert train_options.dim in (2, 3), (
         "Only 2D or 3D is supported at the moment "
         "for data loading and observation / transition. "
         "See torchvision.datasets.ImageFolder"
@@ -49,7 +50,7 @@ def train(main_options: MainOptions, train_options: TrainOptions) -> None:
     if exists(join(output_dir, model_dir)) and not isdir(
         join(output_dir, model_dir)
     ):
-        raise Exception(
+        raise NotADirectoryError(
             f'"{join(output_dir, model_dir)}"' f"is not a directory."
         )
 

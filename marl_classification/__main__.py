@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import argparse
 import re
 from os import makedirs
@@ -162,9 +163,7 @@ def main() -> None:
         "--res-folder",
         type=str,
         required=False,
-        default=abspath(
-            join(dirname(abspath(__file__)), "..", "resources")
-        ),  # TODO test it with package
+        default=abspath(join(dirname(abspath(__file__)), "..", "resources")),
         help="The resources path containing the download folder with datasets",
     )
     train_parser.add_argument(
