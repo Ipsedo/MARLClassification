@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import argparse
 import re
 from os import makedirs
@@ -6,8 +5,8 @@ from os.path import abspath, dirname, exists, isdir, join
 
 from .eval import evaluation
 from .infer import infer
-from .networks import ModelsWrapper
 from .options import EvalOptions, InferOptions, MainOptions, TrainOptions
+from .registry import DATASET_REGISTRY
 from .train import train
 
 
@@ -101,14 +100,7 @@ def main() -> None:
     train_parser.add_argument(
         "--ft-extr",
         type=str,
-        choices=[
-            ModelsWrapper.mnist,
-            ModelsWrapper.resisc,
-            ModelsWrapper.knee_mri,
-            ModelsWrapper.aid,
-            ModelsWrapper.world_strat,
-            ModelsWrapper.skin_cancer,
-        ],
+        choices=sorted(DATASET_REGISTRY),
         default="mnist",
         dest="ft_extractor",
         help="Choose features extractor (CNN)",
@@ -204,25 +196,6 @@ def main() -> None:
         default=10,
         dest="nb_epoch",
         help="Number of training epochs",
-    )
-    train_parser.add_argument(
-        "--freeze",
-        type=str,
-        default=[],
-        nargs="+",
-        dest="frozen_modules",
-        action="append",
-        choices=[
-            ModelsWrapper.map_obs,
-            ModelsWrapper.map_pos,
-            ModelsWrapper.evaluate_msg,
-            ModelsWrapper.belief_unit,
-            ModelsWrapper.action_unit,
-            ModelsWrapper.predict,
-            ModelsWrapper.policy,
-            ModelsWrapper.critic,
-        ],
-        help="Choose module(s) to be frozen during training",
     )
 
     ##################
@@ -364,7 +337,6 @@ def main() -> None:
                 args.batch_size,
                 args.res_folder,
                 args.output_dir,
-                list(set(args.frozen_modules)),
                 args.ft_extractor,
                 args.gamma,
             )

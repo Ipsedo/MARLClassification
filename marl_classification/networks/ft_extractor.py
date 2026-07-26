@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from abc import ABC, abstractmethod
 from typing import cast
 
@@ -55,27 +54,28 @@ class MNISTCnn(CNNFtExtract):
 # RESISC-45 Stuff
 
 
-class RESISC45Cnn(CNNFtExtract):
+class Resisc45Cnn(CNNFtExtract):
     def __init__(self, f: int) -> None:
         super().__init__()
 
         self.__seq_conv = nn.Sequential(
-            nn.Conv2d(3, 16, (3, 3), padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(2, 2),
-            nn.BatchNorm2d(16),
-            nn.Conv2d(16, 32, (3, 3), padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(2, 2),
-            nn.BatchNorm2d(32),
-            nn.Conv2d(32, 64, (3, 3), padding=1),
-            nn.GELU(),
-            nn.MaxPool2d(2, 2),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(3, 16, (3, 3), padding=1, stride=2),
+            nn.GroupNorm(2, 16),
+            nn.SiLU(),
+            nn.Conv2d(16, 32, (3, 3), padding=1, stride=2),
+            nn.GroupNorm(4, 32),
+            nn.SiLU(),
+            nn.Conv2d(32, 64, (3, 3), padding=1, stride=2),
+            nn.GroupNorm(8, 64),
+            nn.SiLU(),
             nn.Flatten(1, -1),
         )
 
-        self.__out_size = 64 * (f // 8) ** 2
+        window_size = f
+        for _ in range(3):
+            window_size = (window_size - 3 + 2 * 1) // 2 + 1
+
+        self.__out_size = 64 * window_size**2
 
     def forward(self, o_t: th.Tensor) -> th.Tensor:
         return cast(th.Tensor, self.__seq_conv(o_t))
@@ -168,15 +168,15 @@ class KneeMRICnn(CNNFtExtract):
             nn.Conv3d(1, 8, (3, 3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool3d(2, 2),
-            nn.BatchNorm2d(8),
+            nn.BatchNorm3d(8),
             nn.Conv3d(8, 16, (3, 3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool3d(2, 2),
-            nn.BatchNorm2d(16),
+            nn.BatchNorm3d(16),
             nn.Conv3d(16, 32, (3, 3, 3), padding=1),
             nn.GELU(),
             nn.MaxPool3d(2, 2),
-            nn.BatchNorm2d(32),
+            nn.BatchNorm3d(32),
             nn.Flatten(1, -1),
         )
 

@@ -7,8 +7,9 @@ from typing import Tuple
 import pytest
 from pytest import Session
 
-from marl_classification.core import MultiAgent, obs_generic, trans_generic
+from marl_classification.core import Environment, MultiAgent
 from marl_classification.networks import ModelsWrapper
+from marl_classification.networks.ft_extractor import MNISTCnn
 
 __TMP_PATH = abspath(join(__file__, "..", "tmp"))
 
@@ -38,9 +39,14 @@ def get_dim() -> int:
     return 2
 
 
-@pytest.fixture(scope="session", name="ft_extractor")
-def get_ft_extractor() -> str:
-    return "mnist"
+@pytest.fixture(scope="session", name="window_size")
+def get_window_size() -> int:
+    return 12
+
+
+@pytest.fixture(scope="session", name="actions")
+def get_actions() -> list[list[int]]:
+    return [[1, 0], [-1, 0], [0, 1], [0, -1]]
 
 
 @pytest.fixture(scope="session", name="height_width")
@@ -48,43 +54,39 @@ def get_height_width() -> Tuple[int, int]:
     return 28, 28
 
 
-@pytest.fixture(scope="session", name="marl_m")
-def get_marl_m(
-    dim: int, nb_class: int, nb_agent: int, ft_extractor: str
-) -> MultiAgent:
-    action = [[1, 0], [-1, 0], [0, 1], [0, -1]]
-
+@pytest.fixture(scope="session", name="model_wrapper")
+def get_model_wrapper(
+    dim: int,
+    nb_class: int,
+    window_size: int,
+    actions: list[list[int]],
+) -> ModelsWrapper:
     n_b = 23
     n_a = 22
     n_m = 21
 
-    f = 12
-
-    model_wrapper = ModelsWrapper(
-        ft_extractor,
-        f,
+    return ModelsWrapper(
+        MNISTCnn(window_size),
         n_b,
         n_a,
         n_m,
         20,
         dim,
-        action,
+        len(actions),
         nb_class,
         24,
         25,
     )
 
-    return MultiAgent(
-        nb_agent,
-        model_wrapper,
-        n_b,
-        n_a,
-        f,
-        n_m,
-        action,
-        obs_generic,
-        trans_generic,
-    )
+
+@pytest.fixture(scope="session", name="marl_m")
+def get_marl_m(nb_agent: int, model_wrapper: ModelsWrapper) -> MultiAgent:
+    return MultiAgent(nb_agent, model_wrapper)
+
+
+@pytest.fixture(name="env")
+def get_env(actions: list[list[int]], window_size: int) -> Environment:
+    return Environment(actions, window_size)
 
 
 @pytest.fixture(scope="module", name="tmp_path")

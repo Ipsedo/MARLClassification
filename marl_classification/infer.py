@@ -1,115 +1,17 @@
-# -*- coding: utf-8 -*-
 import glob
 import json
 from datetime import datetime
 from os import mkdir
 from os.path import exists, getmtime, isfile, join, split
-from typing import Any, List, Mapping
 
-import matplotlib.pyplot as plt
 import torch as th
-import torch.nn.functional as th_fun
-import torchvision.transforms as tr
-from PIL import Image
 from tqdm import tqdm
 
-from .core import MultiAgent, detailed_episode, obs_generic, trans_generic
-from .data.dataset import my_pil_loader
-from .networks import ModelsWrapper
+from .data.datasets import my_pil_loader
 from .options import InferOptions, MainOptions
-
-
-def visualize_steps(
-    agents: MultiAgent,
-    img: th.Tensor,
-    img_ori: th.Tensor,
-    max_it: int,
-    f: int,
-    output_dir: str,
-    nb_class: int,
-    device_str: str,
-    class_map: Mapping[Any, int],
-) -> None:
-    idx_to_class = {class_map[k]: k for k in class_map}
-
-    color_map = None
-
-    preds, _, _, pos = detailed_episode(
-        agents,
-        img.unsqueeze(0),
-        max_it,
-        device_str,
-        nb_class,
-    )
-    # mean over agents
-    preds, pos = preds.mean(dim=1).cpu(), pos.cpu()
-    img_ori = img_ori.permute(1, 2, 0).cpu()
-
-    h, w, c = img_ori.size()
-
-    if c == 1:
-        # grey scale case
-        img_ori = img_ori.repeat(1, 1, 3)
-
-    img_idx = 0
-
-    frames: List[Image.Image] = []
-
-    fig = plt.figure()
-    plt.imshow(img_ori, cmap=color_map)
-    plt.title("Original")
-    frame_file_name = join(output_dir, "pred_original.png")
-    plt.savefig(frame_file_name)
-    plt.close(fig)
-
-    # for GIF : 5 * 200ms -> 1s
-    for _ in range(5):
-        frames.append(Image.open(frame_file_name))
-
-    curr_img = th.zeros(h, w, 4)
-    for t in range(max_it):
-        for i in range(len(agents)):
-            # agent coordinates
-            x = int(pos[t][i][img_idx][0].item())
-            y = int(pos[t][i][img_idx][1].item())
-
-            # fmt : off
-
-            # Color
-            curr_img[x : x + f, y : y + f, :3] = img_ori[
-                x : x + f, y : y + f, :
-            ]
-
-            # Alpha
-            curr_img[x : x + f, y : y + f, 3] = 1
-
-            # fmt : on
-
-        fig = plt.figure()
-        plt.imshow(curr_img, cmap=color_map)
-
-        pred_softmax = th_fun.softmax(preds[t][img_idx], dim=-1)
-        pred_max = int(pred_softmax.argmax(dim=-1).item())
-        pred_proba = pred_softmax[pred_max].item()
-
-        plt.title(
-            f"Step = {t}, step_pred_class = "
-            f"{idx_to_class[pred_max]} ({pred_proba * 100.:.1f}%)"
-        )
-
-        frame_file_name = join(output_dir, f"pred_step_{t}.png")
-        plt.savefig(frame_file_name)
-        plt.close(fig)
-
-        frames.append(Image.open(frame_file_name))
-
-    frames[0].save(
-        join(output_dir, "animated_gif.gif"),
-        save_all=True,
-        append_images=frames[1:],
-        duration=200,
-        loop=0,
-    )
+from .registry import default_image_pipeline
+from .serde import MarlConfig
+from .visualization import visualize_steps
 
 
 def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
@@ -140,31 +42,17 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
     with open(infer_options.class_to_idx, "r", encoding="utf-8") as json_f:
         class_to_idx = json.load(json_f)
 
-    nn_models = ModelsWrapper.from_json(infer_options.json_path)
+    marl_config = MarlConfig.load_marl_config(infer_options.json_path)
+
+    nn_models, marl_m, env = marl_config.build_marl(main_options.nb_agent)
+
     nn_models.load_state_dict(th.load(infer_options.state_dict_path))
     nn_models.eval()
 
-    marl_m = MultiAgent.load_from(
-        infer_options.json_path,
-        main_options.nb_agent,
-        nn_models,
-        obs_generic,
-        trans_generic,
-    )
+    img_pipeline = default_image_pipeline()
 
-    img_pipeline = tr.Compose([tr.ToTensor()])
-
-    # pylint: disable=duplicate-code
-    cuda = main_options.cuda
-    device_str = "cpu"
-
-    # Pass pytorch stuff to GPU
-    # for agents hidden tensors (belief etc.)
-    if cuda:
-        nn_models.cuda()
-        marl_m.cuda()
-        device_str = "cuda"
-    # pylint: enable=duplicate-code
+    device = th.device("cuda" if main_options.cuda else "cpu")
+    nn_models.to(device)
 
     images = tqdm(
         [
@@ -197,12 +85,10 @@ def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
 
         visualize_steps(
             marl_m,
+            env,
             x,
             x_ori,
             main_options.step,
-            nn_models.f,
             curr_img_path,
-            nn_models.nb_class,
-            device_str,
             class_to_idx,
         )

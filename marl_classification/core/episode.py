@@ -1,117 +1,98 @@
-# -*- coding: utf-8 -*-
-from typing import Tuple
+from dataclasses import dataclass
 
 import torch as th
 
 from .agent import MultiAgent
+from .environment import Environment
+
+
+@dataclass
+class EpisodeOutput:
+    prediction: th.Tensor
+    actions_log_probs: th.Tensor
+
+
+@dataclass
+class EpisodeDetailedOutput:
+    step_preds: th.Tensor
+    step_log_probas: th.Tensor
+    step_values: th.Tensor
+    step_pos: th.Tensor
 
 
 def episode(
-    agents: MultiAgent, img_batch: th.Tensor, max_it: int
-) -> Tuple[th.Tensor, th.Tensor]:
-    img_sizes = list(img_batch.size()[2:])
-    agents.new_episode(img_batch.size(0), img_sizes)
+    agents: MultiAgent,
+    env: Environment,
+    img_batch: th.Tensor,
+    max_it: int,
+) -> EpisodeOutput:
+    img_batch = img_batch.to(agents.device)
+
+    obs = env.reset(img_batch, len(agents))
+    agents.reset(img_batch.size(0))
+
+    assert max_it > 0, "an episode must have at least one step"
 
     for _ in range(max_it):
-        agents.step(img_batch)
+        output = agents.act(obs, env.normalized_positions)
+        obs = env.step(output.actions)
 
-    q, probas, _ = agents.predict()
-
-    return q, probas
+    return EpisodeOutput(output.predictions, output.actions_log_probs)
 
 
 def detailed_episode(
     agents: MultiAgent,
+    env: Environment,
     img_batch: th.Tensor,
     max_it: int,
-    device_str: str,
-    nb_class: int,
-) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
-    img_sizes = list(img_batch.size()[2:])
+) -> EpisodeDetailedOutput:
+    device = agents.device
+    img_batch = img_batch.to(device)
+
     batch_size = img_batch.size(0)
 
-    agents.new_episode(batch_size, img_sizes)
-
-    img_batch = img_batch.to(th.device(device_str))
+    obs = env.reset(img_batch, len(agents))
+    agents.reset(batch_size)
 
     step_pos = th.zeros(
         max_it,
-        *agents.pos.size(),
+        *env.positions.size(),
         dtype=th.long,
-        device=th.device(device_str),
+        device=device,
     )
 
     step_preds = th.zeros(
         max_it,
         len(agents),
         batch_size,
-        nb_class,
-        device=th.device(device_str),
+        agents.nb_class,
+        device=device,
     )
 
     step_probas = th.zeros(
         max_it,
         len(agents),
         batch_size,
-        device=th.device(device_str),
+        device=device,
     )
 
     step_values = th.zeros(
         max_it,
         len(agents),
         batch_size,
-        device=th.device(device_str),
+        device=device,
     )
 
     for t in range(max_it):
-        agents.step(img_batch)
+        output = agents.act(obs, env.normalized_positions)
+        obs = env.step(output.actions)
 
-        step_pos[t, :, :, :] = agents.pos
+        step_pos[t] = env.positions
 
-        preds, probas, values = agents.predict()
+        step_preds[t] = output.predictions
+        step_probas[t] = output.actions_log_probs
+        step_values[t] = output.values
 
-        step_preds[t, :, :, :] = preds
-        step_probas[t, :, :] = probas
-        step_values[t, :, :] = values
-
-    return step_preds, step_probas, step_values, step_pos
-
-
-def episode_retry(
-    agents: MultiAgent,
-    img_batch: th.Tensor,
-    max_it: int,
-    max_retry: int,
-    nb_class: int,
-    device_str: str,
-) -> Tuple[th.Tensor, th.Tensor]:
-    img_batch = img_batch.to(th.device(device_str))
-
-    retry_pred = th.zeros(
-        max_retry,
-        max_it,
-        img_batch.size(0),
-        nb_class,
-        device=th.device(device_str),
+    return EpisodeDetailedOutput(
+        step_preds, step_probas, step_values, step_pos
     )
-
-    retry_prob = th.zeros(
-        max_retry,
-        max_it,
-        img_batch.size(0),
-        device=th.device(device_str),
-    )
-
-    for r in range(max_retry):
-        pred, prob, _, _ = detailed_episode(
-            agents,
-            img_batch,
-            max_it,
-            device_str,
-            nb_class,
-        )
-
-        retry_pred[r, :, :, :] = pred
-        retry_prob[r, :, :] = prob
-
-    return retry_pred, retry_prob

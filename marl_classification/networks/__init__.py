@@ -1,2 +1,2 @@
-# -*- coding: utf-8 -*-
-from .models import ModelsWrapper
+from .ft_extractor import CNNFtExtract
+from .models import ModelOutput, ModelsWrapper, RecurrentOutput

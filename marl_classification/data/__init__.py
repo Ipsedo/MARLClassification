@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-from .dataset import (
+from .datasets import (
     AIDDataset,
     KineticsDataset,
     KneeMRIDataset,

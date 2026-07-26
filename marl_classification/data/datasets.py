@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 import glob
 import pickle as pkl
 from os.path import basename, exists, isdir, join, splitext
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Tuple
 
 import pandas as pd
 import torch as th
@@ -10,8 +9,9 @@ import torch.nn.functional as fun
 import torchvision.io
 import tqdm
 from PIL import Image
-from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
+
+from .abstract_dataset import AbstractDataset
 
 
 def my_pil_loader(path: str) -> Image.Image:
@@ -22,7 +22,7 @@ def my_pil_loader(path: str) -> Image.Image:
         return img.convert("RGB")
 
 
-class MNISTDataset(ImageFolder):
+class MNISTDataset(ImageFolder, AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ) -> None:
@@ -41,7 +41,7 @@ class MNISTDataset(ImageFolder):
         )
 
 
-class RESISC45Dataset(ImageFolder):
+class RESISC45Dataset(ImageFolder, AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ) -> None:
@@ -60,7 +60,7 @@ class RESISC45Dataset(ImageFolder):
         )
 
 
-class AIDDataset(ImageFolder):
+class AIDDataset(ImageFolder, AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ) -> None:
@@ -79,7 +79,7 @@ class AIDDataset(ImageFolder):
         )
 
 
-class KneeMRIDataset(Dataset):
+class KneeMRIDataset(AbstractDataset):
     def __init__(self, res_path: str, _: Callable[[Any], th.Tensor]):
         super().__init__()
 
@@ -166,7 +166,7 @@ class KneeMRIDataset(Dataset):
         return self.__nb_img
 
 
-class WorldStratDataset(Dataset):
+class WorldStratDataset(AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ):
@@ -189,16 +189,12 @@ class WorldStratDataset(Dataset):
         self.__img_transform = img_transform
         self.__img_loader = my_pil_loader
 
-        self.__class_to_idx = {
+        self.class_to_idx = {
             c: i
             for i, c in enumerate(
                 sorted(self.__metadata[self.__class_column].unique())
             )
         }
-
-    @property
-    def class_to_idx(self) -> Dict[str, int]:
-        return self.__class_to_idx
 
     def __getitem__(self, index: int) -> Tuple[th.Tensor, th.Tensor]:
         folder_name = self.__metadata.iloc[index, 0]
@@ -218,7 +214,7 @@ class WorldStratDataset(Dataset):
         return len(self.__metadata)
 
 
-class SkinCancerDataset(ImageFolder):
+class SkinCancerDataset(ImageFolder, AbstractDataset):
     # https://github.com/Ipsedo/MARLClassification/issues/4
     # https://drive.google.com/drive/folders/17g6zFSbCNXTV3VaDKop73W7Cn-NJlTO7?usp=sharing
     def __init__(
@@ -239,7 +235,7 @@ class SkinCancerDataset(ImageFolder):
         )
 
 
-class KineticsDataset(Dataset):
+class KineticsDataset(AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ) -> None:
@@ -267,7 +263,7 @@ class KineticsDataset(Dataset):
             if row["youtube_id"] in tmp_all_video
         }
 
-        self.__class_to_idx = {
+        self.class_to_idx = {
             label: i for i, label in enumerate(train_df["label"].unique())
         }
 
@@ -288,10 +284,6 @@ class KineticsDataset(Dataset):
         return self.__transform(video_data), th.tensor(
             self.class_to_idx[video_label]
         )
-
-    @property
-    def class_to_idx(self) -> Dict[str, int]:
-        return self.__class_to_idx
 
     def __len__(self) -> int:
         return len(self.__all_videos)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from abc import ABC, abstractmethod
 from os.path import join
 from statistics import mean

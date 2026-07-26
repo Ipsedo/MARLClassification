@@ -19,6 +19,7 @@ kaggle
 # pre-commit
 pre-commit
 mypy
+pylint
 
 # tests
 pytest

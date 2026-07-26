@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 import operator as op
 from functools import reduce
-from typing import List, cast
+from typing import cast
 
 import torch as th
 
@@ -10,7 +9,7 @@ def trans_generic(
     pos: th.Tensor,
     a_t_next: th.Tensor,
     f: int,
-    img_size: List[int],
+    img_size: list[int],
 ) -> th.Tensor:
     new_pos = pos.clone()
     dim = new_pos.size(-1)

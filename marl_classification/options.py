@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from typing import List, NamedTuple
 
 MainOptions = NamedTuple(
@@ -30,7 +29,6 @@ TrainOptions = NamedTuple(
         ("batch_size", int),
         ("resources_dir", str),
         ("output_dir", str),
-        ("frozen_modules", List[str]),
         ("ft_extr_str", str),
         ("gamma", float),
     ],

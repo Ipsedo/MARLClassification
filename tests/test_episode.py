@@ -3,12 +3,18 @@ from typing import Tuple
 
 import torch as th
 
-from marl_classification.core import MultiAgent, detailed_episode, episode
+from marl_classification.core import (
+    Environment,
+    MultiAgent,
+    detailed_episode,
+    episode,
+)
 
 
 def test_episode(
     batch_size: int,
     marl_m: MultiAgent,
+    env: Environment,
     step: int,
     nb_class: int,
     nb_agent: int,
@@ -16,21 +22,22 @@ def test_episode(
 ) -> None:
     x = th.randn(batch_size, 1, *height_width)
 
-    pred, log_proba = episode(marl_m, x, step)
+    output = episode(marl_m, env, x, step)
 
-    assert 3 == len(pred.size())
-    assert nb_agent == pred.size()[0]
-    assert batch_size == pred.size()[1]
-    assert nb_class == pred.size()[2]
+    assert 3 == len(output.prediction.size())
+    assert nb_agent == output.prediction.size()[0]
+    assert batch_size == output.prediction.size()[1]
+    assert nb_class == output.prediction.size()[2]
 
-    assert 2 == len(log_proba.size())
-    assert nb_agent == log_proba.size()[0]
-    assert batch_size == log_proba.size()[1]
+    assert 2 == len(output.actions_log_probs.size())
+    assert nb_agent == output.actions_log_probs.size()[0]
+    assert batch_size == output.actions_log_probs.size()[1]
 
 
 def test_detailed_episode(
     batch_size: int,
     marl_m: MultiAgent,
+    env: Environment,
     step: int,
     nb_class: int,
     nb_agent: int,
@@ -39,32 +46,26 @@ def test_detailed_episode(
 ) -> None:
     x = th.randn(batch_size, 1, *height_width)
 
-    pred, log_proba, values, pos = detailed_episode(
-        marl_m,
-        x,
-        step,
-        "cpu",
-        nb_class,
-    )
+    output = detailed_episode(marl_m, env, x, step)
 
-    assert 4 == len(pred.size())
-    assert step == pred.size()[0]
-    assert nb_agent == pred.size()[1]
-    assert batch_size == pred.size()[2]
-    assert nb_class == pred.size()[3]
+    assert 4 == len(output.step_preds.size())
+    assert step == output.step_preds.size()[0]
+    assert nb_agent == output.step_preds.size()[1]
+    assert batch_size == output.step_preds.size()[2]
+    assert nb_class == output.step_preds.size()[3]
 
-    assert 3 == len(log_proba.size())
-    assert step == log_proba.size()[0]
-    assert nb_agent == log_proba.size()[1]
-    assert batch_size == log_proba.size()[2]
+    assert 3 == len(output.step_log_probas.size())
+    assert step == output.step_log_probas.size()[0]
+    assert nb_agent == output.step_log_probas.size()[1]
+    assert batch_size == output.step_log_probas.size()[2]
 
-    assert 3 == len(values.size())
-    assert step == values.size()[0]
-    assert nb_agent == values.size()[1]
-    assert batch_size == values.size()[2]
+    assert 3 == len(output.step_values.size())
+    assert step == output.step_values.size()[0]
+    assert nb_agent == output.step_values.size()[1]
+    assert batch_size == output.step_values.size()[2]
 
-    assert 4 == len(pos.size())
-    assert step == pos.size()[0]
-    assert nb_agent == pos.size()[1]
-    assert batch_size == pos.size()[2]
-    assert dim == pos.size()[3]
+    assert 4 == len(output.step_pos.size())
+    assert step == output.step_pos.size()[0]
+    assert nb_agent == output.step_pos.size()[1]
+    assert batch_size == output.step_pos.size()[2]
+    assert dim == output.step_pos.size()[3]

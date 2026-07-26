@@ -1,0 +1,188 @@
+from typing import Callable, Dict, Optional
+
+import torch as th
+import torch.nn.functional as th_fun
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from ..core import Environment, MultiAgent, detailed_episode, episode
+from ..metrics import ConfusionMeter, LossMeter
+from ..networks import ModelsWrapper
+from .rl import (
+    a2c_loss,
+    classification_rewards,
+    discounted_returns,
+    standardize,
+)
+
+MetricLogger = Callable[[int, Dict[str, float]], None]
+
+
+class Trainer:
+    """
+    A2C training loop for the MARL classification game. Metric logging
+    is injected so the trainer does not depend on MLflow.
+    """
+
+    def __init__(
+        self,
+        agents: MultiAgent,
+        env: Environment,
+        model: ModelsWrapper,
+        optim: th.optim.Optimizer,
+        episode_steps: int,
+        gamma: float,
+        metric_logger: Optional[MetricLogger] = None,
+        log_interval: int = 100,
+        meter_window_size: int = 64,
+    ) -> None:
+        self.__agents = agents
+        self.__env = env
+        self.__model = model
+        self.__optim = optim
+        self.__episode_steps = episode_steps
+        self.__gamma = gamma
+
+        self.__metric_logger = metric_logger
+        self.__log_interval = log_interval
+
+        self.__curr_step = 0
+
+        self.__conf_meter = ConfusionMeter(
+            agents.nb_class, window_size=meter_window_size
+        )
+        self.__path_loss_meter = LossMeter(window_size=meter_window_size)
+        self.__error_meter = LossMeter(window_size=meter_window_size)
+        self.__policy_loss_meter = LossMeter(window_size=meter_window_size)
+        self.__critic_loss_meter = LossMeter(window_size=meter_window_size)
+
+    @property
+    def curr_step(self) -> int:
+        return self.__curr_step
+
+    def train_epoch(self, dataloader: DataLoader, epoch: int) -> None:
+        self.__model.train()
+
+        device = self.__model.device
+
+        tqdm_bar = tqdm(dataloader)
+        for x_train, y_train in tqdm_bar:
+            x_train = x_train.to(device)
+            y_train = y_train.to(device)
+
+            # pred = [Ns, Na, Nb, Nc]
+            # prob = [Ns, Na, Nb]
+            # values = [Ns, Na, Nb]
+            output = detailed_episode(
+                self.__agents,
+                self.__env,
+                x_train,
+                self.__episode_steps,
+            )
+
+            # compute error : last step prediction and mean over agents
+            error = th_fun.cross_entropy(
+                output.step_preds[-1].mean(dim=0),
+                y_train,
+                reduction="none",
+            )
+
+            rewards = classification_rewards(output.step_preds, y_train)
+            returns = standardize(discounted_returns(rewards, self.__gamma))
+
+            losses = a2c_loss(
+                output.step_log_probas,
+                output.step_values,
+                returns,
+                error,
+            )
+
+            # sum over steps, mean over agents and batch
+            loss = (losses.policy_loss + losses.critic_loss).sum(dim=0).mean()
+
+            # backward and update weights
+            self.__optim.zero_grad()
+            loss.backward()
+            self.__optim.step()
+
+            # Update meters
+            path_loss_item = losses.path_loss.sum(dim=0).mean().item()
+            error_item = error.mean().item()
+            policy_loss_item = losses.policy_loss.sum(dim=0).mean().item()
+            critic_loss_item = losses.critic_loss.sum(dim=0).mean().item()
+
+            self.__conf_meter.add(
+                # select last step, mean over agents
+                output.step_preds[-1].mean(dim=0).detach(),
+                y_train,
+            )
+            self.__path_loss_meter.add(path_loss_item)
+            self.__error_meter.add(error_item)
+            self.__policy_loss_meter.add(policy_loss_item)
+            self.__critic_loss_meter.add(critic_loss_item)
+
+            precs = self.__conf_meter.precision()
+            recs = self.__conf_meter.recall()
+
+            if (
+                self.__metric_logger is not None
+                and self.__curr_step % self.__log_interval == 0
+            ):
+                self.__metric_logger(
+                    self.__curr_step,
+                    {
+                        "error": error_item,
+                        "path_loss": path_loss_item,
+                        "loss": loss.item(),
+                        "train_prec": precs.mean().item(),
+                        "train_rec": recs.mean().item(),
+                        "critic_loss": critic_loss_item,
+                        "actor_loss": policy_loss_item,
+                    },
+                )
+
+            tqdm_bar.set_description(
+                f"Epoch {epoch} - Train, "
+                f"train_prec = {precs.mean().item():.3f}, "
+                f"train_rec = {recs.mean().item():.3f}, "
+                f"c_loss = {self.__critic_loss_meter.loss():.4f}, "
+                f"a_loss = {self.__policy_loss_meter.loss():.4f}, "
+                f"error = {self.__error_meter.loss():.4f}, "
+                f"path = {self.__path_loss_meter.loss():.4f}"
+            )
+
+            self.__curr_step += 1
+
+    def eval_epoch(self, dataloader: DataLoader, epoch: int) -> ConfusionMeter:
+        self.__model.eval()
+
+        device = self.__model.device
+
+        conf_meter = ConfusionMeter(self.__agents.nb_class, None)
+
+        with th.no_grad():
+            tqdm_bar = tqdm(dataloader)
+            for x_test, y_test in tqdm_bar:
+                x_test = x_test.to(device)
+                y_test = y_test.to(device)
+
+                output = episode(
+                    self.__agents,
+                    self.__env,
+                    x_test,
+                    self.__episode_steps,
+                )
+
+                # mean over agents
+                conf_meter.add(output.prediction.mean(dim=0).detach(), y_test)
+
+                precs = conf_meter.precision()
+                recs = conf_meter.recall()
+
+                tqdm_bar.set_description(
+                    f"Epoch {epoch} - Eval, "
+                    f"eval_prec = {precs.mean().item():.4f}, "
+                    f"eval_rec = {recs.mean().item():.4f}"
+                )
+
+        return conf_meter

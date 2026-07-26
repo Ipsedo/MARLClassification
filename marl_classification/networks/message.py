@@ -1,9 +1,23 @@
-# -*- coding: utf-8 -*-
 from typing import cast
 
 import torch as th
 from torch import nn
 from torchvision.ops import Permute
+
+
+def aggregate_messages(messages: th.Tensor) -> th.Tensor:
+    """
+    Communication protocol between agents: each agent receives the mean
+    of the messages sent by all the *other* agents.
+
+    messages: [Na, Nb, n_m] -> [Na, Nb, n_m]
+    """
+    nb_agent = messages.size(0)
+
+    if nb_agent == 1:
+        return th.zeros_like(messages)
+
+    return (messages.sum(dim=0) - messages) / (nb_agent - 1)
 
 
 class MessageSender(nn.Module):
