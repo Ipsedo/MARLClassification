@@ -3,11 +3,11 @@ import re
 from os import makedirs
 from os.path import abspath, dirname, exists, isdir, join
 
-from .eval import evaluation
-from .infer import infer
+from .eval import eval_main
+from .infer import infer_main
 from .options import EvalOptions, InferOptions, MainOptions, TrainOptions
 from .registry import DATASET_REGISTRY
-from .train import train
+from .train import train_main
 
 
 def main() -> None:
@@ -348,7 +348,7 @@ def main() -> None:
                     f'"{args.output_dir}" is not a directory.'
                 )
 
-            train(main_options, train_options)
+            train_main(main_options, train_options)
 
         # Test main
         case "test":
@@ -375,7 +375,7 @@ def main() -> None:
                     f'"{args.output_dir}" is not a directory.'
                 )
 
-            evaluation(main_options, eval_options)
+            eval_main(main_options, eval_options)
 
         case "infer":
             main_options = MainOptions(
@@ -402,7 +402,7 @@ def main() -> None:
                     f'"{args.output_image_dir}" is not a directory.'
                 )
 
-            infer(main_options, infer_options)
+            infer_main(main_options, infer_options)
 
         case _:
             main_parser.error(

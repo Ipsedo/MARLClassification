@@ -13,7 +13,7 @@ from .registry import default_image_pipeline
 from .serde import MarlConfig
 
 
-def evaluation(main_options: MainOptions, eval_options: EvalOptions) -> None:
+def eval_main(main_options: MainOptions, eval_options: EvalOptions) -> None:
     assert exists(
         eval_options.json_path
     ), f'JSON path "{eval_options.json_path}" does not exist'

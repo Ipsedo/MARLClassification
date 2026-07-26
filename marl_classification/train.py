@@ -15,7 +15,7 @@ from .training import Trainer
 from .visualization import visualize_steps
 
 
-def train(main_options: MainOptions, train_options: TrainOptions) -> None:
+def train_main(main_options: MainOptions, train_options: TrainOptions) -> None:
     assert train_options.dim in (2, 3), (
         "Only 2D or 3D is supported at the moment "
         "for data loading and observation / transition. "

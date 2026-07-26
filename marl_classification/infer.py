@@ -14,7 +14,7 @@ from .serde import MarlConfig
 from .visualization import visualize_steps
 
 
-def infer(main_options: MainOptions, infer_options: InferOptions) -> None:
+def infer_main(main_options: MainOptions, infer_options: InferOptions) -> None:
     assert exists(
         infer_options.json_path
     ), f'JSON path "{infer_options.json_path}" does not exist'
