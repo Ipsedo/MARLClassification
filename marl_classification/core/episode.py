@@ -31,11 +31,11 @@ def episode(
     obs = env.reset(img_batch, len(agents))
     agents.reset(img_batch.size(0))
 
-    assert max_it > 0, "an episode must have at least one step"
-
     for _ in range(max_it):
         output = agents.act(obs, env.normalized_positions)
         obs = env.step(output.actions)
+
+    output = agents.act(obs, env.normalized_positions)
 
     return EpisodeOutput(output.predictions, output.actions_log_probs)
 

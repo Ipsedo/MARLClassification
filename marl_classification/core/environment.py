@@ -1,23 +1,7 @@
-from typing import Protocol
+import operator as op
+from functools import reduce
 
 import torch as th
-
-from .observation import obs_generic
-from .transition import trans_generic
-
-
-class ObservationFn(Protocol):
-    def __call__(self, x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor: ...
-
-
-class TransitionFn(Protocol):
-    def __call__(
-        self,
-        pos: th.Tensor,
-        a_t_next: th.Tensor,
-        f: int,
-        img_size: list[int],
-    ) -> th.Tensor: ...
 
 
 class Environment:
@@ -31,15 +15,13 @@ class Environment:
         self,
         actions: list[list[int]],
         window_size: int,
-        obs: ObservationFn = obs_generic,
-        trans: TransitionFn = trans_generic,
     ) -> None:
         self.__actions = actions
         self.__f = window_size
-        self.__obs = obs
-        self.__trans = trans
+        self.__obs = Environment.__obs_generic
+        self.__trans = Environment.__trans_generic
 
-        self.__img_batch: th.Tensor | None = None
+        self.__img_batch: th.Tensor = th.empty([1])  # fake img batch
         self.__img_sizes: list[int] = []
         self.__pos = th.empty(0)
         self.__actions_table = th.empty(0)
@@ -113,3 +95,60 @@ class Environment:
     @property
     def nb_actions(self) -> int:
         return len(self.__actions)
+
+    @staticmethod
+    def __obs_generic(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
+        x_sizes = x.size()
+        b_img, c = x_sizes[0], x_sizes[1]
+        sizes = list(x_sizes[2:])
+
+        nb_a, _, _ = pos.size()
+
+        pos_min = pos
+        pos_max = pos_min + f
+
+        masks = []
+
+        for d, s in enumerate(sizes):
+            values = th.arange(0, s, device=pos.device)
+
+            mask = (pos_min[:, :, d, None] <= values.view(1, 1, s)) & (
+                values.view(1, 1, s) < pos_max[:, :, d, None]
+            )
+
+            for n_unsq in range(len(sizes) - 1):
+                mask = mask.unsqueeze(-2) if n_unsq < d else mask.unsqueeze(-1)
+
+            masks.append(mask)
+        mask = reduce(op.and_, masks)
+        mask = mask.unsqueeze(2)
+
+        return (
+            x.unsqueeze(0)
+            .masked_select(mask)
+            .view(nb_a, b_img, c, *[f for _ in range(len(sizes))])
+        )
+
+    @staticmethod
+    def __trans_generic(
+        pos: th.Tensor,
+        a_t_next: th.Tensor,
+        f: int,
+        img_size: list[int],
+    ) -> th.Tensor:
+        new_pos = pos.clone()
+        dim = new_pos.size(-1)
+
+        idxs = []
+        for d in range(dim):
+            curr_idx = (new_pos[:, :, d] + a_t_next[:, :, d] >= 0) * (
+                new_pos[:, :, d] + a_t_next[:, :, d] + f < img_size[d]
+            )
+            idxs.append(curr_idx)
+
+        idx = reduce(op.mul, idxs)
+        idx = idx.unsqueeze(2).to(th.float)
+
+        new_pos = idx * (new_pos + a_t_next) + (1 - idx) * new_pos
+
+        return new_pos

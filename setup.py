@@ -12,5 +12,4 @@ setup(
         "marl_classification.networks",
         "marl_classification.training",
     ],
-    license="GPL-3.0 License",
 )
