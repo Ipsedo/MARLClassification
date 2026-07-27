@@ -1,3 +1,37 @@
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "marl-classification"
+version = "1.2.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+  {name = "Samuel Berrien"},
+]
+requires-python = ">=3.14"
+dependencies = [
+    "jupyter>=1.1.1",
+    "kaggle>=2.2.4",
+    "matplotlib>=3.11.1",
+    "mlflow>=3.14.0",
+    "mypy>=2.3.0",
+    "numpy>=2.5.1",
+    "pandas>=2.3.3",
+    "pillow>=12.3.0",
+    "pre-commit>=4.6.1",
+    "pylint>=4.0.6",
+    "pytest>=9.1.1",
+    "torch>=2.13.0",
+    "torchvision>=0.28.0",
+    "tqdm>=4.70.0",
+]
+
+[tool.uv.build-backend]
+module-name = "marl_classification"
+module-root = ""
+
 [tool.black]
 line-length = 79
 
