@@ -16,7 +16,7 @@ from .data import (
 from .networks.vision import (
     AidCnn,
     KneeMriCnn,
-    MNISTCnn,
+    MnistCnn,
     Resisc45Cnn,
     SkinCancerCnn,
     VisionCnnModule,
@@ -36,7 +36,7 @@ class DatasetSpec:
 
 
 DATASET_REGISTRY: dict[str, DatasetSpec] = {
-    "mnist": DatasetSpec(MnistDataset, MNISTCnn),
+    "mnist": DatasetSpec(MnistDataset, MnistCnn),
     "resisc45": DatasetSpec(Resisc45Dataset, Resisc45Cnn),
     "kneemri": DatasetSpec(KneeMriDataset, KneeMriCnn),
     "aid": DatasetSpec(AidDataset, AidCnn),

@@ -8,7 +8,7 @@ from pytest import Session
 
 from marl_classification.core import Environment, MultiAgent
 from marl_classification.networks import ModelsWrapper
-from marl_classification.networks.vision import MNISTCnn
+from marl_classification.networks.vision import MnistCnn
 
 __TMP_PATH = abspath(join(__file__, "..", "tmp"))
 
@@ -65,7 +65,7 @@ def get_model_wrapper(
     n_m = 21
 
     return ModelsWrapper(
-        MNISTCnn(window_size),
+        MnistCnn(window_size),
         n_b,
         n_a,
         n_m,

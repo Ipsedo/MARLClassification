@@ -11,11 +11,7 @@ class Environment:
     observations served by this class.
     """
 
-    def __init__(
-        self,
-        actions: list[list[int]],
-        window_size: int,
-    ) -> None:
+    def __init__(self, actions: list[list[int]], window_size: int) -> None:
         self.__actions = actions
         self.__window_size = window_size
 

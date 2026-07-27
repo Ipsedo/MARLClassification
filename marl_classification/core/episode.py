@@ -21,13 +21,15 @@ class EpisodeDetailedOutput:
 
 
 class EpisodeSampler:
-    def __init__(self, agents: MultiAgent, env: Environment):
+    def __init__(
+        self, agents: MultiAgent, env: Environment, nb_step: int
+    ) -> None:
         self.__agents = agents
         self.__env = env
 
-    def __episode_impl(
-        self, img_batch: th.Tensor, max_it: int
-    ) -> EpisodeDetailedOutput:
+        self.__nb_step = nb_step
+
+    def __episode_impl(self, img_batch: th.Tensor) -> EpisodeDetailedOutput:
         device = self.__agents.device
         img_batch = img_batch.to(device)
 
@@ -37,14 +39,14 @@ class EpisodeSampler:
         self.__agents.reset(batch_size)
 
         step_pos = th.zeros(
-            max_it,
+            self.__nb_step,
             *self.__env.positions.size(),
             dtype=th.long,
             device=device,
         )
 
         step_preds = th.zeros(
-            max_it,
+            self.__nb_step,
             len(self.__agents),
             batch_size,
             self.__agents.nb_class,
@@ -52,20 +54,20 @@ class EpisodeSampler:
         )
 
         step_probas = th.zeros(
-            max_it,
+            self.__nb_step,
             len(self.__agents),
             batch_size,
             device=device,
         )
 
         step_values = th.zeros(
-            max_it,
+            self.__nb_step,
             len(self.__agents),
             batch_size,
             device=device,
         )
 
-        for t in range(max_it):
+        for t in range(self.__nb_step):
             output = self.__agents.act(obs, self.__env.normalized_positions)
             obs = self.__env.step(output.actions)
 
@@ -79,15 +81,11 @@ class EpisodeSampler:
             step_preds, step_probas, step_values, step_pos
         )
 
-    def run_episode(
-        self, img_batch: th.Tensor, max_it: int
-    ) -> EpisodeDetailedOutput:
-        return self.__episode_impl(img_batch, max_it)
+    def run_episode(self, img_batch: th.Tensor) -> EpisodeDetailedOutput:
+        return self.__episode_impl(img_batch)
 
-    def run_episode_get_last_step(
-        self, img_batch: th.Tensor, max_it: int
-    ) -> EpisodeOutput:
-        detailed_output = self.__episode_impl(img_batch, max_it)
+    def run_episode_get_last_step(self, img_batch: th.Tensor) -> EpisodeOutput:
+        detailed_output = self.__episode_impl(img_batch)
 
         return EpisodeOutput(
             prediction=detailed_output.step_preds[-1],

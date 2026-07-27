@@ -109,13 +109,12 @@ def train_main(
     def mlflow_metric_logger(step: int, metrics: Dict[str, float]) -> None:
         mlflow.log_metrics(step=step, metrics=metrics)
 
-    episode_sampler = EpisodeSampler(marl_m, env)
+    episode_sampler = EpisodeSampler(marl_m, env, main_config.step)
 
     trainer = Trainer(
         nn_models,
         marl_m.nb_class,
         train_config.learning_rate,
-        main_config.step,
         train_config.gamma,
         metric_logger=mlflow_metric_logger,
     )
@@ -162,7 +161,6 @@ def train_main(
         test_dataset[test_idx][0],
         test_dataset_ori[test_idx][0],
         model_config.window_size,
-        main_config.step,
         output_dir,
         dataset.class_to_idx,
     )

@@ -49,7 +49,7 @@ def infer_main(main_config: MainConfig, infer_config: InferConfig) -> None:
     nn_models.load_state_dict(th.load(infer_config.state_dict_path))
     nn_models.eval()
 
-    episode_sampler = EpisodeSampler(marl_m, env)
+    episode_sampler = EpisodeSampler(marl_m, env, main_config.step)
 
     img_pipeline = default_image_pipeline()
 
@@ -90,7 +90,6 @@ def infer_main(main_config: MainConfig, infer_config: InferConfig) -> None:
             x,
             x_ori,
             marl_config.window_size,
-            main_config.step,
             curr_img_path,
             class_to_idx,
         )

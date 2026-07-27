@@ -61,7 +61,7 @@ def eval_main(main_config: MainConfig, eval_config: EvalConfig) -> None:
     device = th.device("cuda" if main_config.cuda else "cpu")
     nn_models.to(device)
 
-    episode_sampler = EpisodeSampler(marl_m, env)
+    episode_sampler = EpisodeSampler(marl_m, env, main_config.step)
 
     conf_meter = ConfusionMeter(nn_models.nb_class)
 
@@ -69,9 +69,7 @@ def eval_main(main_config: MainConfig, eval_config: EvalConfig) -> None:
         for x, y in tqdm(data_loader):
             x, y = x.to(device), y.to(device)
 
-            output = episode_sampler.run_episode_get_last_step(
-                x, main_config.step
-            )
+            output = episode_sampler.run_episode_get_last_step(x)
 
             # mean over agents
             conf_meter.add(output.prediction.mean(dim=0).detach(), y)

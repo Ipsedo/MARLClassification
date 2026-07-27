@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import torch as th
 from torch import nn
 
+from .init import init_layers
 from .message import MessageReceiver, MessageSender, aggregate_messages
 from .policy import Critic, Policy
 from .prediction import Prediction
@@ -72,13 +73,7 @@ class ModelsWrapper(nn.Module):
 
         self.__nb_class = nb_class
 
-        def __init_weights(m: nn.Module) -> None:
-            if isinstance(m, (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d)):
-                nn.init.xavier_normal_(m.weight)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-
-        self.apply(__init_weights)
+        self.apply(init_layers)
 
     def forward(
         self,

@@ -14,7 +14,6 @@ def visualize_steps(
     img: th.Tensor,
     img_ori: th.Tensor,
     window_size: int,
-    max_it: int,
     output_dir: str,
     class_map: Mapping[Any, int],
 ) -> None:
@@ -24,9 +23,9 @@ def visualize_steps(
 
     output = episode_sampler.run_episode(
         img.unsqueeze(0),
-        max_it,
     )
 
+    nb_steps = output.step_preds.size(0)
     nb_agents = output.step_preds.size(1)
 
     # mean over agents
@@ -55,7 +54,7 @@ def visualize_steps(
         frames.append(Image.open(frame_file_name))
 
     curr_img = th.zeros(h, w, 4)
-    for t in range(max_it):
+    for t in range(nb_steps):
         for i in range(nb_agents):
             # agent coordinates
             x = int(pos[t][i][img_idx][0].item())

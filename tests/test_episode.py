@@ -15,9 +15,9 @@ def test_episode(
     height_width: Tuple[int, int],
 ) -> None:
     x = th.randn(batch_size, 1, *height_width)
-    episode_sampler = EpisodeSampler(marl_m, env)
+    episode_sampler = EpisodeSampler(marl_m, env, step)
 
-    output = episode_sampler.run_episode_get_last_step(x, step)
+    output = episode_sampler.run_episode_get_last_step(x)
 
     assert 3 == len(output.prediction.size())
     assert nb_agent == output.prediction.size()[0]
@@ -40,9 +40,9 @@ def test_detailed_episode(
     height_width: Tuple[int, int],
 ) -> None:
     x = th.randn(batch_size, 1, *height_width)
-    episode_sampler = EpisodeSampler(marl_m, env)
+    episode_sampler = EpisodeSampler(marl_m, env, step)
 
-    output = episode_sampler.run_episode(x, step)
+    output = episode_sampler.run_episode(x)
 
     assert 4 == len(output.step_preds.size())
     assert step == output.step_preds.size()[0]

@@ -52,7 +52,7 @@ class _Generic2dCnnModule(VisionCnnModule):
         return self.__out_size
 
 
-class MNISTCnn(_Generic2dCnnModule):
+class MnistCnn(_Generic2dCnnModule):
     """
     b_θ5 : R^f*f -> R^n
     """
@@ -90,7 +90,7 @@ class WorldStratCnn(_Generic2dCnnModule):
 
 
 class KneeMriCnn(VisionCnnModule):
-    def __init__(self, f: int = 16):
+    def __init__(self, f: int = 16) -> None:
         super().__init__()
 
         self.__seq_conv = nn.Sequential(

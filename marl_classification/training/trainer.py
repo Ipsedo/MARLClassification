@@ -24,7 +24,6 @@ class Trainer:
         model: ModelsWrapper,
         nb_class: int,
         learning_rate: float,
-        episode_steps: int,
         gamma: float,
         metric_logger: Optional[MetricLogger] = None,
         log_interval: int = 100,
@@ -34,7 +33,6 @@ class Trainer:
         self.__optim = th.optim.Adam(model.parameters(), lr=learning_rate)
 
         self.__nb_class = nb_class
-        self.__episode_steps = episode_steps
         self.__gamma = gamma
 
         self.__metric_logger = metric_logger
@@ -72,14 +70,11 @@ class Trainer:
             # pred = [Ns, Na, Nb, Nc]
             # prob = [Ns, Na, Nb]
             # values = [Ns, Na, Nb]
-            output = episode_sampler.run_episode(
-                x_train,
-                self.__episode_steps,
-            )
+            output = episode_sampler.run_episode(x_train)
 
             # compute error : per step prediction and mean over agents
             batch_size = y_train.size(0)
-            nb_steps = self.__episode_steps
+            nb_steps = output.step_preds.size(0)
             predictions = output.step_preds.mean(dim=1).flatten(0, 1)
             targets = y_train.unsqueeze(0).repeat(nb_steps, 1).flatten(0, 1)
 
@@ -184,10 +179,7 @@ class Trainer:
                 x_test = x_test.to(device)
                 y_test = y_test.to(device)
 
-                output = episode_sampler.run_episode_get_last_step(
-                    x_test,
-                    self.__episode_steps,
-                )
+                output = episode_sampler.run_episode_get_last_step(x_test)
 
                 # mean over agents
                 conf_meter.add(output.prediction.mean(dim=0).detach(), y_test)

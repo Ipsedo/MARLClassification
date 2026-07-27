@@ -1,17 +1,14 @@
-import torch as th
 from torch import nn
 
 
-class Policy(nn.Module):
+class Policy(nn.Sequential):
     """
     π_θ3 : A * R^n
     R^n : pas sûr, voir reccurents.ActionUnit
     """
 
     def __init__(self, nb_action: int, n: int, hidden_size: int) -> None:
-        super().__init__()
-
-        self.__seq_lin = nn.Sequential(
+        super().__init__(
             nn.Linear(n, hidden_size),
             nn.LayerNorm(hidden_size),
             nn.SiLU(),
@@ -19,23 +16,13 @@ class Policy(nn.Module):
             nn.Softmax(dim=-1),
         )
 
-    def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
-        action_probabilities: th.Tensor = self.__seq_lin(h_caret_t_next)
-        return action_probabilities
 
-
-class Critic(nn.Module):
+class Critic(nn.Sequential):
     def __init__(self, n: int, hidden_size: int):
-        super().__init__()
-
-        self.__seq_lin = nn.Sequential(
+        super().__init__(
             nn.Linear(n, hidden_size),
             nn.LayerNorm(hidden_size),
             nn.SiLU(),
             nn.Linear(hidden_size, 1),
             nn.Flatten(-2, -1),
         )
-
-    def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
-        values: th.Tensor = self.__seq_lin(h_caret_t_next)
-        return values
