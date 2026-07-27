@@ -5,7 +5,7 @@ import torch.nn.functional as th_fun
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..core import Environment, EpisodeSampler, MultiAgent
+from ..core import EpisodeSampler
 from ..metrics import ConfusionMeter, LossMeter
 from ..networks import ModelsWrapper
 from .functions import classification_rewards, discounted_returns, standardize
@@ -21,9 +21,8 @@ class Trainer:
 
     def __init__(
         self,
-        agents: MultiAgent,
-        env: Environment,
         model: ModelsWrapper,
+        nb_class: int,
         learning_rate: float,
         episode_steps: int,
         gamma: float,
@@ -34,11 +33,9 @@ class Trainer:
         self.__model = model
         self.__optim = th.optim.Adam(model.parameters(), lr=learning_rate)
 
-        self.__nb_class = agents.nb_class
+        self.__nb_class = nb_class
         self.__episode_steps = episode_steps
         self.__gamma = gamma
-
-        self.__episode_sampler = EpisodeSampler(agents, env)
 
         self.__metric_logger = metric_logger
         self.__log_interval = log_interval
@@ -46,7 +43,7 @@ class Trainer:
         self.__curr_step = 0
 
         self.__conf_meter = ConfusionMeter(
-            agents.nb_class, window_size=meter_window_size
+            self.__nb_class, window_size=meter_window_size
         )
         self.__path_loss_meter = LossMeter(window_size=meter_window_size)
         self.__error_meter = LossMeter(window_size=meter_window_size)
@@ -57,7 +54,12 @@ class Trainer:
     def curr_step(self) -> int:
         return self.__curr_step
 
-    def train_epoch(self, dataloader: DataLoader, epoch: int) -> None:
+    def train_epoch(
+        self,
+        dataloader: DataLoader,
+        epoch_index: int,
+        episode_sampler: EpisodeSampler,
+    ) -> None:
         self.__model.train()
 
         device = self.__model.device
@@ -70,7 +72,7 @@ class Trainer:
             # pred = [Ns, Na, Nb, Nc]
             # prob = [Ns, Na, Nb]
             # values = [Ns, Na, Nb]
-            output = self.__episode_sampler.run_episode(
+            output = episode_sampler.run_episode(
                 x_train,
                 self.__episode_steps,
             )
@@ -153,7 +155,7 @@ class Trainer:
                 )
 
             tqdm_bar.set_description(
-                f"Epoch {epoch} - Train, "
+                f"Epoch {epoch_index} - Train, "
                 f"train_prec = {precs.mean().item():.3f}, "
                 f"train_rec = {recs.mean().item():.3f}, "
                 f"error = {self.__error_meter.loss():.4f}, "
@@ -164,7 +166,12 @@ class Trainer:
 
             self.__curr_step += 1
 
-    def eval_epoch(self, dataloader: DataLoader, epoch: int) -> ConfusionMeter:
+    def eval_epoch(
+        self,
+        dataloader: DataLoader,
+        epoch_index: int,
+        episode_sampler: EpisodeSampler,
+    ) -> ConfusionMeter:
         self.__model.eval()
 
         device = self.__model.device
@@ -177,7 +184,7 @@ class Trainer:
                 x_test = x_test.to(device)
                 y_test = y_test.to(device)
 
-                output = self.__episode_sampler.run_episode_get_last_step(
+                output = episode_sampler.run_episode_get_last_step(
                     x_test,
                     self.__episode_steps,
                 )
@@ -189,7 +196,7 @@ class Trainer:
                 recs = conf_meter.recall()
 
                 tqdm_bar.set_description(
-                    f"Epoch {epoch} - Eval, "
+                    f"Epoch {epoch_index} - Eval, "
                     f"eval_prec = {precs.mean().item():.4f}, "
                     f"eval_rec = {recs.mean().item():.4f}"
                 )

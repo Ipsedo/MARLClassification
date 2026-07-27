@@ -8,6 +8,7 @@ import torch as th
 from tqdm import tqdm
 
 from .config import InferConfig, MainConfig, ModelConfig
+from .core import EpisodeSampler
 from .data.datasets import my_pil_loader
 from .registry import default_image_pipeline
 from .visualization import visualize_steps
@@ -48,6 +49,8 @@ def infer_main(main_config: MainConfig, infer_config: InferConfig) -> None:
     nn_models.load_state_dict(th.load(infer_config.state_dict_path))
     nn_models.eval()
 
+    episode_sampler = EpisodeSampler(marl_m, env)
+
     img_pipeline = default_image_pipeline()
 
     device = th.device("cuda" if main_config.cuda else "cpu")
@@ -83,10 +86,10 @@ def infer_main(main_config: MainConfig, infer_config: InferConfig) -> None:
             )
 
         visualize_steps(
-            marl_m,
-            env,
+            episode_sampler,
             x,
             x_ori,
+            marl_config.window_size,
             main_config.step,
             curr_img_path,
             class_to_idx,

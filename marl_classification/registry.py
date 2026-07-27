@@ -5,17 +5,17 @@ import torch as th
 import torchvision.transforms as tr
 
 from .data import (
-    AIDDataset,
-    KneeMRIDataset,
-    MNISTDataset,
-    RESISC45Dataset,
+    AbstractDataset,
+    AidDataset,
+    KneeMriDataset,
+    MnistDataset,
+    Resisc45Dataset,
     SkinCancerDataset,
     WorldStratDataset,
 )
-from .data.abstract_dataset import AbstractDataset
 from .networks.vision import (
-    AIDCnn,
-    KneeMRICnn,
+    AidCnn,
+    KneeMriCnn,
     MNISTCnn,
     Resisc45Cnn,
     SkinCancerCnn,
@@ -36,10 +36,10 @@ class DatasetSpec:
 
 
 DATASET_REGISTRY: dict[str, DatasetSpec] = {
-    "mnist": DatasetSpec(MNISTDataset, MNISTCnn),
-    "resisc45": DatasetSpec(RESISC45Dataset, Resisc45Cnn),
-    "kneemri": DatasetSpec(KneeMRIDataset, KneeMRICnn),
-    "aid": DatasetSpec(AIDDataset, AIDCnn),
+    "mnist": DatasetSpec(MnistDataset, MNISTCnn),
+    "resisc45": DatasetSpec(Resisc45Dataset, Resisc45Cnn),
+    "kneemri": DatasetSpec(KneeMriDataset, KneeMriCnn),
+    "aid": DatasetSpec(AidDataset, AidCnn),
     "worldstrat": DatasetSpec(WorldStratDataset, WorldStratCnn),
     "skin_cancer": DatasetSpec(SkinCancerDataset, SkinCancerCnn),
 }

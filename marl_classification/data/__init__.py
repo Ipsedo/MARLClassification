@@ -1,9 +1,10 @@
+from .abstract_dataset import AbstractDataset
 from .datasets import (
-    AIDDataset,
+    AidDataset,
     KineticsDataset,
-    KneeMRIDataset,
-    MNISTDataset,
-    RESISC45Dataset,
+    KneeMriDataset,
+    MnistDataset,
+    Resisc45Dataset,
     SkinCancerDataset,
     WorldStratDataset,
 )

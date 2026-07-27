@@ -6,14 +6,14 @@ import torch as th
 import torch.nn.functional as th_fun
 from PIL import Image
 
-from .core import Environment, EpisodeSampler, MultiAgent
+from .core import EpisodeSampler
 
 
 def visualize_steps(
-    agents: MultiAgent,
-    env: Environment,
+    episode_sampler: EpisodeSampler,
     img: th.Tensor,
     img_ori: th.Tensor,
+    window_size: int,
     max_it: int,
     output_dir: str,
     class_map: Mapping[Any, int],
@@ -22,14 +22,12 @@ def visualize_steps(
 
     color_map = None
 
-    f = env.window_size
-
-    episode_sampler = EpisodeSampler(agents, env)
-
     output = episode_sampler.run_episode(
         img.unsqueeze(0),
         max_it,
     )
+
+    nb_agents = output.step_preds.size(1)
 
     # mean over agents
     preds, pos = output.step_preds.mean(dim=1).cpu(), output.step_pos.cpu()
@@ -58,7 +56,7 @@ def visualize_steps(
 
     curr_img = th.zeros(h, w, 4)
     for t in range(max_it):
-        for i in range(len(agents)):
+        for i in range(nb_agents):
             # agent coordinates
             x = int(pos[t][i][img_idx][0].item())
             y = int(pos[t][i][img_idx][1].item())
@@ -66,12 +64,12 @@ def visualize_steps(
             # fmt : off
 
             # Color
-            curr_img[x : x + f, y : y + f, :3] = img_ori[
-                x : x + f, y : y + f, :
+            curr_img[x : x + window_size, y : y + window_size, :3] = img_ori[
+                x : x + window_size, y : y + window_size, :
             ]
 
             # Alpha
-            curr_img[x : x + f, y : y + f, 3] = 1
+            curr_img[x : x + window_size, y : y + window_size, 3] = 1
 
             # fmt : on
 

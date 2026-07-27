@@ -9,6 +9,7 @@ import torch as th
 from torch.utils.data import DataLoader, Subset
 
 from .config import MainConfig, ModelConfig, TrainConfig
+from .core import EpisodeSampler
 from .registry import default_image_pipeline, get_dataset_spec
 from .training import Trainer
 from .visualization import visualize_steps
@@ -108,20 +109,23 @@ def train_main(
     def mlflow_metric_logger(step: int, metrics: Dict[str, float]) -> None:
         mlflow.log_metrics(step=step, metrics=metrics)
 
+    episode_sampler = EpisodeSampler(marl_m, env)
+
     trainer = Trainer(
-        marl_m,
-        env,
         nn_models,
+        marl_m.nb_class,
         train_config.learning_rate,
-        episode_steps=main_config.step,
-        gamma=train_config.gamma,
+        main_config.step,
+        train_config.gamma,
         metric_logger=mlflow_metric_logger,
     )
 
     for e in range(train_config.nb_epoch):
-        trainer.train_epoch(train_dataloader, e)
+        trainer.train_epoch(train_dataloader, e, episode_sampler)
 
-        conf_meter_eval = trainer.eval_epoch(test_dataloader, e)
+        conf_meter_eval = trainer.eval_epoch(
+            test_dataloader, e, episode_sampler
+        )
 
         precs, recs = (
             conf_meter_eval.precision(),
@@ -154,10 +158,10 @@ def train_main(
     test_idx = randint(0, len(test_dataset_ori))
 
     visualize_steps(
-        marl_m,
-        env,
+        episode_sampler,
         test_dataset[test_idx][0],
         test_dataset_ori[test_idx][0],
+        model_config.window_size,
         main_config.step,
         output_dir,
         dataset.class_to_idx,

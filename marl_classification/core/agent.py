@@ -25,21 +25,19 @@ class MultiAgent:
         self.__nb_agents = nb_agents
         self.__model = model
 
-        self.__hidden = model.random_first_state(len(self), 1)
-        self.__last_msg = model.zero_first_message(len(self), 1)
+        fake_batch_size = 1
+
+        self.__hidden = model.random_first_state(len(self), fake_batch_size)
+        self.__last_msg = model.zero_first_message(len(self), fake_batch_size)
 
     def reset(self, batch_size: int) -> None:
-
         self.__hidden = self.__model.random_first_state(len(self), batch_size)
+
         self.__last_msg = self.__model.zero_first_message(
             len(self), batch_size
         )
 
     def act(self, observation: th.Tensor, norm_pos: th.Tensor) -> AgentOutput:
-        assert (
-            self.__hidden is not None and self.__last_msg is not None
-        ), "reset() must be called before act()"
-
         output, hidden = self.__model(
             observation,
             self.__last_msg,

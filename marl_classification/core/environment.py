@@ -17,7 +17,7 @@ class Environment:
         window_size: int,
     ) -> None:
         self.__actions = actions
-        self.__f = window_size
+        self.__window_size = window_size
 
         self.__img_batch: th.Tensor = th.empty([1])  # fake img batch
         self.__img_sizes: list[int] = []
@@ -37,7 +37,7 @@ class Environment:
         self.__pos = th.stack(
             [
                 th.randint(
-                    i_s - self.__f,
+                    i_s - self.__window_size,
                     (nb_agents, batch_size),
                     device=device,
                 )
@@ -54,7 +54,7 @@ class Environment:
         ), "reset() must be called before observe()"
 
         return Environment.__observation(
-            self.__img_batch, self.__pos, self.__f
+            self.__img_batch, self.__pos, self.__window_size
         )
 
     def step(self, action_indices: th.Tensor) -> th.Tensor:
@@ -65,7 +65,7 @@ class Environment:
         self.__pos = Environment.__transition(
             self.__pos.to(th.float),
             movements,
-            self.__f,
+            self.__window_size,
             self.__img_sizes,
         ).to(th.long)
 
@@ -86,7 +86,7 @@ class Environment:
 
     @property
     def window_size(self) -> int:
-        return self.__f
+        return self.__window_size
 
     @property
     def actions(self) -> list[list[int]]:

@@ -70,7 +70,7 @@ class Resisc45Cnn(_Generic2dCnnModule):
         super().__init__(f, [(3, 16), (16, 32), (32, 64)], [2, 4, 8])
 
 
-class AIDCnn(_Generic2dCnnModule):
+class AidCnn(_Generic2dCnnModule):
     def __init__(self, f: int) -> None:
         super().__init__(
             f, [(3, 16), (16, 32), (32, 64), (64, 128)], [2, 4, 8, 16]
@@ -89,7 +89,7 @@ class WorldStratCnn(_Generic2dCnnModule):
 # Knee MRI stuff
 
 
-class KneeMRICnn(VisionCnnModule):
+class KneeMriCnn(VisionCnnModule):
     def __init__(self, f: int = 16):
         super().__init__()
 

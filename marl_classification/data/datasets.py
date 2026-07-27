@@ -22,7 +22,7 @@ def my_pil_loader(path: str) -> Image.Image:
         return img.convert("RGB")
 
 
-class MNISTDataset(ImageFolder, AbstractDataset):
+class MnistDataset(ImageFolder, AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ) -> None:
@@ -41,7 +41,7 @@ class MNISTDataset(ImageFolder, AbstractDataset):
         )
 
 
-class RESISC45Dataset(ImageFolder, AbstractDataset):
+class Resisc45Dataset(ImageFolder, AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ) -> None:
@@ -60,7 +60,7 @@ class RESISC45Dataset(ImageFolder, AbstractDataset):
         )
 
 
-class AIDDataset(ImageFolder, AbstractDataset):
+class AidDataset(ImageFolder, AbstractDataset):
     def __init__(
         self, res_path: str, img_transform: Callable[[Any], th.Tensor]
     ) -> None:
@@ -79,7 +79,7 @@ class AIDDataset(ImageFolder, AbstractDataset):
         )
 
 
-class KneeMRIDataset(AbstractDataset):
+class KneeMriDataset(AbstractDataset):
     def __init__(self, res_path: str, _: Callable[[Any], th.Tensor]):
         super().__init__()
 
