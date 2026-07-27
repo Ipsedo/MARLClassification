@@ -18,8 +18,6 @@ class Environment:
     ) -> None:
         self.__actions = actions
         self.__f = window_size
-        self.__obs = Environment.__obs_generic
-        self.__trans = Environment.__trans_generic
 
         self.__img_batch: th.Tensor = th.empty([1])  # fake img batch
         self.__img_sizes: list[int] = []
@@ -55,14 +53,16 @@ class Environment:
             self.__img_batch is not None
         ), "reset() must be called before observe()"
 
-        return self.__obs(self.__img_batch, self.__pos, self.__f)
+        return Environment.__observation(
+            self.__img_batch, self.__pos, self.__f
+        )
 
     def step(self, action_indices: th.Tensor) -> th.Tensor:
         """Apply the chosen actions (indices in the action set) and
         return the new observations."""
         movements = self.__actions_table[action_indices]
 
-        self.__pos = self.__trans(
+        self.__pos = Environment.__transition(
             self.__pos.to(th.float),
             movements,
             self.__f,
@@ -97,7 +97,7 @@ class Environment:
         return len(self.__actions)
 
     @staticmethod
-    def __obs_generic(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
+    def __observation(x: th.Tensor, pos: th.Tensor, f: int) -> th.Tensor:
         x_sizes = x.size()
         b_img, c = x_sizes[0], x_sizes[1]
         sizes = list(x_sizes[2:])
@@ -130,7 +130,7 @@ class Environment:
         )
 
     @staticmethod
-    def __trans_generic(
+    def __transition(
         pos: th.Tensor,
         a_t_next: th.Tensor,
         f: int,

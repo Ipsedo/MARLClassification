@@ -1,14 +1,8 @@
-# -*- coding: utf-8 -*-
 from typing import Tuple
 
 import torch as th
 
-from marl_classification.core import (
-    Environment,
-    MultiAgent,
-    detailed_episode,
-    episode,
-)
+from marl_classification.core import Environment, EpisodeSampler, MultiAgent
 
 
 def test_episode(
@@ -21,8 +15,9 @@ def test_episode(
     height_width: Tuple[int, int],
 ) -> None:
     x = th.randn(batch_size, 1, *height_width)
+    episode_sampler = EpisodeSampler(marl_m, env)
 
-    output = episode(marl_m, env, x, step)
+    output = episode_sampler.run_episode_get_last_step(x, step)
 
     assert 3 == len(output.prediction.size())
     assert nb_agent == output.prediction.size()[0]
@@ -45,8 +40,9 @@ def test_detailed_episode(
     height_width: Tuple[int, int],
 ) -> None:
     x = th.randn(batch_size, 1, *height_width)
+    episode_sampler = EpisodeSampler(marl_m, env)
 
-    output = detailed_episode(marl_m, env, x, step)
+    output = episode_sampler.run_episode(x, step)
 
     assert 4 == len(output.step_preds.size())
     assert step == output.step_preds.size()[0]

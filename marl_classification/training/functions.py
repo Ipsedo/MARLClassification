@@ -1,15 +1,7 @@
-from dataclasses import dataclass
 from math import log
 
 import torch as th
 import torch.nn.functional as th_fun
-
-
-@dataclass
-class A2CLoss:
-    path_loss: th.Tensor
-    policy_loss: th.Tensor
-    critic_loss: th.Tensor
 
 
 def classification_rewards(
@@ -61,34 +53,3 @@ def discounted_returns(rewards: th.Tensor, gamma: float) -> th.Tensor:
 
 def standardize(values: th.Tensor, eps: float = 1e-8) -> th.Tensor:
     return (values - values.mean()) / (values.std() + eps)
-
-
-def a2c_loss(
-    log_probs: th.Tensor,
-    values: th.Tensor,
-    returns: th.Tensor,
-    error: th.Tensor,
-) -> A2CLoss:
-    """
-    Advantage actor-critic losses.
-
-    log_probs, values, returns: [Ns, Na, Nb]
-    error: classification error [Nb], broadcast over steps and agents
-    """
-    # actor advantage
-    advantage = returns - values
-
-    # actor loss, maximize(log_proba * advantage)
-    path_loss = -log_probs * advantage.detach()
-
-    # add agent's votes -> train classifier
-    policy_loss = path_loss + error
-
-    # critic loss : difference between values and returns
-    critic_loss = th_fun.smooth_l1_loss(
-        values,
-        returns.detach(),
-        reduction="none",
-    )
-
-    return A2CLoss(path_loss, policy_loss, critic_loss)

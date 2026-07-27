@@ -3,11 +3,12 @@ from dataclasses import dataclass
 import torch as th
 from torch import nn
 
-from .ft_extractor import CNNFtExtract, StateToFeatures
-from .message import MessageSender, aggregate_messages
+from .message import MessageReceiver, MessageSender, aggregate_messages
 from .policy import Critic, Policy
 from .prediction import Prediction
 from .recurrent import LSTMCellWrapper
+from .state import StateToFeatures
+from .vision import VisionCnnModule
 
 
 @dataclass
@@ -34,10 +35,11 @@ class ModelsWrapper(nn.Module):
 
     def __init__(
         self,
-        ft_extractor: CNNFtExtract,
+        ft_extractor: VisionCnnModule,
         n_b: int,
         n_a: int,
         n_m: int,
+        n_m_o: int,
         n_d: int,
         d: int,
         nb_action: int,
@@ -47,23 +49,27 @@ class ModelsWrapper(nn.Module):
     ) -> None:
         super().__init__()
 
+        self.__n_b = n_b
+        self.__n_a = n_a
+        self.__n_m = n_m
+
         self.__map_obs = ft_extractor
         self.__map_pos = StateToFeatures(d, n_d)
-        self.__evaluate_msg = MessageSender(n_b, n_m, hidden_size_belief)
+
+        self.__encode_msg = MessageSender(n_b, n_m, n_m * 2)
+        self.__decode_msg = MessageReceiver(n_m, n_m_o, n_m * 2)
+
         self.__belief_unit = LSTMCellWrapper(
-            ft_extractor.out_size + n_d + n_m, n_b
+            ft_extractor.out_size + n_d + n_m_o, n_b
         )
         self.__action_unit = LSTMCellWrapper(
-            ft_extractor.out_size + n_d + n_m, n_a
+            ft_extractor.out_size + n_d + n_m_o, n_a
         )
+
         self.__policy = Policy(nb_action, n_a, hidden_size_action)
         self.__critic = Critic(n_a, hidden_size_action)
         self.__predict = Prediction(n_b, nb_class, hidden_size_belief)
 
-        self.__n_b = n_b
-        self.__n_a = n_a
-        self.__n_m = n_m
-        self.__nb_action = nb_action
         self.__nb_class = nb_class
 
         def __init_weights(m: nn.Module) -> None:
@@ -93,7 +99,8 @@ class ModelsWrapper(nn.Module):
         ).view(nb_agent, batch_size, -1)
 
         # Mean of the messages sent by the other agents
-        d_bar_t = aggregate_messages(msg_t)
+        collected_msg = aggregate_messages(msg_t)
+        d_bar_t = self.__decode_msg(collected_msg)
 
         # Map pos in feature space
         lambda_t = self.__map_pos(norm_pos)
@@ -109,7 +116,7 @@ class ModelsWrapper(nn.Module):
         )
 
         # Evaluate message
-        new_msg = self.__evaluate_msg(
+        new_msg = self.__encode_msg(
             h_t_next,
         )
 
@@ -136,25 +143,25 @@ class ModelsWrapper(nn.Module):
         ), RecurrentOutput(h_t_next, c_t_next, h_caret_t_next, c_caret_t_next)
 
     @property
-    def n_b(self) -> int:
-        return self.__n_b
-
-    @property
-    def n_a(self) -> int:
-        return self.__n_a
-
-    @property
-    def n_m(self) -> int:
-        return self.__n_m
-
-    @property
-    def nb_action(self) -> int:
-        return self.__nb_action
-
-    @property
     def nb_class(self) -> int:
         return self.__nb_class
 
     @property
     def device(self) -> th.device:
         return next(self.parameters()).device
+
+    def random_first_state(
+        self, nb_agents: int, batch_size: int
+    ) -> RecurrentOutput:
+        def rand_hidden(size: int) -> th.Tensor:
+            return th.randn(nb_agents, batch_size, size, device=self.device)
+
+        return RecurrentOutput(
+            h=rand_hidden(self.__n_b),
+            c=rand_hidden(self.__n_b),
+            h_caret=rand_hidden(self.__n_a),
+            c_caret=rand_hidden(self.__n_a),
+        )
+
+    def zero_first_message(self, nb_agents: int, batch_size: int) -> th.Tensor:
+        return th.zeros(nb_agents, batch_size, self.__n_m, device=self.device)

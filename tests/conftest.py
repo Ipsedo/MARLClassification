@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import shutil
 from os import mkdir
 from os.path import abspath, exists, isdir, join
@@ -9,7 +8,7 @@ from pytest import Session
 
 from marl_classification.core import Environment, MultiAgent
 from marl_classification.networks import ModelsWrapper
-from marl_classification.networks.ft_extractor import MNISTCnn
+from marl_classification.networks.vision import MNISTCnn
 
 __TMP_PATH = abspath(join(__file__, "..", "tmp"))
 
@@ -71,6 +70,7 @@ def get_model_wrapper(
         n_a,
         n_m,
         20,
+        19,
         dim,
         len(actions),
         nb_class,

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import torch as th
 
 from marl_classification.metrics import ConfusionMeter, LossMeter

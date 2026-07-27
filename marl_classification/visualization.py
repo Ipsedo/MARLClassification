@@ -6,7 +6,7 @@ import torch as th
 import torch.nn.functional as th_fun
 from PIL import Image
 
-from .core import Environment, MultiAgent, detailed_episode
+from .core import Environment, EpisodeSampler, MultiAgent
 
 
 def visualize_steps(
@@ -24,12 +24,13 @@ def visualize_steps(
 
     f = env.window_size
 
-    output = detailed_episode(
-        agents,
-        env,
+    episode_sampler = EpisodeSampler(agents, env)
+
+    output = episode_sampler.run_episode(
         img.unsqueeze(0),
         max_it,
     )
+
     # mean over agents
     preds, pos = output.step_preds.mean(dim=1).cpu(), output.step_pos.cpu()
     img_ori = img_ori.permute(1, 2, 0).cpu()

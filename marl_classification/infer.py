@@ -7,57 +7,56 @@ from os.path import exists, getmtime, isfile, join, split
 import torch as th
 from tqdm import tqdm
 
+from .config import InferConfig, MainConfig, ModelConfig
 from .data.datasets import my_pil_loader
-from .options import InferOptions, MainOptions
 from .registry import default_image_pipeline
-from .serde import MarlConfig
 from .visualization import visualize_steps
 
 
-def infer_main(main_options: MainOptions, infer_options: InferOptions) -> None:
+def infer_main(main_config: MainConfig, infer_config: InferConfig) -> None:
     assert exists(
-        infer_options.json_path
-    ), f'JSON path "{infer_options.json_path}" does not exist'
+        infer_config.json_path
+    ), f'JSON path "{infer_config.json_path}" does not exist'
     assert isfile(
-        infer_options.json_path
-    ), f'"{infer_options.json_path}" is not a file'
+        infer_config.json_path
+    ), f'"{infer_config.json_path}" is not a file'
 
     assert exists(
-        infer_options.state_dict_path
-    ), f"State dict path {infer_options.state_dict_path} does not exist"
+        infer_config.state_dict_path
+    ), f"State dict path {infer_config.state_dict_path} does not exist"
     assert isfile(
-        infer_options.state_dict_path
-    ), f"{infer_options.state_dict_path} is not a file"
+        infer_config.state_dict_path
+    ), f"{infer_config.state_dict_path} is not a file"
 
     print(
         "Will use :\n"
         "- JSON of : "
-        f"{datetime.fromtimestamp(getmtime(infer_options.json_path))}\n"
+        f"{datetime.fromtimestamp(getmtime(infer_config.json_path))}\n"
         "- state_dict of : "
-        f"{datetime.fromtimestamp(getmtime(infer_options.state_dict_path))}\n"
+        f"{datetime.fromtimestamp(getmtime(infer_config.state_dict_path))}\n"
         "- class_to_idx of : "
-        f"{datetime.fromtimestamp(getmtime(infer_options.class_to_idx))}"
+        f"{datetime.fromtimestamp(getmtime(infer_config.class_to_idx))}"
     )
 
-    with open(infer_options.class_to_idx, "r", encoding="utf-8") as json_f:
+    with open(infer_config.class_to_idx, "r", encoding="utf-8") as json_f:
         class_to_idx = json.load(json_f)
 
-    marl_config = MarlConfig.load_marl_config(infer_options.json_path)
+    marl_config = ModelConfig.load_marl_config(infer_config.json_path)
 
-    nn_models, marl_m, env = marl_config.build_marl(main_options.nb_agent)
+    nn_models, marl_m, env = marl_config.build_marl(main_config.nb_agent)
 
-    nn_models.load_state_dict(th.load(infer_options.state_dict_path))
+    nn_models.load_state_dict(th.load(infer_config.state_dict_path))
     nn_models.eval()
 
     img_pipeline = default_image_pipeline()
 
-    device = th.device("cuda" if main_options.cuda else "cpu")
+    device = th.device("cuda" if main_config.cuda else "cpu")
     nn_models.to(device)
 
     images = tqdm(
         [
             img
-            for img_path in infer_options.images_path
+            for img_path in infer_config.images_path
             for img in glob.glob(img_path, recursive=True)
         ]
     )
@@ -67,7 +66,7 @@ def infer_main(main_options: MainOptions, infer_options: InferOptions) -> None:
         x_ori = img_pipeline(img)
         x = img_pipeline(img)
 
-        curr_img_path = join(infer_options.output_dir, split(img_path)[-1])
+        curr_img_path = join(infer_config.output_dir, split(img_path)[-1])
 
         if not exists(curr_img_path):
             mkdir(curr_img_path)
@@ -78,8 +77,8 @@ def infer_main(main_options: MainOptions, infer_options: InferOptions) -> None:
             info_f.writelines(
                 [
                     f"{img_path}\n",
-                    f"{infer_options.json_path}\n",
-                    f"{infer_options.state_dict_path}\n",
+                    f"{infer_config.json_path}\n",
+                    f"{infer_config.state_dict_path}\n",
                 ]
             )
 
@@ -88,7 +87,7 @@ def infer_main(main_options: MainOptions, infer_options: InferOptions) -> None:
             env,
             x,
             x_ori,
-            main_options.step,
+            main_config.step,
             curr_img_path,
             class_to_idx,
         )

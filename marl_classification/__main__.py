@@ -3,9 +3,15 @@ import re
 from os import makedirs
 from os.path import abspath, dirname, exists, isdir, join
 
+from .config import (
+    EvalConfig,
+    InferConfig,
+    MainConfig,
+    ModelConfig,
+    TrainConfig,
+)
 from .eval import eval_main
 from .infer import infer_main
-from .options import EvalOptions, InferOptions, MainOptions, TrainOptions
 from .registry import DATASET_REGISTRY
 from .train import train_main
 
@@ -102,7 +108,7 @@ def main() -> None:
         type=str,
         choices=sorted(DATASET_REGISTRY),
         default="mnist",
-        dest="ft_extractor",
+        dest="ft_extr_str",
         help="Choose features extractor (CNN)",
     )
     train_parser.add_argument(
@@ -125,6 +131,13 @@ def main() -> None:
         default=16,
         dest="n_m",
         help="Message size for NNs",
+    )
+    train_parser.add_argument(
+        "--nmo",
+        type=int,
+        default=24,
+        dest="n_m_o",
+        help="Received message output size for NNs",
     )
     train_parser.add_argument(
         "--nd",
@@ -294,15 +307,16 @@ def main() -> None:
 
     args = main_parser.parse_args()
 
+    main_config = MainConfig(
+        step=args.step,
+        run_id=args.run_id,
+        cuda=args.cuda,
+        nb_agent=args.agents,
+    )
+
     match args.main_choice:
         case "train":
             # Create Options
-            main_options = MainOptions(
-                args.step,
-                args.run_id,
-                args.cuda,
-                args.agents,
-            )
 
             reg_actions = re.compile(
                 r"^\[(\[((-?\d+,?)+)],)+?\[((-?\d+,?)+)]]$"
@@ -320,25 +334,29 @@ def main() -> None:
                     len(a) == args.dim
                 ), f"Wrong space for action at index {i}"
 
-            train_options = TrainOptions(
-                args.n_b,
-                args.n_l_b,
-                args.n_l_a,
-                args.n_m,
-                args.n_d,
-                args.n_a,
-                args.dim,
-                args.f,
-                args.img_size,
-                args.nb_class,
-                actions,
-                args.nb_epoch,
-                args.learning_rate,
-                args.batch_size,
-                args.res_folder,
-                args.output_dir,
-                args.ft_extractor,
-                args.gamma,
+            model_config = ModelConfig(
+                ft_extr_str=args.ft_extr_str,
+                window_size=args.f,
+                hidden_size_belief=args.n_b,
+                hidden_size_action=args.n_a,
+                hidden_size_msg=args.n_m,
+                hidden_size_msg_output=args.n_m_o,
+                hidden_size_state=args.n_d,
+                state_dim=args.dim,
+                actions=actions,
+                nb_class=args.nb_class,
+                hidden_size_linear_belief=args.n_l_b,
+                hidden_size_linear_action=args.n_l_a,
+            )
+
+            train_config = TrainConfig(
+                img_size=args.img_size,
+                nb_epoch=args.nb_epoch,
+                learning_rate=args.learning_rate,
+                batch_size=args.batch_size,
+                resources_dir=args.res_folder,
+                output_dir=args.output_dir,
+                gamma=args.gamma,
             )
 
             if not exists(args.output_dir):
@@ -348,24 +366,18 @@ def main() -> None:
                     f'"{args.output_dir}" is not a directory.'
                 )
 
-            train_main(main_options, train_options)
+            train_main(main_config, model_config, train_config)
 
         # Test main
         case "test":
-            main_options = MainOptions(
-                args.step,
-                args.run_id,
-                args.cuda,
-                args.agents,
-            )
 
-            eval_options = EvalOptions(
-                args.img_size,
-                args.state_dict_path,
-                args.batch_size,
-                args.json_path,
-                args.dataset_path,
-                args.output_dir,
+            eval_config = EvalConfig(
+                img_size=args.img_size,
+                state_dict_path=args.state_dict_path,
+                batch_size=args.batch_size,
+                json_path=args.json_path,
+                dataset_path=args.dataset_path,
+                output_dir=args.output_dir,
             )
 
             if not exists(args.output_dir):
@@ -375,22 +387,16 @@ def main() -> None:
                     f'"{args.output_dir}" is not a directory.'
                 )
 
-            eval_main(main_options, eval_options)
+            eval_main(main_config, eval_config)
 
         case "infer":
-            main_options = MainOptions(
-                args.step,
-                args.run_id,
-                args.cuda,
-                args.agents,
-            )
 
-            infer_options = InferOptions(
-                args.state_dict_path,
-                args.json_path,
-                args.infer_images,
-                args.output_image_dir,
-                args.class_to_idx,
+            infer_config = InferConfig(
+                state_dict_path=args.state_dict_path,
+                json_path=args.json_path,
+                images_path=args.infer_images,
+                output_dir=args.output_image_dir,
+                class_to_idx=args.class_to_idx,
             )
 
             if not exists(args.output_image_dir):
@@ -402,7 +408,7 @@ def main() -> None:
                     f'"{args.output_image_dir}" is not a directory.'
                 )
 
-            infer_main(main_options, infer_options)
+            infer_main(main_config, infer_config)
 
         case _:
             main_parser.error(

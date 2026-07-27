@@ -1,8 +1,5 @@
-from typing import cast
-
 import torch as th
 from torch import nn
-from torchvision.ops import Permute
 
 
 class Policy(nn.Module):
@@ -16,16 +13,15 @@ class Policy(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
-            nn.GELU(),
-            Permute([1, 2, 0]),
-            nn.BatchNorm1d(hidden_size),
-            Permute([2, 0, 1]),
+            nn.LayerNorm(hidden_size),
+            nn.SiLU(),
             nn.Linear(hidden_size, nb_action),
             nn.Softmax(dim=-1),
         )
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
-        return cast(th.Tensor, self.__seq_lin(h_caret_t_next))
+        action_probabilities: th.Tensor = self.__seq_lin(h_caret_t_next)
+        return action_probabilities
 
 
 class Critic(nn.Module):
@@ -34,13 +30,12 @@ class Critic(nn.Module):
 
         self.__seq_lin = nn.Sequential(
             nn.Linear(n, hidden_size),
-            nn.GELU(),
-            Permute([1, 2, 0]),
-            nn.BatchNorm1d(hidden_size),
-            Permute([2, 0, 1]),
+            nn.LayerNorm(hidden_size),
+            nn.SiLU(),
             nn.Linear(hidden_size, 1),
             nn.Flatten(-2, -1),
         )
 
     def forward(self, h_caret_t_next: th.Tensor) -> th.Tensor:
-        return cast(th.Tensor, self.__seq_lin(h_caret_t_next))
+        values: th.Tensor = self.__seq_lin(h_caret_t_next)
+        return values

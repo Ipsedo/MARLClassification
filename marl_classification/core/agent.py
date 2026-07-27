@@ -1,36 +1,8 @@
 from dataclasses import dataclass
-from typing import Protocol
 
 import torch as th
 
-from ..networks.models import ModelOutput, RecurrentOutput
-
-
-class AgentModel(Protocol):
-    """Minimal interface MultiAgent needs from its neural networks."""
-
-    @property
-    def n_b(self) -> int: ...
-
-    @property
-    def n_a(self) -> int: ...
-
-    @property
-    def n_m(self) -> int: ...
-
-    @property
-    def nb_class(self) -> int: ...
-
-    @property
-    def device(self) -> th.device: ...
-
-    def __call__(
-        self,
-        img_patch: th.Tensor,
-        msg_t: th.Tensor,
-        norm_pos: th.Tensor,
-        recurrent_hidden: RecurrentOutput,
-    ) -> tuple[ModelOutput, RecurrentOutput]: ...
+from ..networks.models import ModelsWrapper
 
 
 @dataclass
@@ -49,28 +21,18 @@ class MultiAgent:
     transition dynamics — it only maps observations to actions.
     """
 
-    def __init__(self, nb_agents: int, model: AgentModel) -> None:
+    def __init__(self, nb_agents: int, model: ModelsWrapper) -> None:
         self.__nb_agents = nb_agents
         self.__model = model
 
-        self.__hidden: RecurrentOutput | None = None
-        self.__last_msg: th.Tensor | None = None
+        self.__hidden = model.random_first_state(len(self), 1)
+        self.__last_msg = model.zero_first_message(len(self), 1)
 
     def reset(self, batch_size: int) -> None:
-        device = self.__model.device
 
-        def rand_hidden(size: int) -> th.Tensor:
-            return th.randn(self.__nb_agents, batch_size, size, device=device)
-
-        self.__hidden = RecurrentOutput(
-            h=rand_hidden(self.__model.n_b),
-            c=rand_hidden(self.__model.n_b),
-            h_caret=rand_hidden(self.__model.n_a),
-            c_caret=rand_hidden(self.__model.n_a),
-        )
-
-        self.__last_msg = th.zeros(
-            self.__nb_agents, batch_size, self.__model.n_m, device=device
+        self.__hidden = self.__model.random_first_state(len(self), batch_size)
+        self.__last_msg = self.__model.zero_first_message(
+            len(self), batch_size
         )
 
     def act(self, observation: th.Tensor, norm_pos: th.Tensor) -> AgentOutput:

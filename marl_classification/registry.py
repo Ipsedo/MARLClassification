@@ -13,13 +13,13 @@ from .data import (
     WorldStratDataset,
 )
 from .data.abstract_dataset import AbstractDataset
-from .networks.ft_extractor import (
+from .networks.vision import (
     AIDCnn,
-    CNNFtExtract,
     KneeMRICnn,
     MNISTCnn,
     Resisc45Cnn,
     SkinCancerCnn,
+    VisionCnnModule,
     WorldStratCnn,
 )
 
@@ -32,7 +32,7 @@ class DatasetSpec:
     dataset_constructor: Callable[
         [str, Callable[[Any], th.Tensor]], AbstractDataset
     ]
-    cnn_constructor: Callable[[int], CNNFtExtract]
+    cnn_constructor: Callable[[int], VisionCnnModule]
 
 
 DATASET_REGISTRY: dict[str, DatasetSpec] = {

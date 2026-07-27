@@ -5,15 +5,10 @@ import torch.nn.functional as th_fun
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..core import Environment, MultiAgent, detailed_episode, episode
+from ..core import Environment, EpisodeSampler, MultiAgent
 from ..metrics import ConfusionMeter, LossMeter
 from ..networks import ModelsWrapper
-from .rl import (
-    a2c_loss,
-    classification_rewards,
-    discounted_returns,
-    standardize,
-)
+from .functions import classification_rewards, discounted_returns, standardize
 
 MetricLogger = Callable[[int, Dict[str, float]], None]
 
@@ -29,19 +24,21 @@ class Trainer:
         agents: MultiAgent,
         env: Environment,
         model: ModelsWrapper,
-        optim: th.optim.Optimizer,
+        learning_rate: float,
         episode_steps: int,
         gamma: float,
         metric_logger: Optional[MetricLogger] = None,
         log_interval: int = 100,
         meter_window_size: int = 64,
     ) -> None:
-        self.__agents = agents
-        self.__env = env
         self.__model = model
-        self.__optim = optim
+        self.__optim = th.optim.Adam(model.parameters(), lr=learning_rate)
+
+        self.__nb_class = agents.nb_class
         self.__episode_steps = episode_steps
         self.__gamma = gamma
+
+        self.__episode_sampler = EpisodeSampler(agents, env)
 
         self.__metric_logger = metric_logger
         self.__log_interval = log_interval
@@ -53,7 +50,7 @@ class Trainer:
         )
         self.__path_loss_meter = LossMeter(window_size=meter_window_size)
         self.__error_meter = LossMeter(window_size=meter_window_size)
-        self.__policy_loss_meter = LossMeter(window_size=meter_window_size)
+        self.__actor_loss_meter = LossMeter(window_size=meter_window_size)
         self.__critic_loss_meter = LossMeter(window_size=meter_window_size)
 
     @property
@@ -73,32 +70,48 @@ class Trainer:
             # pred = [Ns, Na, Nb, Nc]
             # prob = [Ns, Na, Nb]
             # values = [Ns, Na, Nb]
-            output = detailed_episode(
-                self.__agents,
-                self.__env,
+            output = self.__episode_sampler.run_episode(
                 x_train,
                 self.__episode_steps,
             )
 
-            # compute error : last step prediction and mean over agents
+            # compute error : per step prediction and mean over agents
+            batch_size = y_train.size(0)
+            nb_steps = self.__episode_steps
+            predictions = output.step_preds.mean(dim=1).flatten(0, 1)
+            targets = y_train.unsqueeze(0).repeat(nb_steps, 1).flatten(0, 1)
+
+            # output shape (steps, 1, batch)
+            # 1 => vote over agents
             error = th_fun.cross_entropy(
-                output.step_preds[-1].mean(dim=0),
-                y_train,
+                predictions,
+                targets,
+                reduction="none",
+            ).unflatten(0, (nb_steps, 1, batch_size))
+
+            rewards = classification_rewards(output.step_preds, y_train)
+            returns = discounted_returns(rewards, self.__gamma)
+
+            advantages = returns - output.step_values
+            normalized_advantages = standardize(advantages)
+
+            # actor loss, maximize(log_proba * advantage)
+            path_loss = (
+                -output.step_log_probas * normalized_advantages.detach()
+            )
+
+            # add agent's votes -> train classifier
+            actor_loss = path_loss + error
+
+            # critic loss
+            critic_loss = th_fun.smooth_l1_loss(
+                output.step_values,
+                returns.detach(),
                 reduction="none",
             )
 
-            rewards = classification_rewards(output.step_preds, y_train)
-            returns = standardize(discounted_returns(rewards, self.__gamma))
-
-            losses = a2c_loss(
-                output.step_log_probas,
-                output.step_values,
-                returns,
-                error,
-            )
-
             # sum over steps, mean over agents and batch
-            loss = (losses.policy_loss + losses.critic_loss).sum(dim=0).mean()
+            loss = th.sum(actor_loss + critic_loss, 0).mean()
 
             # backward and update weights
             self.__optim.zero_grad()
@@ -106,10 +119,10 @@ class Trainer:
             self.__optim.step()
 
             # Update meters
-            path_loss_item = losses.path_loss.sum(dim=0).mean().item()
+            path_loss_item = path_loss.sum(dim=0).mean().item()
             error_item = error.mean().item()
-            policy_loss_item = losses.policy_loss.sum(dim=0).mean().item()
-            critic_loss_item = losses.critic_loss.sum(dim=0).mean().item()
+            actor_loss_item = actor_loss.sum(dim=0).mean().item()
+            critic_loss_item = critic_loss.sum(dim=0).mean().item()
 
             self.__conf_meter.add(
                 # select last step, mean over agents
@@ -118,7 +131,7 @@ class Trainer:
             )
             self.__path_loss_meter.add(path_loss_item)
             self.__error_meter.add(error_item)
-            self.__policy_loss_meter.add(policy_loss_item)
+            self.__actor_loss_meter.add(actor_loss_item)
             self.__critic_loss_meter.add(critic_loss_item)
 
             precs = self.__conf_meter.precision()
@@ -136,8 +149,6 @@ class Trainer:
                         "loss": loss.item(),
                         "train_prec": precs.mean().item(),
                         "train_rec": recs.mean().item(),
-                        "critic_loss": critic_loss_item,
-                        "actor_loss": policy_loss_item,
                     },
                 )
 
@@ -145,10 +156,10 @@ class Trainer:
                 f"Epoch {epoch} - Train, "
                 f"train_prec = {precs.mean().item():.3f}, "
                 f"train_rec = {recs.mean().item():.3f}, "
-                f"c_loss = {self.__critic_loss_meter.loss():.4f}, "
-                f"a_loss = {self.__policy_loss_meter.loss():.4f}, "
                 f"error = {self.__error_meter.loss():.4f}, "
-                f"path = {self.__path_loss_meter.loss():.4f}"
+                f"path = {self.__path_loss_meter.loss():.4f}, "
+                f"actor = {self.__actor_loss_meter.loss():.4f}, "
+                f"critic = {self.__critic_loss_meter.loss():.4f}"
             )
 
             self.__curr_step += 1
@@ -158,7 +169,7 @@ class Trainer:
 
         device = self.__model.device
 
-        conf_meter = ConfusionMeter(self.__agents.nb_class, None)
+        conf_meter = ConfusionMeter(self.__nb_class, None)
 
         with th.no_grad():
             tqdm_bar = tqdm(dataloader)
@@ -166,9 +177,7 @@ class Trainer:
                 x_test = x_test.to(device)
                 y_test = y_test.to(device)
 
-                output = episode(
-                    self.__agents,
-                    self.__env,
+                output = self.__episode_sampler.run_episode_get_last_step(
                     x_test,
                     self.__episode_steps,
                 )
