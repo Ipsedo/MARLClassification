@@ -58,23 +58,9 @@ def train_main(
 
     mlflow.log_params(
         {
-            "ft_extractor": model_config.ft_extr_str,
-            "window_size": model_config.window_size,
-            "hidden_size_belief": model_config.hidden_size_belief,
-            "hidden_size_action": model_config.hidden_size_action,
-            "hidden_size_msg": model_config.hidden_size_msg,
-            "hidden_size_state": model_config.hidden_size_state,
-            "state_dim": model_config.state_dim,
-            "actions": model_config.actions,
-            "nb_class": model_config.nb_class,
-            "hidden_size_linear_belief": model_config.hidden_size_linear_belief,
-            "hidden_size_linear_action": model_config.hidden_size_linear_action,
-            "nb_agent": main_config.nb_agent,
-            "nb_epoch": train_config.nb_epoch,
-            "learning_rate": train_config.learning_rate,
-            "img_size": train_config.img_size,
-            "step": main_config.step,
-            "batch_size": train_config.batch_size,
+            **dict(main_config),
+            **dict(model_config),
+            **dict(train_config),
         }
     )
 

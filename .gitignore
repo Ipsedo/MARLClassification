@@ -135,4 +135,3 @@ out/
 mlruns/
 outputs/
 mlflow.db
-resources/downloaded/
