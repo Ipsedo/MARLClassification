@@ -27,8 +27,8 @@ jobs:
         python -m uv sync
     - name: Check code
       run: |
-        python -m mypy marl_classification tests
-        python -m pylint marl_classification tests
+        python -m uv run mypy marl_classification tests
+        python -m uv run pylint marl_classification tests
     - name: Test code
       run: |
-        pytest tests
+        python -m uv run pytest tests
