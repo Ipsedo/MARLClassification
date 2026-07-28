@@ -73,6 +73,20 @@ precision : 68.7%
 recall    : 67.8%
 ```
 
+Training on image dataset AID (see `resources/trained_models/aid`) :
+
+```
+Epoch 50
+--------
+[Train]
+precision : 80.9%
+recall    : 80.6%
+--------
+[Eval]
+precision : 73.7%
+recall    : 72.5%
+```
+
 
 ## Reference
 

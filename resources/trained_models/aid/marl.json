@@ -1,0 +1,1 @@
+{"ft_extr_str": "aid", "window_size": 24, "hidden_size_belief": 768, "hidden_size_action": 768, "hidden_size_msg": 128, "hidden_size_msg_output": 192, "hidden_size_state": 16, "state_dim": 2, "actions": [[3, 0], [-3, 0], [0, 3], [0, -3], [0, 0]], "nb_class": 30, "hidden_size_linear_belief": 1024, "hidden_size_linear_action": 1024}
