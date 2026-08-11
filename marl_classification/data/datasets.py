@@ -83,7 +83,9 @@ class KneeMriDataset(AbstractDataset):
     def __init__(self, res_path: str, _: Callable[[Any], th.Tensor]):
         super().__init__()
 
-        self.__knee_mri_root_path = join(res_path, "downloaded", "knee_mri")
+        self.__knee_mri_root_path = join(
+            res_path, "downloaded", "kneemridataset"
+        )
 
         # self.__img_transform = img_transform
 
@@ -99,9 +101,7 @@ class KneeMriDataset(AbstractDataset):
         self.__nb_img = 0
 
         def __open_pickle_size(fn: str) -> None:
-            with open(
-                join(self.__knee_mri_root_path, "extracted", fn), "rb"
-            ) as f:
+            with open(join(self.__knee_mri_root_path, fn), "rb") as f:
                 x = pkl.load(f)
 
             self.__max_depth = max(self.__max_depth, x.shape[0])
@@ -109,15 +109,25 @@ class KneeMriDataset(AbstractDataset):
             self.__max_height = max(self.__max_height, x.shape[2])
             self.__nb_img += 1
 
-        metadata_csv["volumeFilename"].progress_map(__open_pickle_size)
+        files = {
+            basename(file): file
+            for file in glob.glob(
+                join(self.__knee_mri_root_path, "*", "*.pck")
+            )
+        }
 
-        self.__dataset = [
-            (str(fn), lbl)
-            for fn, lbl in zip(
-                metadata_csv["volumeFilename"].tolist(),
+        metadata_csv = metadata_csv[metadata_csv["volumeFilename"].isin(files)]
+        metadata_csv["relative_file_path"] = metadata_csv[
+            "volumeFilename"
+        ].apply(lambda fn: files[fn])
+        metadata_csv["relative_file_path"].progress_map(__open_pickle_size)
+
+        self.__dataset = list(
+            zip(
+                metadata_csv["relative_file_path"].tolist(),
                 metadata_csv["aclDiagnosis"].tolist(),
             )
-        ]
+        )
 
         self.class_to_idx = {
             "healthy": 0,
@@ -126,7 +136,7 @@ class KneeMriDataset(AbstractDataset):
         }
 
     def __open_img(self, fn: str) -> th.Tensor:
-        with open(join(self.__knee_mri_root_path, "extracted", fn), "rb") as f:
+        with open(join(self.__knee_mri_root_path, fn), "rb") as f:
             x = pkl.load(f)
 
         x = th.from_numpy(x).to(th.float)

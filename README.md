@@ -87,6 +87,19 @@ precision : 73.7%
 recall    : 72.5%
 ```
 
+Training on image dataset World Strat (see `resources/trained_models/world_strat`) :
+
+```
+Epoch 50
+--------
+[Train]
+precision : 65.8%
+recall    : 53.9%
+--------
+[Eval]
+precision : 55.6%
+recall    : 55.8%
+```
 
 ## Reference
 

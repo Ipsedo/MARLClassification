@@ -6,21 +6,12 @@ if ! [[ -d "${SCRIPT_DIR}/downloaded" ]]; then
     mkdir "${SCRIPT_DIR}/downloaded"
 fi
 
-if ! [[ -d "${SCRIPT_DIR}/downloaded/knee_mri" ]]; then
-    mkdir "${SCRIPT_DIR}/downloaded/knee_mri"
+
+if ! [[ -f "${SCRIPT_DIR}/downloaded/kneemridataset.zip" ]]; then
+    kaggle datasets download sohaibanwaar1203/kneemridataset -p "${SCRIPT_DIR}/downloaded/"
 fi
 
-if ! [[ -f "${SCRIPT_DIR}/downloaded/knee_mri/metadata.csv" ]]; then
-    wget http://www.riteh.uniri.hr/~istajduh/projects/kneeMRI/data/metadata.csv -P "${SCRIPT_DIR}/downloaded/knee_mri"
+if ! [[ -d "${SCRIPT_DIR}/downloaded/kneemridataset" ]]; then
+    mkdir "${SCRIPT_DIR}/downloaded/kneemridataset"
+    unzip "${SCRIPT_DIR}/downloaded/kneemridataset.zip" -d "${SCRIPT_DIR}/downloaded/kneemridataset"
 fi
-
-if ! [[ -d "${SCRIPT_DIR}/downloaded/knee_mri/extracted" ]]; then
-    mkdir "${SCRIPT_DIR}/downloaded/knee_mri/extracted"
-fi
-
-for i in {01..10}; do
-    if ! [[ -f "${SCRIPT_DIR}/downloaded/knee_mri/vol${i}.7z" ]]; then
-        wget "http://www.riteh.uniri.hr/~istajduh/projects/kneeMRI/data/volumetric_data/vol${i}.7z" -P "${SCRIPT_DIR}/downloaded/knee_mri"
-        7z x "${SCRIPT_DIR}/downloaded/knee_mri/vol${i}.7z" -o"${SCRIPT_DIR}/downloaded/knee_mri/extracted"
-    fi
-done

@@ -2,6 +2,10 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+if ! [[ -d "${SCRIPT_DIR}/downloaded" ]]; then
+    mkdir "${SCRIPT_DIR}/downloaded"
+fi
+
 if ! [[ -f "${SCRIPT_DIR}/downloaded/aid-scene-classification-datasets.zip" ]]; then
   echo "aid-scene-classification-datasets.zip not found in ${SCRIPT_DIR}/downloaded"
   echo "Download aid-scene-classification-datasets.zip with Kaggle CLI"

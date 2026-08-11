@@ -107,8 +107,8 @@ class Trainer:
                 reduction="none",
             )
 
-            # sum over steps, mean over agents and batch
-            loss = th.sum(actor_loss + critic_loss, 0).mean()
+            # mean over steps, agents and batch
+            loss = th.mean(actor_loss + critic_loss)
 
             # backward and update weights
             self.__optim.zero_grad()
@@ -116,10 +116,10 @@ class Trainer:
             self.__optim.step()
 
             # Update meters
-            path_loss_item = path_loss.sum(dim=0).mean().item()
+            path_loss_item = path_loss.mean().item()
             error_item = error.mean().item()
-            actor_loss_item = actor_loss.sum(dim=0).mean().item()
-            critic_loss_item = critic_loss.sum(dim=0).mean().item()
+            actor_loss_item = actor_loss.mean().item()
+            critic_loss_item = critic_loss.mean().item()
 
             self.__conf_meter.add(
                 # select last step, mean over agents
