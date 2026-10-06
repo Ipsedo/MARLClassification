@@ -35,7 +35,7 @@ repos:
         name: mypy
         language: system
         entry: mypy
-        args: [ marl_classification, tests, --config-file=pyproject.toml ]
+        args: [ src/marl_classification, tests, --config-file=pyproject.toml ]
         types: [ python ]
         pass_filenames: false
         require_serial: true
@@ -43,7 +43,7 @@ repos:
         name: pylint
         language: system
         entry: pylint
-        args: [ marl_classification, tests, --rcfile, pyproject.toml ]
+        args: [ src/marl_classification, tests, --rcfile, pyproject.toml ]
         types: [ python ]
         pass_filenames: false
         require_serial: true
